@@ -30,14 +30,15 @@ import java.util.List;
  */
 @Mojo(
     name="check-access",
-    defaultPhase=LifecyclePhase.INSTALL,  // Why does verify not work?
+    defaultPhase=LifecyclePhase.VERIFY,
     requiresProject=true,
     requiresDependencyResolution=ResolutionScope.COMPILE_PLUS_RUNTIME,
     requiresDependencyCollection=ResolutionScope.COMPILE_PLUS_RUNTIME)
 @Execute(
     goal="check-access",
-    phase=LifecyclePhase.INSTALL)
+    phase=LifecyclePhase.VERIFY)
 public final class FencesMavenPluginMojo extends AbstractMojo {
+  // TODO: This doesn't work under AbstractMojoTestCase but does at CL.
   @Parameter(defaultValue="${project}", readonly=true, required=true)
   private MavenProject project;
 
@@ -103,11 +104,13 @@ public final class FencesMavenPluginMojo extends AbstractMojo {
         try {
           jarChecker.checkJar(art);
         } catch (IOException ex) {
+          // TODO: recent versions of ArtifactUtils do group:art:ver
           throw new MojoExecutionException(
               "Failed to check " + art.getGroupId() + ":" + art.getArtifactId()
               + ":" + art.getBaseVersion(), ex);
         }
       } else {
+        // TODO: recent versions of ArtifactUtils do group:art:ver
         log.info("Not checking artifact " + art.getGroupId()
                  + ":" + art.getArtifactId() + ":" + art.getBaseVersion()
                  + " with type " + artType);
