@@ -1,4 +1,4 @@
-package com.google.security.fences;
+package com.google.security.fences.config;
 
 import java.util.List;
 
@@ -6,9 +6,10 @@ import com.google.common.base.Preconditions;
 import com.google.common.collect.ImmutableList;
 import com.google.common.collect.Lists;
 import com.google.security.fences.policy.ApiElement;
+import com.google.security.fences.policy.ApiElementType;
 
-/** An unnammed collection of fences. */
-public final class ApiFence extends Fence {
+/** A Fence for a package. */
+public final class PackageFence extends NamedFence {
   private final List<PackageFence> packages = Lists.newArrayList();
   private final List<ClassFence> classes = Lists.newArrayList();
 
@@ -28,14 +29,6 @@ public final class ApiFence extends Fence {
     classes.add(Preconditions.checkNotNull(x));
   }
 
-  ImmutableList<PackageFence> getPackages() {
-    return ImmutableList.copyOf(packages);
-  }
-
-  ImmutableList<ClassFence> getClasses() {
-    return ImmutableList.copyOf(classes);
-  }
-
   @Override
   public Iterable<Fence> getChildFences() {
     return ImmutableList.<Fence>builder()
@@ -46,20 +39,21 @@ public final class ApiFence extends Fence {
 
   @Override
   void visit(FenceVisitor v, ApiElement el) {
-    // ApiFence should not be a child of another fence.
-    Preconditions.checkArgument(el.equals(ApiElement.DEFAULT_PACKAGE));
-    v.visit(this, ApiElement.DEFAULT_PACKAGE);
+    String name = getName();
+    ApiElement pkgEl = el.child(name, ApiElementType.PACKAGE);
+    v.visit(this, pkgEl);
     for (Fence child : getChildFences()) {
-      child.visit(v, ApiElement.DEFAULT_PACKAGE);
+      child.visit(v, pkgEl);
     }
   }
 
   @Override
-  public ApiFence splitDottedNames() {
+  public Fence splitDottedNames() {
     ImmutableList<Fence> unsplitChildren = ImmutableList.copyOf(
         getChildFences());
     packages.clear();
     classes.clear();
+
     for (Fence unsplitChild : unsplitChildren) {
       Fence splitChild = unsplitChild.splitDottedNames();
       if (splitChild instanceof PackageFence) {
@@ -69,12 +63,39 @@ public final class ApiFence extends Fence {
       } else if (splitChild instanceof ApiFence) {
         ApiFence apiChild = (ApiFence) splitChild;
         mergeTrustsFrom(apiChild);
-        packages.addAll(apiChild.packages);
-        classes.addAll(apiChild.classes);
+        packages.addAll(apiChild.getPackages());
+        classes.addAll(apiChild.getClasses());
       } else {
         throw new AssertionError(splitChild.getClass());
       }
     }
-    return this;
+
+    String name = getName();
+    if (name.isEmpty()) {
+      ApiFence apiFence = new ApiFence();
+      apiFence.mergeTrustsFrom(this);
+      for (PackageFence pkg : this.packages) {
+        apiFence.setPackage(pkg);
+      }
+      for (ClassFence cls : this.classes) {
+        apiFence.setClass(cls);
+      }
+      return apiFence;
+    } else {
+      String[] parts = name.split("[.]");
+      if (parts.length == 1) {
+        return this;
+      }
+      PackageFence pkg = this;
+      this.setName(parts[parts.length - 1]);
+      for (int i = parts.length - 1; --i >= 0;) {
+        String part = parts[i];
+        PackageFence parent = new PackageFence();
+        parent.setName(part);
+        parent.setPackage(pkg);
+        pkg = parent;
+      }
+      return pkg;
+    }
   }
 }

@@ -9,12 +9,15 @@ import com.google.common.base.Preconditions;
 import com.google.common.base.Supplier;
 import com.google.common.collect.ImmutableList;
 import com.google.common.collect.Maps;
-import com.google.security.fences.Fence;
-import com.google.security.fences.FenceVisitor;
-import com.google.security.fences.Frenemies;
+import com.google.security.fences.config.Fence;
+import com.google.security.fences.config.FenceVisitor;
+import com.google.security.fences.config.Frenemies;
 import com.google.security.fences.namespace.Namespace;
 import com.google.security.fences.namespace.NamespaceTrie;
 
+/**
+ * Makes access decisions based on a configuration.
+ */
 public final class Policy {
   /**
    * Maps packages and classes that might access an API element to
@@ -72,7 +75,11 @@ public final class Policy {
     }
   }
 
+  /**
+   * AccessLevels relevant to a particular namespace.
+   */
   public static final class AccessLevels {
+    /** Supplies new instances for Trie nodes. */
     public static final Supplier<AccessLevels> EMPTY_SUPPLIER =
         new Supplier<AccessLevels>() {
       public AccessLevels get() {
@@ -139,6 +146,10 @@ public final class Policy {
     }
   }
 
+  /**
+   * Produces a policy from beans typically populated from a POM
+   * {@code <configuration>} element.
+   */
   public static Policy fromFences(Iterable<? extends Fence> fences) {
     final Policy policy = new Policy();
     FenceVisitor buildFencesVisitor = new FenceVisitor() {

@@ -4,6 +4,9 @@ import com.google.common.base.Objects;
 import com.google.common.base.Optional;
 import com.google.common.base.Preconditions;
 
+/**
+ * An element of a Java API that can be identified by a dotted name.
+ */
 public class ApiElement {
   final Optional<ApiElement> parent;
   final String name;
@@ -13,6 +16,10 @@ public class ApiElement {
   /** From JVM specification edition 8 chapter 2.9 */
   public static final String CONSTRUCTOR_SPECIAL_METHOD_NAME = "<init>";
 
+  /**
+   * The package to which Java source files without a {@code package}
+   * declaration contribute classes.
+   */
   public static final ApiElement DEFAULT_PACKAGE = new ApiElement(
       Optional.<ApiElement>absent(), "", ApiElementType.PACKAGE);
 
@@ -52,6 +59,7 @@ public class ApiElement {
     throw new AssertionError(type);
   }
 
+  /** Constructs a child of this API element. */
   public ApiElement child(String childName, ApiElementType childType) {
     Optional<ApiElement> parentOpt;
     if (DEFAULT_PACKAGE.equals(this)) {

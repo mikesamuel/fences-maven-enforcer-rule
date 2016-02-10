@@ -1,4 +1,4 @@
-package com.google.security.fences;
+package com.google.security.fences.config;
 
 import java.util.Locale;
 

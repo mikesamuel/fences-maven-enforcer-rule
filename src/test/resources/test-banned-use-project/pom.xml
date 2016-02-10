@@ -41,7 +41,7 @@
             <configuration>
               <rules>
                 <fences
-                 implementation="com.google.security.FencesMavenEnforcerRule">
+                 implementation="com.google.security.fences.FencesMavenEnforcerRule">
                   <package>
                     <name>java.lang</name>
                     <class>

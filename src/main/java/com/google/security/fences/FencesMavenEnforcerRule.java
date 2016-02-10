@@ -1,4 +1,4 @@
-package com.google.security;
+package com.google.security.fences;
 
 import org.apache.maven.artifact.Artifact;
 import org.apache.maven.artifact.repository.ArtifactRepository;
@@ -21,11 +21,13 @@ import com.google.common.collect.ImmutableList;
 import com.google.common.collect.ImmutableSet;
 import com.google.common.collect.Lists;
 import com.google.common.collect.Sets;
-import com.google.security.fences.Fence;
-import com.google.security.fences.ApiFence;
-import com.google.security.fences.ClassFence;
-import com.google.security.fences.PackageFence;
+import com.google.security.fences.config.ApiFence;
+import com.google.security.fences.config.ClassFence;
+import com.google.security.fences.config.Fence;
+import com.google.security.fences.config.PackageFence;
 import com.google.security.fences.policy.Policy;
+import com.google.security.fences.util.LazyString;
+import com.google.security.fences.util.Utils;
 
 import java.io.File;
 import java.io.FileInputStream;
@@ -180,20 +182,16 @@ public final class FencesMavenEnforcerRule implements EnforcerRule {
   }
 
   public String getCacheId() {
-    // TODO Auto-generated method stub
     return null;
   }
 
   public boolean isCacheable() {
-    // TODO Auto-generated method stub
     return false;
   }
 
   public boolean isResultValid(EnforcerRule arg0) {
-    // TODO Auto-generated method stub
     return false;
   }
-
 
 
   /**

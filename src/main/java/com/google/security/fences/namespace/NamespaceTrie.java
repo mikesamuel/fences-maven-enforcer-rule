@@ -10,12 +10,24 @@ import com.google.common.base.Preconditions;
 import com.google.common.base.Supplier;
 import com.google.common.collect.ImmutableMap;
 
-/** Maps package and class names. */
+/**
+ * Maps package and class names to values.
+ *
+ * @param <COMPLEX_VALUE> The value type stored at a Trie node.
+ * @param <SIMPLE_VALUE> The type that can be added to a Trie node.
+ *    This can be a part of the COMPLEX_VALUE allowing the trie to easily
+ *    function as a MultiTrie.
+ */
 public final class NamespaceTrie<SIMPLE_VALUE, COMPLEX_VALUE> {
   final Entry<COMPLEX_VALUE> root = new Entry<COMPLEX_VALUE>(null);
   final Supplier<COMPLEX_VALUE> makeEmpty;
   final Function<COMPLEX_VALUE, Function<SIMPLE_VALUE, COMPLEX_VALUE>> folder;
 
+  /**
+   * @param makeEmpty a supplier for empty complex values.
+   * @param folder combines a previous complex value and a simple value being
+   *    added to a node together to produce the new complex value.
+   */
   public NamespaceTrie(
       Supplier<COMPLEX_VALUE> makeEmpty,
       Function<COMPLEX_VALUE, Function<SIMPLE_VALUE, COMPLEX_VALUE>> folder) {
@@ -34,10 +46,17 @@ public final class NamespaceTrie<SIMPLE_VALUE, COMPLEX_VALUE> {
     return b.build();
   }
 
+  /**
+   * The node specified by the given namespace if any.
+   */
   public Entry<COMPLEX_VALUE> get(Namespace ns) {
     return getEntry(ns, false, false);
   }
 
+  /**
+   * Folds a simple value into the node specified by ns,
+   * creating a new node if necessary.
+   */
   public Entry<COMPLEX_VALUE> put(Namespace ns, SIMPLE_VALUE simpleValue) {
     Entry<COMPLEX_VALUE> e = Preconditions.checkNotNull(
         getEntry(ns, true, false));
@@ -45,6 +64,10 @@ public final class NamespaceTrie<SIMPLE_VALUE, COMPLEX_VALUE> {
     return e;
   }
 
+  /**
+   * The value at namespace or one of its ancestors giving preferences to
+   * deeper nodes.
+   */
   public Entry<COMPLEX_VALUE> getDeepest(Namespace ns) {
     return getEntry(ns, false, true);
   }
@@ -79,6 +102,9 @@ public final class NamespaceTrie<SIMPLE_VALUE, COMPLEX_VALUE> {
     }
   }
 
+  /**
+   * A diagnostic text representation of the trie with one line per entry.
+   */
   public String toTree() {
     return root.toTree();
   }

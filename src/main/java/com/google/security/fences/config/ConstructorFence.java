@@ -1,4 +1,4 @@
-package com.google.security.fences;
+package com.google.security.fences.config;
 
 import com.google.common.collect.ImmutableList;
 import com.google.security.fences.policy.ApiElement;

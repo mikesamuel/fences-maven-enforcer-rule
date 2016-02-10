@@ -1,7 +1,14 @@
 package com.google.security.fences.policy;
 
+/**
+ * An access control decision.
+ */
 public enum AccessLevel {
+  // TODO: augment DISALLOWED to bundle human-readable text explaining why
+  // access was/might-have-been denied.
+  /** Access is not allowed. */
   DISALLOWED,
+  /** Access is allowed. */
   ALLOWED,
   ;
 

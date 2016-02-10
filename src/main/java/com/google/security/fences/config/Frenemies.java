@@ -1,4 +1,4 @@
-package com.google.security.fences;
+package com.google.security.fences.config;
 
 import java.util.LinkedHashSet;
 import java.util.Set;
@@ -6,8 +6,14 @@ import java.util.Set;
 import com.google.common.collect.ImmutableSet;
 import com.google.security.fences.namespace.Namespace;
 
+/**
+ * Keep your friends close, your enemies closer,
+ * and your frenemies somewhere in between.
+ */
 public final class Frenemies {
+  /** Namespaces explicitly trusted. */
   public final ImmutableSet<Namespace> friends;
+  /** Namespaces explicitly distrusted. */
   public final ImmutableSet<Namespace> enemies;
 
   private Frenemies(

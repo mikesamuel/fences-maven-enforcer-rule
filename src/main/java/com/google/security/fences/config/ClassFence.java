@@ -1,4 +1,4 @@
-package com.google.security.fences;
+package com.google.security.fences.config;
 
 import java.util.List;
 
@@ -16,7 +16,7 @@ public final class ClassFence extends NamedFence {
   private final List<FieldFence> fields = Lists.newArrayList();
 
   /**
-   * A setter called by reflection during Mojo configuration.  Actually adds
+   * A setter called by reflection during rule configuration.  Actually adds
    * instead of blowing away prior value.
    */
   public void setClass(ClassFence x) {
@@ -24,7 +24,7 @@ public final class ClassFence extends NamedFence {
   }
 
   /**
-   * A setter called by reflection during Mojo configuration.  Actually adds
+   * A setter called by reflection during rule configuration.  Actually adds
    * instead of blowing away prior value.
    */
   public void setConstructor(ConstructorFence x) {
@@ -32,7 +32,7 @@ public final class ClassFence extends NamedFence {
   }
 
   /**
-   * A setter called by reflection during Mojo configuration.  Actually adds
+   * A setter called by reflection during rule configuration.  Actually adds
    * instead of blowing away prior value.
    */
   public void setMethod(MethodFence x) {
@@ -40,7 +40,7 @@ public final class ClassFence extends NamedFence {
   }
 
   /**
-   * A setter called by reflection during Mojo configuration.  Actually adds
+   * A setter called by reflection during rule configuration.  Actually adds
    * instead of blowing away prior value.
    */
   public void setField(FieldFence x) {

@@ -1,4 +1,4 @@
-package com.google.security.fences;
+package com.google.security.fences.config;
 
 import java.util.List;
 
@@ -6,15 +6,14 @@ import com.google.common.base.Preconditions;
 import com.google.common.collect.ImmutableList;
 import com.google.common.collect.Lists;
 import com.google.security.fences.policy.ApiElement;
-import com.google.security.fences.policy.ApiElementType;
 
-/** A Fence for a package. */
-public final class PackageFence extends NamedFence {
+/** An unnammed collection of fences. */
+public final class ApiFence extends Fence {
   private final List<PackageFence> packages = Lists.newArrayList();
   private final List<ClassFence> classes = Lists.newArrayList();
 
   /**
-   * A setter called by reflection during Mojo configuration.  Actually adds
+   * A setter called by reflection during rule configuration.  Actually adds
    * instead of blowing away prior value.
    */
   public void setPackage(PackageFence x) {
@@ -22,11 +21,19 @@ public final class PackageFence extends NamedFence {
   }
 
   /**
-   * A setter called by reflection during Mojo configuration.  Actually adds
+   * A setter called by reflection during rule configuration.  Actually adds
    * instead of blowing away prior value.
    */
   public void setClass(ClassFence x) {
     classes.add(Preconditions.checkNotNull(x));
+  }
+
+  ImmutableList<PackageFence> getPackages() {
+    return ImmutableList.copyOf(packages);
+  }
+
+  ImmutableList<ClassFence> getClasses() {
+    return ImmutableList.copyOf(classes);
   }
 
   @Override
@@ -39,21 +46,20 @@ public final class PackageFence extends NamedFence {
 
   @Override
   void visit(FenceVisitor v, ApiElement el) {
-    String name = getName();
-    ApiElement pkgEl = el.child(name, ApiElementType.PACKAGE);
-    v.visit(this, pkgEl);
+    // ApiFence should not be a child of another fence.
+    Preconditions.checkArgument(el.equals(ApiElement.DEFAULT_PACKAGE));
+    v.visit(this, ApiElement.DEFAULT_PACKAGE);
     for (Fence child : getChildFences()) {
-      child.visit(v, pkgEl);
+      child.visit(v, ApiElement.DEFAULT_PACKAGE);
     }
   }
 
   @Override
-  public Fence splitDottedNames() {
+  public ApiFence splitDottedNames() {
     ImmutableList<Fence> unsplitChildren = ImmutableList.copyOf(
         getChildFences());
     packages.clear();
     classes.clear();
-
     for (Fence unsplitChild : unsplitChildren) {
       Fence splitChild = unsplitChild.splitDottedNames();
       if (splitChild instanceof PackageFence) {
@@ -63,39 +69,12 @@ public final class PackageFence extends NamedFence {
       } else if (splitChild instanceof ApiFence) {
         ApiFence apiChild = (ApiFence) splitChild;
         mergeTrustsFrom(apiChild);
-        packages.addAll(apiChild.getPackages());
-        classes.addAll(apiChild.getClasses());
+        packages.addAll(apiChild.packages);
+        classes.addAll(apiChild.classes);
       } else {
         throw new AssertionError(splitChild.getClass());
       }
     }
-
-    String name = getName();
-    if (name.isEmpty()) {
-      ApiFence apiFence = new ApiFence();
-      apiFence.mergeTrustsFrom(this);
-      for (PackageFence pkg : this.packages) {
-        apiFence.setPackage(pkg);
-      }
-      for (ClassFence cls : this.classes) {
-        apiFence.setClass(cls);
-      }
-      return apiFence;
-    } else {
-      String[] parts = name.split("[.]");
-      if (parts.length == 1) {
-        return this;
-      }
-      PackageFence pkg = this;
-      this.setName(parts[parts.length - 1]);
-      for (int i = parts.length - 1; --i >= 0;) {
-        String part = parts[i];
-        PackageFence parent = new PackageFence();
-        parent.setName(part);
-        parent.setPackage(pkg);
-        pkg = parent;
-      }
-      return pkg;
-    }
+    return this;
   }
 }

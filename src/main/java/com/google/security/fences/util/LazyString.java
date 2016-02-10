@@ -1,8 +1,12 @@
-package com.google.security;
+package com.google.security.fences.util;
 
 import com.google.common.base.Preconditions;
 
-abstract class LazyString implements CharSequence {
+/**
+ * A CharSequence that lazily computes a string which can be useful when a
+ * debug log message might be unbounded in length.
+ */
+public abstract class LazyString implements CharSequence {
   private String s;
 
   public int length() {

@@ -1,4 +1,4 @@
-package com.google.security;
+package com.google.security.fences;
 
 import java.io.IOException;
 import java.io.InputStream;
@@ -22,7 +22,12 @@ import com.google.security.fences.policy.AccessLevel;
 import com.google.security.fences.policy.ApiElement;
 import com.google.security.fences.policy.ApiElementType;
 import com.google.security.fences.policy.Policy;
+import com.google.security.fences.util.LazyString;
+import com.google.security.fences.util.Utils;
 
+/**
+ * Given a JAR, checks each ".class" file against a policy.
+ */
 final class JarChecker {
   final Log log;
   final Policy policy;
@@ -33,6 +38,7 @@ final class JarChecker {
     this.policy = policy;
   }
 
+  /** Greater than zero if there were one or more policy violations. */
   int getErrorCount() {
     return errorCount;
   }
@@ -43,6 +49,12 @@ final class JarChecker {
     }
   }
 
+  /**
+   * @param art The artifact containing the JAR file.
+   *    Used in diagnostic messages.
+   * @param in An input stream containing a well-formed ZIP file.
+   * @throws IOException if there is a problem reading in.
+   */
   void checkJar(Artifact art, InputStream in)
   throws IOException, EnforcerRuleException {
     log.debug("Visiting artifact " + Utils.artToString(art));

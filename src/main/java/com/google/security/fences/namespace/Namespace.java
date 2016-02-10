@@ -8,7 +8,7 @@ import com.google.common.base.Preconditions;
 
 /**
  * A principle or group of principles that can be granted or denied access to
- * an API element.
+ * an API element.  Typically a class or package.
  */
 public final class Namespace {
   private final Namespace parent;
@@ -25,18 +25,29 @@ public final class Namespace {
     this.name = Preconditions.checkNotNull(name);
   }
 
+  /**
+   * The namespace that directly contains this if any.
+   * Absent for the default package.
+   */
   public Optional<Namespace> getParent() {
     return Optional.fromNullable(parent);
   }
 
+  /** The name of this namespace.  Absent for the default package. */
   public Optional<String> getName() {
     return Optional.fromNullable(name);
   }
 
+  /**
+   * A child namespace.
+   */
   public Namespace child(String childName) {
     return new Namespace(this, childName);
   }
 
+  /**
+   * The namespace in which a class with no {@code package} declaration appears.
+   */
   public static final Namespace DEFAULT_PACKAGE = new Namespace();
 
   @Override
@@ -59,6 +70,9 @@ public final class Namespace {
     return sb.toString();
   }
 
+  /**
+   * appends a dotted path to sb.
+   */
   public void toStringBuilder(StringBuilder sb) {
     if (parent != null) {
       int n = sb.length();
@@ -72,6 +86,9 @@ public final class Namespace {
     }
   }
 
+  /**
+   * @param dottedString a package name or fully-qualified class name.
+   */
   public static Namespace fromDottedString(String dottedString)
   // TODO: more appropriate exception type here.
   throws EnforcerRuleException {
@@ -83,6 +100,9 @@ public final class Namespace {
     return fromSeparatedString("dotted name", dottedString, "[.]");
   }
 
+  /**
+   * See <a href="https://docs.oracle.com/javase/specs/jvms/se7/html/jvms-4.html#jvms-4.2">JVMS 4.2</a>
+   */
   public static Namespace fromInternalClassName(String icn)
   // TODO: more appropriate exception type here.
   throws EnforcerRuleException {

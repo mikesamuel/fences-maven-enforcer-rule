@@ -65,6 +65,12 @@
       <artifactId>maven-dependency-tree</artifactId>
       <version>2.2</version>
     </dependency>
+    <dependency>
+      <groupId>com.google.code.findbugs</groupId>
+      <artifactId>jsr305</artifactId>
+      <version>3.0.1</version>
+      <scope>provided</scope>
+    </dependency>
 
     <dependency>
       <groupId>junit</groupId>
@@ -81,5 +87,23 @@
   </dependencies>
 
   <build>
+    <plugins>
+      <plugin>
+        <groupId>org.codehaus.mojo</groupId>
+        <artifactId>findbugs-maven-plugin</artifactId>
+        <version>3.0.0</version>
+        <configuration>
+          <visitors>InconsistentAnnotations,NoteUnconditionalParamDerefs,FindNullDeref,FindNullDerefsInvolvingNonShortCircuitEvaluation</visitors>
+        </configuration>
+        <executions>
+          <execution>
+            <id>run-findbugs-fornullchecks</id>
+            <goals>
+              <goal>check</goal>
+            </goals>
+          </execution>
+        </executions>
+      </plugin>
+    </plugins>
   </build>
 </project>

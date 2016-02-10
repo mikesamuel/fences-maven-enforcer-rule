@@ -1,4 +1,4 @@
-package com.google.security.fences;
+package com.google.security.fences.config;
 
 import java.util.List;
 
@@ -9,7 +9,8 @@ import com.google.security.fences.namespace.Namespace;
 import com.google.security.fences.policy.ApiElement;
 
 /**
- * An API element or collection thereof to which access can be restricted.
+ * A bean object that can be populated from a POM file {@code <configuration>}
+ * element to specify a {@link com.google.security.fences.policy.Policy}.
  */
 public abstract class Fence {
   private final List<Namespace> trusts = Lists.newArrayList();
@@ -20,7 +21,7 @@ public abstract class Fence {
   }
 
   /**
-   * A setter called by reflection during Mojo configuration.  Actually adds
+   * A setter called by reflection during rule configuration.  Actually adds
    * instead of blowing away prior value.
    */
   public void setTrusts(String s) throws EnforcerRuleException {
@@ -28,7 +29,7 @@ public abstract class Fence {
   }
 
   /**
-   * A setter called by reflection during Mojo configuration.  Actually adds
+   * A setter called by reflection during rule configuration.  Actually adds
    * instead of blowing away prior value.
    */
   public void setDistrusts(String s) throws EnforcerRuleException {
@@ -42,8 +43,13 @@ public abstract class Fence {
     }
   }
 
+  /** Fences contained herein. */
   public abstract Iterable<Fence> getChildFences();
 
+  /**
+   * The API elements trusted or distrusted by the API element specified by
+   * this fence.
+   */
   public final Frenemies getFrenemies() {
     Frenemies.Builder b = Frenemies.builder();
     for (Namespace ns : trusts) {
@@ -69,6 +75,7 @@ public abstract class Fence {
 
   abstract void visit(FenceVisitor v, ApiElement el);
 
+  /** Start recursively walking the fence tree. */
   public final void visit(FenceVisitor v) {
     visit(v, ApiElement.DEFAULT_PACKAGE);
   }

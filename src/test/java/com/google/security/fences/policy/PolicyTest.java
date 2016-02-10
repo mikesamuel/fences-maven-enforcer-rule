@@ -9,15 +9,14 @@ import org.junit.Test;
 
 import com.google.common.collect.ImmutableList;
 import com.google.common.collect.ImmutableMap;
-import com.google.security.fences.ClassFence;
-import com.google.security.fences.FieldFence;
-import com.google.security.fences.PackageFence;
+import com.google.security.fences.config.ClassFence;
+import com.google.security.fences.config.FieldFence;
+import com.google.security.fences.config.PackageFence;
 import com.google.security.fences.namespace.Namespace;
 import com.google.security.fences.policy.Policy.AccessLevels;
 
 import static com.google.security.fences.policy.ApiElement.Factory.clazz;
 import static com.google.security.fences.policy.ApiElement.Factory.field;
-import static com.google.security.fences.policy.ApiElement.Factory.method;
 import static com.google.security.fences.policy.ApiElement.Factory.pkg;
 import static com.google.security.fences.policy.AccessLevel.ALLOWED;
 import static com.google.security.fences.policy.AccessLevel.DISALLOWED;
