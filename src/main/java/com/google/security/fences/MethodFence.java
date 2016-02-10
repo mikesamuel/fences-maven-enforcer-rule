@@ -12,4 +12,9 @@ public final class MethodFence extends NamedLeafFence {
   void visit(FenceVisitor v, ApiElement el) {
     v.visit(this, el.child(getName(), ApiElementType.METHOD));
   }
+
+  @Override
+  protected void addToClass(ClassFence container) {
+    container.setMethod(this);
+  }
 }

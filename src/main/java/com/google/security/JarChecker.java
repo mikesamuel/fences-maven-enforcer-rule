@@ -1,13 +1,13 @@
 package com.google.security;
 
-import java.io.File;
-import java.io.FileInputStream;
 import java.io.IOException;
+import java.io.InputStream;
+import java.util.Set;
 import java.util.zip.ZipEntry;
 import java.util.zip.ZipInputStream;
 
 import org.apache.maven.artifact.Artifact;
-import org.apache.maven.plugin.MojoExecutionException;
+import org.apache.maven.enforcer.rule.api.EnforcerRuleException;
 import org.apache.maven.plugin.logging.Log;
 import org.objectweb.asm.ClassReader;
 import org.objectweb.asm.ClassVisitor;
@@ -16,6 +16,7 @@ import org.objectweb.asm.MethodVisitor;
 import org.objectweb.asm.Opcodes;
 
 import com.google.common.base.Optional;
+import com.google.common.collect.Sets;
 import com.google.security.fences.namespace.Namespace;
 import com.google.security.fences.policy.AccessLevel;
 import com.google.security.fences.policy.ApiElement;
@@ -25,47 +26,41 @@ import com.google.security.fences.policy.Policy;
 final class JarChecker {
   final Log log;
   final Policy policy;
+  private int errorCount;
 
   JarChecker(Log log, Policy policy) {
-    System.err.println("Using policy\n" + policy + "\n");
     this.log = log;
     this.policy = policy;
   }
 
-  static String artToString(Artifact art) {
-    // TODO: ArtifactUtils.key does this?
-    return art.getGroupId() + ":" + art.getArtifactId()
-        + ":" + art.getBaseVersion();
+  int getErrorCount() {
+    return errorCount;
   }
 
-  void checkJar(Artifact art) throws IOException, MojoExecutionException {
-    log.info("Checking " + artToString(art));
-    File f = art.getFile();
-    if (f == null) {
-      throw new MojoExecutionException(
-          "Cannot check artifact " + artToString(art)
-          + " since it has not been packaged.");
+  synchronized void incrementErrorCount() {
+    if (errorCount != Integer.MAX_VALUE) {
+      ++errorCount;
     }
-    FileInputStream in = new FileInputStream(f);
+  }
+
+  void checkJar(Artifact art, InputStream in)
+  throws IOException, EnforcerRuleException {
+    log.debug("Visiting artifact " + Utils.artToString(art));
+    ZipInputStream zipIn = new ZipInputStream(in);
     try {
-      ZipInputStream zipIn = new ZipInputStream(in);
-      try {
-        for (ZipEntry zipEntry; (zipEntry = zipIn.getNextEntry()) != null;) {
-          if (!zipEntry.isDirectory()) {
-            String entryName = zipEntry.getName();
-            if (entryName.endsWith(".class")) {
-              ClassReader reader = new ClassReader(zipIn);
-              ClassVisitor classChecker = new ClassChecker(art, reader);
-              reader.accept(classChecker, 0 /* flags */);
-            }
+      for (ZipEntry zipEntry; (zipEntry = zipIn.getNextEntry()) != null;) {
+        if (!zipEntry.isDirectory()) {
+          String entryName = zipEntry.getName();
+          if (entryName.endsWith(".class")) {
+            ClassReader reader = new ClassReader(zipIn);
+            ClassVisitor classChecker = new ClassChecker(art, reader);
+            reader.accept(classChecker, 0 /* flags */);
           }
-          zipIn.closeEntry();
         }
-      } finally {
-        zipIn.close();
+        zipIn.closeEntry();
       }
     } finally {
-      in.close();
+      zipIn.close();
     }
   }
 
@@ -76,7 +71,7 @@ final class JarChecker {
     final Namespace ns;
 
     ClassChecker(Artifact art, ClassReader reader)
-    throws MojoExecutionException {
+    throws EnforcerRuleException {
       super(Opcodes.ASM5);
       this.art = art;
       this.reader = reader;
@@ -88,7 +83,7 @@ final class JarChecker {
     public void visit(
         int version, int access, String name, String signature,
         String superName, String[] interfaces) {
-      log.info("Visiting class " + className);
+      log.debug(". Visiting class " + className);
     }
 
     @Override
@@ -105,6 +100,7 @@ final class JarChecker {
     final String className;
     final Namespace ns;
     final String methodName;
+    private final Set<ApiElement> alreadyChecked = Sets.newHashSet();
 
     MethodChecker(
         Artifact art, ClassReader reader, Namespace ns, String methodName) {
@@ -118,7 +114,7 @@ final class JarChecker {
 
     @Override
     public void visitCode() {
-      log.info(". Visiting method " + methodName);
+      log.debug(". . Visiting method " + methodName);
     }
 
     @Override
@@ -126,7 +122,7 @@ final class JarChecker {
         int opcode, String owner, String name, String desc) {
       ApiElement classEl = apiElementFromInternalClassName(owner);
       ApiElement fieldApiElement = classEl.child(name, ApiElementType.FIELD);
-      checkAllowed(art, ns, fieldApiElement);
+      checkAllowed(fieldApiElement);
     }
 
     @Override
@@ -143,17 +139,29 @@ final class JarChecker {
           name,
           ApiElement.CONSTRUCTOR_SPECIAL_METHOD_NAME.equals(name)
           ? ApiElementType.CONSTRUCTOR : ApiElementType.METHOD);
-      checkAllowed(art, ns, methodApiElement);
+      checkAllowed(methodApiElement);
+    }
+
+    void checkAllowed(ApiElement el) {
+      if (alreadyChecked.add(el)) {
+        JarChecker.this.checkAllowed(art, ns, el);
+      }
     }
   }
 
-  void checkAllowed(Artifact art, Namespace ns, ApiElement el) {
-    log.info(". . Checking that " + el + " allowed from " + ns);
+  void checkAllowed(
+      final Artifact art, final Namespace ns, final ApiElement el) {
+    log.debug(new LazyString() {
+        @Override
+        protected String makeString() {
+          return ". . . Checking whether " + el + " allowed from " + ns
+              + " in " + Utils.artToString(art);
+        }
+    });
     AccessLevel levelFromPolicy = AccessLevel.ALLOWED;  // Defer to java rules.
-    Iterable<Policy.ApiAccessPolicies> applicable = policy.forNamespace(ns);
-    System.err.println("\tapplicable to " + ns + " = " + applicable);
-    for (Policy.ApiAccessPolicies p : applicable) {
-      Optional<AccessLevel> lvl = p.forApiElement(el);
+    Iterable<Policy.AccessLevels> applicable = policy.forNamespace(ns);
+    for (Policy.AccessLevels al : applicable) {
+      Optional<AccessLevel> lvl = al.accessLevelForApiElement(el);
       if (lvl.isPresent()) {
         levelFromPolicy = lvl.get();
         break;
@@ -164,7 +172,9 @@ final class JarChecker {
         break;
       case DISALLOWED:
         log.error(
-            "Access to " + el + " from " + ns + " in " + artToString(art));
+            Utils.artToString(art)
+            + ": access denied to " + el + " from " + ns);
+        incrementErrorCount();
         break;
     }
   }

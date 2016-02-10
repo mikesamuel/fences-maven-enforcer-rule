@@ -28,6 +28,14 @@ public final class ApiFence extends Fence {
     classes.add(Preconditions.checkNotNull(x));
   }
 
+  ImmutableList<PackageFence> getPackages() {
+    return ImmutableList.copyOf(packages);
+  }
+
+  ImmutableList<ClassFence> getClasses() {
+    return ImmutableList.copyOf(classes);
+  }
+
   @Override
   public Iterable<Fence> getChildFences() {
     return ImmutableList.<Fence>builder()
@@ -44,5 +52,29 @@ public final class ApiFence extends Fence {
     for (Fence child : getChildFences()) {
       child.visit(v, ApiElement.DEFAULT_PACKAGE);
     }
+  }
+
+  @Override
+  public ApiFence splitDottedNames() {
+    ImmutableList<Fence> unsplitChildren = ImmutableList.copyOf(
+        getChildFences());
+    packages.clear();
+    classes.clear();
+    for (Fence unsplitChild : unsplitChildren) {
+      Fence splitChild = unsplitChild.splitDottedNames();
+      if (splitChild instanceof PackageFence) {
+        packages.add((PackageFence) splitChild);
+      } else if (splitChild instanceof ClassFence) {
+        classes.add((ClassFence) splitChild);
+      } else if (splitChild instanceof ApiFence) {
+        ApiFence apiChild = (ApiFence) splitChild;
+        mergeTrustsFrom(apiChild);
+        packages.addAll(apiChild.packages);
+        classes.addAll(apiChild.classes);
+      } else {
+        throw new AssertionError(splitChild.getClass());
+      }
+    }
+    return this;
   }
 }

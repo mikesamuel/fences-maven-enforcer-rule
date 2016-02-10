@@ -18,4 +18,9 @@ public final class ConstructorFence extends Fence {
         ApiElement.CONSTRUCTOR_SPECIAL_METHOD_NAME,
         ApiElementType.CONSTRUCTOR));
   }
+
+  @Override
+  public Fence splitDottedNames() {
+    return this;
+  }
 }

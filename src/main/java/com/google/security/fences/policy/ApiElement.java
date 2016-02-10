@@ -8,6 +8,7 @@ public class ApiElement {
   final Optional<ApiElement> parent;
   final String name;
   final ApiElementType type;
+  private final int hashCode;
 
   /** From JVM specification edition 8 chapter 2.9 */
   public static final String CONSTRUCTOR_SPECIAL_METHOD_NAME = "<init>";
@@ -20,9 +21,12 @@ public class ApiElement {
     this.parent = parent;
     this.name = name;
     this.type = type;
+    this.hashCode = Objects.hashCode(parent, name, type);
+
     Preconditions.checkArgument(
         name.length() != 0
         || (type == ApiElementType.PACKAGE && !parent.isPresent()));
+    Preconditions.checkArgument(!name.contains("."), name);
     switch (type) {
       case CLASS:
         Preconditions.checkArgument(
@@ -70,7 +74,7 @@ public class ApiElement {
 
   @Override
   public int hashCode() {
-    return Objects.hashCode(parent, name, type);
+    return hashCode;
   }
 
   @Override
@@ -78,7 +82,8 @@ public class ApiElement {
     StringBuilder sb = new StringBuilder();
     sb.append('[').append(type).append(" : ");
     appendDottedName(sb);
-    return sb.append(']').toString();
+    sb.append(']');
+    return sb.toString();
   }
 
   private void appendDottedName(StringBuilder sb) {
@@ -87,5 +92,29 @@ public class ApiElement {
       sb.append('.');
     }
     sb.append(name);
+  }
+
+
+  /** Statically-importable methods that create ApiElements. */
+  public static final class Factory {
+    static ApiElement pkg(String name, ApiElement parent) {
+      return parent.child(name, ApiElementType.PACKAGE);
+    }
+
+    static ApiElement pkg(String name) {
+      return pkg(name, ApiElement.DEFAULT_PACKAGE);
+    }
+
+    static ApiElement clazz(String name, ApiElement parent) {
+      return parent.child(name, ApiElementType.CLASS);
+    }
+
+    static ApiElement field(String name, ApiElement parent) {
+      return parent.child(name, ApiElementType.FIELD);
+    }
+
+    static ApiElement method(String name, ApiElement parent) {
+      return parent.child(name, ApiElementType.METHOD);
+    }
   }
 }

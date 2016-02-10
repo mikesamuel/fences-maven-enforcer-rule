@@ -1,12 +1,14 @@
 package com.google.security.fences.policy;
 
-import java.util.LinkedHashMap;
 import java.util.Map;
 
+import com.google.common.annotations.VisibleForTesting;
 import com.google.common.base.Function;
 import com.google.common.base.Optional;
+import com.google.common.base.Preconditions;
 import com.google.common.base.Supplier;
 import com.google.common.collect.ImmutableList;
+import com.google.common.collect.Maps;
 import com.google.security.fences.Fence;
 import com.google.security.fences.FenceVisitor;
 import com.google.security.fences.Frenemies;
@@ -18,27 +20,22 @@ public final class Policy {
    * Maps packages and classes that might access an API element to
    * API elements and the access level they have.
    */
-  private final NamespaceTrie<ApiAccessPolicy, ApiAccessPolicies> trie
-      = new NamespaceTrie<ApiAccessPolicy, ApiAccessPolicies>(
-          ApiAccessPolicies.EMPTY_SUPPLIER,
+  private final NamespaceTrie<ApiAccessPolicy, AccessLevels> trie
+      = new NamespaceTrie<ApiAccessPolicy, AccessLevels>(
+          AccessLevels.EMPTY_SUPPLIER,
           FOLD_POLICIES_TOGETHER);
 
   private static final
-  Function<ApiAccessPolicies, Function<ApiAccessPolicy, ApiAccessPolicies>>
+  Function<AccessLevels, Function<ApiAccessPolicy, AccessLevels>>
     FOLD_POLICIES_TOGETHER
-  = new Function<ApiAccessPolicies,
-               Function<ApiAccessPolicy, ApiAccessPolicies>>() {
-    public Function<ApiAccessPolicy, ApiAccessPolicies> apply(
-        final ApiAccessPolicies policies) {
-      return new Function<ApiAccessPolicy, ApiAccessPolicies>() {
-        public ApiAccessPolicies apply(ApiAccessPolicy onePolicy) {
+  = new Function<AccessLevels,
+               Function<ApiAccessPolicy, AccessLevels>>() {
+    public Function<ApiAccessPolicy, AccessLevels> apply(
+        final AccessLevels policies) {
+      return new Function<ApiAccessPolicy, AccessLevels>() {
+        public AccessLevels apply(ApiAccessPolicy onePolicy) {
           ApiElement apiElement = onePolicy.apiElement;
-          AccessLevel oldLevel = policies.policies.get(apiElement);
-          AccessLevel newLevel = onePolicy.accessLevel;
-          if (oldLevel != null) {
-            newLevel = AccessLevel.mostRestrictive(oldLevel, newLevel);
-          }
-          policies.policies.put(apiElement, newLevel);
+          policies.restrictAccess(apiElement, onePolicy.accessLevel);
           return policies;
         }
       };
@@ -46,17 +43,15 @@ public final class Policy {
   };
 
   /** The access policies for ns from most-specific to least. */
-  public ImmutableList<ApiAccessPolicies> forNamespace(Namespace ns) {
-    ImmutableList.Builder<ApiAccessPolicies> b = ImmutableList.builder();
-    NamespaceTrie.Entry<ApiAccessPolicies> d = trie.getDeepest(ns);
-    System.err.println("deepest\n======\n" + d.toTree() + "\n========\n");
-    for (Optional<NamespaceTrie.Entry<ApiAccessPolicies>> e = Optional.of(d);
+  public ImmutableList<AccessLevels> forNamespace(Namespace ns) {
+    ImmutableList.Builder<AccessLevels> b = ImmutableList.builder();
+    NamespaceTrie.Entry<AccessLevels> d = trie.getDeepest(ns);
+    for (Optional<NamespaceTrie.Entry<AccessLevels>> e = Optional.of(d);
          e.isPresent();
          e = e.get().getParent()) {
-      Optional<ApiAccessPolicies> apiPolicies = e.get().getValue();
-      System.err.println("deepest\n======\n" + e.get().toShallowString() + "\n========\n");
-      if (apiPolicies.isPresent()) {
-        b.add(apiPolicies.get());
+      Optional<AccessLevels> accessLevels = e.get().getValue();
+      if (accessLevels.isPresent()) {
+        b.add(accessLevels.get());
       }
     }
     return b.build();
@@ -70,38 +65,84 @@ public final class Policy {
       this.apiElement = apiElement;
       this.accessLevel = accessLevel;
     }
+
+    @Override
+    public String toString() {
+      return "{" + apiElement + " " + accessLevel + "}";
+    }
   }
 
-  public static final class ApiAccessPolicies {
-    public static final Supplier<ApiAccessPolicies> EMPTY_SUPPLIER =
-        new Supplier<ApiAccessPolicies>() {
-      public ApiAccessPolicies get() {
-        return new ApiAccessPolicies();
+  public static final class AccessLevels {
+    public static final Supplier<AccessLevels> EMPTY_SUPPLIER =
+        new Supplier<AccessLevels>() {
+      public AccessLevels get() {
+        return new AccessLevels();
       }
     };
-    final Map<ApiElement, AccessLevel> policies =
-        new LinkedHashMap<ApiElement, AccessLevel>();
 
-    public Optional<AccessLevel> forApiElement(ApiElement element) {
+    private final Map<ApiElement, AccessLevel> accessLevelMap =
+        Maps.newLinkedHashMap();
+
+    public Optional<AccessLevel> accessLevelForApiElement(ApiElement element) {
       for (Optional<ApiElement> e = Optional.of(element);
            e.isPresent();
            e = e.get().parent) {
         ApiElement el = e.get();
-        AccessLevel lvl = policies.get(el);
+        AccessLevel lvl = accessLevelMap.get(el);
         if (lvl != null) {
           return Optional.of(lvl);
         }
       }
       return Optional.absent();
     }
+
+    AccessLevel getAccessLevel(ApiElement el) {
+      return accessLevelMap.get(el);
+    }
+
+    void restrictAccess(ApiElement el, AccessLevel lvl) {
+      Preconditions.checkNotNull(el);
+      Preconditions.checkNotNull(lvl);
+      AccessLevel newLevel = lvl;
+      AccessLevel oldLevel = accessLevelMap.get(el);
+      if (oldLevel != null) {
+        newLevel = AccessLevel.mostRestrictive(oldLevel, newLevel);
+      }
+      accessLevelMap.put(el, newLevel);
+    }
+
+    @VisibleForTesting
+    static AccessLevels fromMap(Map<ApiElement, AccessLevel> m) {
+      AccessLevels al = new AccessLevels();
+      al.accessLevelMap.putAll(m);
+      return al;
+    }
+
+
+    @Override
+    public String toString() {
+      return accessLevelMap.toString();
+    }
+
+    @Override
+    public boolean equals(Object o) {
+      if (!(o instanceof AccessLevels)) {
+        return false;
+      }
+      AccessLevels that = (AccessLevels) o;
+      return this.accessLevelMap.equals(that.accessLevelMap);
+    }
+
+    @Override
+    public int hashCode() {
+      return this.accessLevelMap.hashCode();
+    }
   }
 
   public static Policy fromFences(Iterable<? extends Fence> fences) {
-    System.err.println("Making policy from fences " + fences);
     final Policy policy = new Policy();
     FenceVisitor buildFencesVisitor = new FenceVisitor() {
       public void visit(Fence f, ApiElement apiElement) {
-        System.err.println("Visiting fence " + f);
         Frenemies frenemies = f.getFrenemies();
         addToPolicy(frenemies.friends, AccessLevel.ALLOWED, apiElement);
         addToPolicy(frenemies.enemies, AccessLevel.DISALLOWED, apiElement);

@@ -6,51 +6,59 @@
   <groupId>test</groupId>
   <artifactId>test</artifactId>
   <version>1.0-SNAPSHOT</version>
-  <packaging>jar</packaging>
-  <name>Test That a Banned Use Is Flagged</name>
 
   <properties>
     <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
   </properties>
 
+  <packaging>jar</packaging>
+  <name>Test That a Banned Use Is Flagged</name>
+
+  <dependencies>
+    <!--dependency>
+      <groupId>com.google.guava</groupId>
+      <artifactId>guava</artifactId>
+      <version>19.0</version>
+    </dependency-->
+  </dependencies>
+
   <build>
     <plugins>
       <plugin>
-        <groupId>com.google.security</groupId>
-        <artifactId>fences-maven-plugin</artifactId>
-        <version>1.0-SNAPSHOT</version>
-        <configuration>
-          <package>
-            <name>java.lang</name>
-            <class>
-              <name>System</name>
-              <method>
-                <name>exit</name>
-                <distrusts></distrusts>
-                <trusts>foo.bar.AllowedToCallExit</trusts>
-              </method>
-            </class>
-          </package>
-        </configuration>
+        <groupId>org.apache.maven.plugins</groupId>
+        <artifactId>maven-enforcer-plugin</artifactId>
+        <version>1.4.1</version>
+        <dependencies>
+          <dependency>
+            <groupId>com.google.security</groupId>
+            <artifactId>fences-maven-enforcer-rule</artifactId>
+            <version>1.0-SNAPSHOT</version>
+          </dependency>
+        </dependencies>
         <executions>
           <execution>
-            <phase>verify</phase>
+            <id>enforce</id>
+            <configuration>
+              <rules>
+                <fences
+                 implementation="com.google.security.FencesMavenEnforcerRule">
+                  <package>
+                    <name>java.lang</name>
+                    <class>
+                      <name>System</name>
+                      <method>
+                        <name>exit</name>
+                        <distrusts>*</distrusts>
+                        <trusts>foo.bar.AllowedToCallExit</trusts>
+                      </method>
+                    </class>
+                  </package>
+                </fences>
+              </rules>
+            </configuration>
             <goals>
-              <goal>check-access</goal>
+              <goal>enforce</goal>
             </goals>
-        <configuration>
-          <package>
-            <name>java.lang</name>
-            <class>
-              <name>System</name>
-              <method>
-                <name>exit</name>
-                <distrusts></distrusts>
-                <trusts>foo.bar.AllowedToCallExit</trusts>
-              </method>
-            </class>
-          </package>
-        </configuration>
           </execution>
         </executions>
       </plugin>

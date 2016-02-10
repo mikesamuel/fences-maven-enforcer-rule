@@ -1,6 +1,6 @@
 package com.google.security.fences.namespace;
 
-import org.apache.maven.plugin.MojoExecutionException;
+import org.apache.maven.enforcer.rule.api.EnforcerRuleException;
 
 import com.google.common.base.Objects;
 import com.google.common.base.Optional;
@@ -74,13 +74,18 @@ public final class Namespace {
 
   public static Namespace fromDottedString(String dottedString)
   // TODO: more appropriate exception type here.
-      throws MojoExecutionException {
+  throws EnforcerRuleException {
+    if ("*".equals(dottedString)) {
+      // Maven configuration object decoding doesn't deal well with the empty
+      // string because there is no text node.
+      return Namespace.DEFAULT_PACKAGE;
+    }
     return fromSeparatedString("dotted name", dottedString, "[.]");
   }
 
   public static Namespace fromInternalClassName(String icn)
   // TODO: more appropriate exception type here.
-      throws MojoExecutionException {
+  throws EnforcerRuleException {
     return fromSeparatedString("internal class name", icn, "/");
   }
 
@@ -88,12 +93,12 @@ public final class Namespace {
       String description,
       String string, String separatorPattern)
   // TODO: more appropriate exception type here.
-      throws MojoExecutionException {
+  throws EnforcerRuleException {
     Namespace ns = DEFAULT_PACKAGE;
     if (string.length() != 0) {
       for (String part : string.split(separatorPattern)) {
         if (part.length() == 0) {
-          throw new MojoExecutionException(
+          throw new EnforcerRuleException(
               "Invalid " + description + ": " + string);
         }
         ns = ns.child(part);

@@ -2,7 +2,7 @@ package com.google.security.fences;
 
 import java.util.List;
 
-import org.apache.maven.plugin.MojoExecutionException;
+import org.apache.maven.enforcer.rule.api.EnforcerRuleException;
 
 import com.google.common.collect.Lists;
 import com.google.security.fences.namespace.Namespace;
@@ -23,7 +23,7 @@ public abstract class Fence {
    * A setter called by reflection during Mojo configuration.  Actually adds
    * instead of blowing away prior value.
    */
-  public void setTrusts(String s) throws MojoExecutionException {
+  public void setTrusts(String s) throws EnforcerRuleException {
     trusts.add(Namespace.fromDottedString(s));
   }
 
@@ -31,12 +31,12 @@ public abstract class Fence {
    * A setter called by reflection during Mojo configuration.  Actually adds
    * instead of blowing away prior value.
    */
-  public void setDistrusts(String s) throws MojoExecutionException {
+  public void setDistrusts(String s) throws EnforcerRuleException {
     distrusts.add(Namespace.fromDottedString(s));
   }
 
   /** By default, just checks children. */
-  public void check() throws MojoExecutionException {
+  public void check() throws EnforcerRuleException {
     for (Fence childFence : getChildFences()) {
       childFence.check();
     }
@@ -53,6 +53,18 @@ public abstract class Fence {
       b.addEnemy(ns);
     }
     return b.build();
+  }
+
+  /**
+   * Modifies children in place so that no node in the fence tree has a dotted
+   * name.
+   * @return the split node so that parents may modify their child lists.
+   */
+  public abstract Fence splitDottedNames();
+
+  void mergeTrustsFrom(Fence that) {
+    this.trusts.addAll(that.trusts);
+    this.distrusts.addAll(that.distrusts);
   }
 
   abstract void visit(FenceVisitor v, ApiElement el);

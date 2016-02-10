@@ -10,4 +10,9 @@ public final class FieldFence extends NamedLeafFence {
   void visit(FenceVisitor v, ApiElement el) {
     v.visit(this, el.child(getName(), ApiElementType.FIELD));
   }
+
+  @Override
+  protected void addToClass(ClassFence container) {
+    container.setField(this);
+  }
 }
