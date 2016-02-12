@@ -148,18 +148,18 @@ Add the following to your POM.
 
 The following tag can appear in a 
 
-Configuration | Content | Meaning
-============= | ======= | =======
-`<trusts>` | Name of the class or package or `*` for all. | Who can access the parent API element.
-`<distrusts>` | Ditto | Like `<trusts>` but revokes access.
-`<name>` | A dotted Java identifier | Specifies a Java package, class, or class member.
- | | 
-`<api>` | Many `<package>`, `<class>` | A group of sensitive API elements.
-`<package>` | 1 `<name>`, many `<package>`, `<class>` |
-`<class>` | 1 `<name>`, many `<class>`, `<method>`, `<field>` | Names a class.
-`<method>` | 1 `<name>` | Specifies a method in the enclosing `<class>`
-`<field>` | 1 `<name>` | Specifies a field in the enclosing `<class>`
-`<new>` | | Specifies a constructor for the containing class
+| Configuration | Content | Meaning |
+| ------------- | ------- | ------- |
+| `<trusts>` | Name of the class or package or `*` for all. | Who can access the parent API element. |
+| `<distrusts>` | Ditto | Like `<trusts>` but revokes access. |
+| `<name>` | A dotted Java identifier | Specifies a Java package, class, or class member. |
+| <hr> | <hr> | <hr> |
+| `<api>` | Many `<package>`, `<class>` | A group of sensitive API elements. |
+| `<package>` | 1 `<name>`, many `<package>`, `<class>` | A java package. |
+| `<class>` | 1 `<name>`, many `<class>`, `<method>`, `<field>` | Names a class. |
+| `<method>` | 1 `<name>` | Specifies a method in the enclosing `<class>` |
+| `<field>` | 1 `<name>` | Specifies a field in the enclosing `<class>` |
+| `<new>` | | Specifies a constructor for the containing class |
 
 For example,
 
