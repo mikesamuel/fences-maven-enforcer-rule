@@ -93,6 +93,15 @@ fully-qualified class names and internal JVM class names.
 Denying access to an inner class while granting it to the
 outer class may not work.
 
+This rule checks all and only dependencies.  It assumes that all code loaded is
+available as a dependency and cannot vet other code loaded at runtime
+like that dynamically compiled from JSPs or loaded via classloaders
+from resources.
+
+This rule checks static accesses, and so cannot prevent access to private
+constructors or fields done by java deserialization or other abstraction
+breaking mechanisms built into the JVM.
+
 
 ## Usage
 
