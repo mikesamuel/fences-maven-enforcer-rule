@@ -93,6 +93,15 @@ fully-qualified class names and internal JVM class names.
 Denying access to an inner class while granting it to the
 outer class may not work.
 
+This rule checks all and only dependencies.  It assumes that all code loaded is
+available as a dependency and cannot vet other code loaded at runtime
+like that dynamically compiled from JSPs or loaded via classloaders
+from resources.
+
+This rule checks static accesses, and so cannot prevent access to private
+constructors or fields done by java deserialization or other abstraction
+breaking mechanisms built into the JVM.
+
 
 ## Usage
 
@@ -148,18 +157,18 @@ Add the following to your POM.
 
 The following tag can appear in a 
 
-Configuration | Content | Meaning
-============= | ======= | =======
-`<trusts>` | Name of the class or package or `*` for all. | Who can access the parent API element.
-`<distrusts>` | Ditto | Like `<trusts>` but revokes access.
-`<name>` | A dotted Java identifier | Specifies a Java package, class, or class member.
- | | 
-`<api>` | Many `<package>`, `<class>` | A group of sensitive API elements.
-`<package>` | 1 `<name>`, many `<package>`, `<class>` |
-`<class>` | 1 `<name>`, many `<class>`, `<method>`, `<field>` | Names a class.
-`<method>` | 1 `<name>` | Specifies a method in the enclosing `<class>`
-`<field>` | 1 `<name>` | Specifies a field in the enclosing `<class>`
-`<new>` | | Specifies a constructor for the containing class
+| Configuration | Content | Meaning |
+| ------------- | ------- | ------- |
+| `<trusts>` | Name of the class or package or `*` for all. | Who can access the parent API element. |
+| `<distrusts>` | Ditto | Like `<trusts>` but revokes access. |
+| `<name>` | A dotted Java identifier | Specifies a Java package, class, or class member. |
+| <hr> | <hr> | <hr> |
+| `<api>` | Many `<package>`, `<class>` | A group of sensitive API elements. |
+| `<package>` | 1 `<name>`, many `<package>`, `<class>` | A java package. |
+| `<class>` | 1 `<name>`, many `<class>`, `<method>`, `<field>` | Names a class. |
+| `<method>` | 1 `<name>` | Specifies a method in the enclosing `<class>` |
+| `<field>` | 1 `<name>` | Specifies a field in the enclosing `<class>` |
+| `<new>` | | Specifies a constructor for the containing class |
 
 For example,
 
