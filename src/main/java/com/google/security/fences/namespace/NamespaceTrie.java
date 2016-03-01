@@ -129,10 +129,12 @@ public final class NamespaceTrie<SIMPLE_VALUE, COMPLEX_VALUE> {
       value = Optional.of(newValue);
     }
 
+    /** The value if any is specified. */
     public Optional<T> getValue() {
       return value;
     }
 
+    /** The parent entry or absent if this entry is the root of the trie. */
     public Optional<Entry<T>> getParent() {
       return Optional.fromNullable(parent);
     }
@@ -151,16 +153,23 @@ public final class NamespaceTrie<SIMPLE_VALUE, COMPLEX_VALUE> {
       return toShallowString();
     }
 
-    public String toShallowString() {
+    String toShallowString() {
       return "Entry " + value;
     }
 
+    /** A diagnostic string containing the entry in indented tree form. */
     public String toTree() {
       StringBuilder sb = new StringBuilder();
       toTree(sb, 0);
       return sb.toString();
     }
 
+    /**
+     * Appends a diagnostic string containing the entry in indented tree form.
+     *
+     * @param sb receives the text of the tree
+     * @param n the indentation level.
+     */
     public void toTree(StringBuilder sb, int n) {
       sb.append(toShallowString());
       int childDepth = n + 1;

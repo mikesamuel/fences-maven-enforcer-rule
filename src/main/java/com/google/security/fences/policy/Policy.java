@@ -90,6 +90,11 @@ public final class Policy {
     private final Map<ApiElement, AccessLevel> accessLevelMap =
         Maps.newLinkedHashMap();
 
+    /**
+     * The access level for the given element if any.
+     * This is based on looking for the most specific rule that applies to that
+     * element or any containing api element.
+     */
     public Optional<AccessLevel> accessLevelForApiElement(ApiElement element) {
       for (Optional<ApiElement> e = Optional.of(element);
            e.isPresent();
