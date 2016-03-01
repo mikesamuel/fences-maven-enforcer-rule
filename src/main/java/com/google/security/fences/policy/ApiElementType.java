@@ -10,15 +10,15 @@ package com.google.security.fences.policy;
  * Tagging the kind of thing a name refers to can help disambiguate.
  */
 public enum ApiElementType {
-  /** A namespace for a Java package. */
+  /** API element type for a Java package. */
   PACKAGE,
-  /** A namespace for a Java class, possibly an inner class. */
+  /** API element type for a Java class, possibly an inner class. */
   CLASS,
-  /** A namespace for a field within a class. */
+  /** API element type for a field within a class. */
   FIELD,
-  /** A namespace for a method within a class. */
+  /** API element type for a method within a class. */
   METHOD,
-  /** A namespace for a constructor within a class. */
+  /** API element type for a constructor within a class. */
   CONSTRUCTOR,
   ;
 }
