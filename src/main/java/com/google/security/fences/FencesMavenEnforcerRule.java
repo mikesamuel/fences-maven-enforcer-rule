@@ -220,9 +220,11 @@ public final class FencesMavenEnforcerRule implements EnforcerRule {
     }
 
     Set<Artifact> getArtifacts()
-    throws ArtifactNotFoundException, ArtifactResolutionException, DependencyTreeBuilderException {
+    throws ArtifactNotFoundException, ArtifactResolutionException,
+           DependencyTreeBuilderException {
       Set<Artifact> dependencies = Sets.newLinkedHashSet();
-      DependencyNode node = treeBuilder.buildDependencyTree(project, localRepository, null);
+      DependencyNode node = treeBuilder.buildDependencyTree(
+          project, localRepository, null);
       addAllDescendants(node, dependencies);
       return dependencies;
     }

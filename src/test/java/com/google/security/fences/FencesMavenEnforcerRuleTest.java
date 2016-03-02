@@ -1,4 +1,4 @@
-package com.google.security;
+package com.google.security.fences;
 
 import java.io.File;
 
@@ -16,6 +16,9 @@ public class FencesMavenEnforcerRuleTest extends TestCase {
 
   @Test
   public void testBannedUseProject() throws Exception {
+    // Typically, the log file is in
+    // target/test-classes/test-banned-use-project/log.txt
+
     File testDir = ResourceExtractor.simpleExtractResources(
         getClass(), "/test-banned-use-project");
 
@@ -28,6 +31,9 @@ public class FencesMavenEnforcerRuleTest extends TestCase {
     // We use the -N flag so that Maven won't recurse.
     verifier.setCliOptions(ImmutableList.of("-N"));
     try {
+      // Compile the jars so that the Jar Checker can find them.
+      verifier.executeGoal("compile");
+      // Package it up so that the verifier runs.
       verifier.executeGoal("package");
     } catch (@SuppressWarnings("unused") VerificationException ex) {
       goalFailed = true;
