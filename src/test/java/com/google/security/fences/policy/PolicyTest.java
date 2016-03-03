@@ -1,11 +1,6 @@
 package com.google.security.fences.policy;
 
-import static org.junit.Assert.*;
-
 import org.apache.maven.enforcer.rule.api.EnforcerRuleException;
-import org.junit.After;
-import org.junit.Before;
-import org.junit.Test;
 
 import com.google.common.collect.ImmutableList;
 import com.google.common.collect.ImmutableMap;
@@ -15,6 +10,8 @@ import com.google.security.fences.config.PackageFence;
 import com.google.security.fences.namespace.Namespace;
 import com.google.security.fences.policy.Policy.AccessLevels;
 
+import junit.framework.TestCase;
+
 import static com.google.security.fences.policy.ApiElement.Factory.clazz;
 import static com.google.security.fences.policy.ApiElement.Factory.field;
 import static com.google.security.fences.policy.ApiElement.Factory.pkg;
@@ -22,11 +19,12 @@ import static com.google.security.fences.policy.AccessLevel.ALLOWED;
 import static com.google.security.fences.policy.AccessLevel.DISALLOWED;
 
 @SuppressWarnings("javadoc")
-public final class PolicyTest {
+public final class PolicyTest extends TestCase {
   private Policy p;
 
-  @Before
-  public void setUp() throws EnforcerRuleException {
+  @Override
+  public void setUp() throws Exception {
+    super.setUp();
     FieldFence serialVersionUid = new FieldFence();
     serialVersionUid.setName("SERIAL_VERSION_UID");
     serialVersionUid.setTrusts("*");
@@ -48,9 +46,10 @@ public final class PolicyTest {
     p = Policy.fromFences(ImmutableList.of(comPkg));
   }
 
-  @After
-  public void tearDown() {
+  @Override
+  public void tearDown() throws Exception {
     p = null;
+    super.tearDown();
   }
 
   private static void assertAccessLevelsEqual(
@@ -61,7 +60,6 @@ public final class PolicyTest {
     }
   }
 
-  @Test
   public void testForNamespace() throws EnforcerRuleException {
     AccessLevels defaultAccessLevels = AccessLevels.fromMap(ImmutableMap.of(
         // By default, access is disallowed

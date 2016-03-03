@@ -5,7 +5,6 @@ import java.io.File;
 import org.apache.maven.it.VerificationException;
 import org.apache.maven.it.Verifier;
 import org.apache.maven.it.util.ResourceExtractor;
-import org.junit.Test;
 
 import com.google.common.collect.ImmutableList;
 
@@ -44,8 +43,7 @@ public class FencesMavenEnforcerRuleTest extends TestCase {
     assertEquals(expectFailure, goalFailed);
   }
 
-  @Test
-  public void testBannedUseProject() throws Exception {
+  public final void testBannedUseProject() throws Exception {
     verifyTestProject(
         "test-banned-use-project",
         true,
