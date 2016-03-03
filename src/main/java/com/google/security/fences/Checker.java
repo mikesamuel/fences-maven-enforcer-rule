@@ -11,6 +11,12 @@ import java.util.zip.ZipInputStream;
 import org.apache.maven.artifact.Artifact;
 import org.apache.maven.enforcer.rule.api.EnforcerRuleException;
 import org.apache.maven.plugin.logging.Log;
+import org.codehaus.plexus.interpolation.InterpolationException;
+import org.codehaus.plexus.interpolation.Interpolator;
+import org.codehaus.plexus.interpolation.MapBasedValueSource;
+import org.codehaus.plexus.interpolation.ObjectBasedValueSource;
+import org.codehaus.plexus.interpolation.RegexBasedInterpolator;
+import org.codehaus.plexus.interpolation.ValueSource;
 import org.objectweb.asm.ClassReader;
 import org.objectweb.asm.ClassVisitor;
 import org.objectweb.asm.Handle;
@@ -19,6 +25,7 @@ import org.objectweb.asm.Opcodes;
 
 import com.google.common.base.Optional;
 import com.google.common.base.Preconditions;
+import com.google.common.collect.ImmutableMap;
 import com.google.common.collect.Sets;
 import com.google.security.fences.namespace.Namespace;
 import com.google.security.fences.policy.AccessLevel;
@@ -34,11 +41,13 @@ import com.google.security.fences.util.Utils;
 final class Checker {
   final Log log;
   final Policy policy;
+  final Interpolator interpolator;
   private int errorCount;
 
   Checker(Log log, Policy policy) {
     this.log = log;
     this.policy = policy;
+    this.interpolator = new RegexBasedInterpolator();
   }
 
   /** Greater than zero if there were one or more policy violations. */
@@ -146,6 +155,8 @@ final class Checker {
     final Namespace ns;
     final String methodName;
     private final Set<ApiElement> alreadyChecked = Sets.newHashSet();
+    // TODO: Keep track of line number hints so we can include those in the
+    // error message.
 
     MethodChecker(
         Artifact art, ClassReader reader, Namespace ns, String methodName) {
@@ -204,12 +215,13 @@ final class Checker {
               + " in " + Utils.artToString(art);
         }
     });
-    AccessLevel levelFromPolicy = AccessLevel.ALLOWED;  // Defer to java rules.
-    Iterable<Policy.AccessLevels> applicable = policy.forNamespace(ns);
-    for (Policy.AccessLevels al : applicable) {
-      Optional<AccessLevel> lvl = al.accessLevelForApiElement(el);
-      if (lvl.isPresent()) {
-        levelFromPolicy = lvl.get();
+    AccessLevel levelFromPolicy = AccessLevel.ALLOWED; // Default to java rules.
+    Iterable<Policy.NamespacePolicy> applicable = policy.forNamespace(ns);
+    for (Policy.NamespacePolicy nsp : applicable) {
+      Optional<Policy.AccessControlDecision> d =
+          nsp.accessPolicyForApiElement(el);
+      if (d.isPresent()) {
+        levelFromPolicy = d.get().accessLevel;
         break;
       }
     }
@@ -221,6 +233,37 @@ final class Checker {
             Utils.artToString(art)
             + ": access denied to " + el + " from " + ns);
         incrementErrorCount();
+        // Find the most-specific rationale.
+        Optional<String> rationale = Optional.absent();
+        for (Policy.NamespacePolicy nsp : applicable) {
+          Optional<Policy.AccessControlDecision> d =
+              nsp.accessPolicyForApiElement(el);
+          if (d.isPresent()) {
+            rationale = d.get().rationale;
+            if (rationale.isPresent()) {
+              break;
+            }
+          }
+        }
+        if (rationale.isPresent()) {
+          String rationaleText = rationale.get();
+          ValueSource artifactValueSource = new ObjectBasedValueSource(art);
+          ValueSource failedAccessValueSource = new MapBasedValueSource(
+              ImmutableMap.of(
+                  "fences.api", el,
+                  "fences.distrusted", ns));
+          interpolator.addValueSource(artifactValueSource);
+          interpolator.addValueSource(failedAccessValueSource);
+          try {
+            rationaleText = interpolator.interpolate(rationaleText);
+          } catch (InterpolationException ex) {
+            log.warn(ex);
+          } finally {
+            interpolator.removeValuesSource(failedAccessValueSource);
+            interpolator.removeValuesSource(artifactValueSource);
+          }
+          log.error(rationaleText);
+        }
         break;
     }
   }

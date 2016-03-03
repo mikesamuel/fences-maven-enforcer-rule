@@ -14,6 +14,7 @@ import org.apache.maven.shared.dependency.tree.DependencyTreeBuilder;
 import org.apache.maven.shared.dependency.tree.DependencyTreeBuilderException;
 import org.codehaus.plexus.component.configurator.expression.ExpressionEvaluationException;
 import org.codehaus.plexus.component.repository.exception.ComponentLookupException;
+import org.codehaus.plexus.interpolation.PropertiesBasedValueSource;
 
 import com.google.common.collect.ImmutableList;
 import com.google.common.collect.ImmutableSet;
@@ -141,6 +142,8 @@ public final class FencesMavenEnforcerRule implements EnforcerRule {
     });
 
     Checker checker = new Checker(log, p);
+    checker.interpolator.addValueSource(
+        new PropertiesBasedValueSource(project.getProperties()));
 
     try {
       checker.checkClassRoot(project.getArtifact(), new File(projectClassRoot));

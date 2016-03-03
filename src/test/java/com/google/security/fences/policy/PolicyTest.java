@@ -8,7 +8,7 @@ import com.google.security.fences.config.ClassFence;
 import com.google.security.fences.config.FieldFence;
 import com.google.security.fences.config.PackageFence;
 import com.google.security.fences.namespace.Namespace;
-import com.google.security.fences.policy.Policy.AccessLevels;
+import com.google.security.fences.policy.Policy.NamespacePolicy;
 
 import junit.framework.TestCase;
 
@@ -52,8 +52,8 @@ public final class PolicyTest extends TestCase {
     super.tearDown();
   }
 
-  private static void assertAccessLevelsEqual(
-      ImmutableList<AccessLevels> want, ImmutableList<AccessLevels> got) {
+  private static void assertNamespacePolicyEqual(
+      ImmutableList<NamespacePolicy> want, ImmutableList<NamespacePolicy> got) {
     if (!want.equals(got)) {
       assertEquals(want.toString(), got.toString());  // Nicer diff in eclipse
       fail();
@@ -61,38 +61,39 @@ public final class PolicyTest extends TestCase {
   }
 
   public void testForNamespace() throws EnforcerRuleException {
-    AccessLevels defaultAccessLevels = AccessLevels.fromMap(ImmutableMap.of(
-        // By default, access is disallowed
-        clazz("Unsafe", pkg("example", pkg("com"))), DISALLOWED,
-        // Except to this specific field.
-        field("SERIAL_VERSION_UID",
-              clazz("Unsafe", pkg("example", pkg("com")))),
-        ALLOWED
-        ));
+    NamespacePolicy defaultNamespacePolicy = NamespacePolicy.fromAccessLevelMap(
+        ImmutableMap.of(
+            // By default, access is disallowed
+            clazz("Unsafe", pkg("example", pkg("com"))), DISALLOWED,
+            // Except to this specific field.
+            field("SERIAL_VERSION_UID",
+                clazz("Unsafe", pkg("example", pkg("com")))),
+            ALLOWED
+            ));
 
-    ImmutableList<AccessLevels> etrAccLvls = p.forNamespace(
+    ImmutableList<NamespacePolicy> etrNmspPol = p.forNamespace(
         Namespace.fromDottedString("org.example.ExceptionToRule"));
-    assertAccessLevelsEqual(
+    assertNamespacePolicyEqual(
         ImmutableList.of(
             // The most specific one says the exception to the rule is allowed.
-            AccessLevels.fromMap(ImmutableMap.of(
+            NamespacePolicy.fromAccessLevelMap(ImmutableMap.of(
                 clazz("Unsafe", pkg("example", pkg("com"))), ALLOWED
                 )),
-            defaultAccessLevels
+            defaultNamespacePolicy
         ),
-        etrAccLvls);
+        etrNmspPol);
 
-    ImmutableList<AccessLevels> scAccLvls = p.forNamespace(
+    ImmutableList<NamespacePolicy> scNmspPol = p.forNamespace(
         Namespace.fromDottedString("org.example.SomeClass"));
-    assertAccessLevelsEqual(
-        ImmutableList.of(defaultAccessLevels),
-        scAccLvls);
+    assertNamespacePolicyEqual(
+        ImmutableList.of(defaultNamespacePolicy),
+        scNmspPol);
 
-    ImmutableList<AccessLevels> otherAccLvls = p.forNamespace(
+    ImmutableList<NamespacePolicy> otherNmspPol = p.forNamespace(
         Namespace.fromDottedString("java.lang.String"));
-    assertAccessLevelsEqual(
-        ImmutableList.of(defaultAccessLevels),
-        otherAccLvls);
+    assertNamespacePolicyEqual(
+        ImmutableList.of(defaultNamespacePolicy),
+        otherNmspPol);
   }
 
 }

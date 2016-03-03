@@ -4,11 +4,13 @@ import java.util.Map;
 
 import com.google.common.annotations.VisibleForTesting;
 import com.google.common.base.Function;
+import com.google.common.base.Objects;
 import com.google.common.base.Optional;
 import com.google.common.base.Preconditions;
 import com.google.common.base.Supplier;
 import com.google.common.collect.ImmutableList;
 import com.google.common.collect.Maps;
+import com.google.common.collect.Maps.EntryTransformer;
 import com.google.security.fences.config.Fence;
 import com.google.security.fences.config.FenceVisitor;
 import com.google.security.fences.config.Frenemies;
@@ -23,22 +25,21 @@ public final class Policy {
    * Maps packages and classes that might access an API element to
    * API elements and the access level they have.
    */
-  private final NamespaceTrie<ApiAccessPolicy, AccessLevels> trie
-      = new NamespaceTrie<ApiAccessPolicy, AccessLevels>(
-          AccessLevels.EMPTY_SUPPLIER,
+  private final NamespaceTrie<AccessControlDecision, NamespacePolicy> trie
+      = new NamespaceTrie<AccessControlDecision, NamespacePolicy>(
+          NamespacePolicy.EMPTY_SUPPLIER,
           FOLD_POLICIES_TOGETHER);
 
   private static final
-  Function<AccessLevels, Function<ApiAccessPolicy, AccessLevels>>
+  Function<NamespacePolicy, Function<AccessControlDecision, NamespacePolicy>>
     FOLD_POLICIES_TOGETHER
-  = new Function<AccessLevels,
-               Function<ApiAccessPolicy, AccessLevels>>() {
-    public Function<ApiAccessPolicy, AccessLevels> apply(
-        final AccessLevels policies) {
-      return new Function<ApiAccessPolicy, AccessLevels>() {
-        public AccessLevels apply(ApiAccessPolicy onePolicy) {
-          ApiElement apiElement = onePolicy.apiElement;
-          policies.restrictAccess(apiElement, onePolicy.accessLevel);
+  = new Function<NamespacePolicy,
+               Function<AccessControlDecision, NamespacePolicy>>() {
+    public Function<AccessControlDecision, NamespacePolicy> apply(
+        final NamespacePolicy policies) {
+      return new Function<AccessControlDecision, NamespacePolicy>() {
+        public NamespacePolicy apply(AccessControlDecision onePolicy) {
+          policies.restrictAccess(onePolicy);
           return policies;
         }
       };
@@ -46,13 +47,13 @@ public final class Policy {
   };
 
   /** The access policies for ns from most-specific to least. */
-  public ImmutableList<AccessLevels> forNamespace(Namespace ns) {
-    ImmutableList.Builder<AccessLevels> b = ImmutableList.builder();
-    NamespaceTrie.Entry<AccessLevels> d = trie.getDeepest(ns);
-    for (Optional<NamespaceTrie.Entry<AccessLevels>> e = Optional.of(d);
+  public ImmutableList<NamespacePolicy> forNamespace(Namespace ns) {
+    ImmutableList.Builder<NamespacePolicy> b = ImmutableList.builder();
+    NamespaceTrie.Entry<NamespacePolicy> d = trie.getDeepest(ns);
+    for (Optional<NamespaceTrie.Entry<NamespacePolicy>> e = Optional.of(d);
          e.isPresent();
          e = e.get().getParent()) {
-      Optional<AccessLevels> accessLevels = e.get().getValue();
+      Optional<NamespacePolicy> accessLevels = e.get().getValue();
       if (accessLevels.isPresent()) {
         b.add(accessLevels.get());
       }
@@ -60,12 +61,25 @@ public final class Policy {
     return b.build();
   }
 
-  static final class ApiAccessPolicy {
-    final ApiElement apiElement;
-    final AccessLevel accessLevel;
-    final Optional<String> rationale;
+  /**
+   * An access control decision for a single API element.
+   * This is a cell in the Namespace x ApiElement access control matrix.
+   */
+  public static final class AccessControlDecision {
+    /**
+     * The API element to which access is controlled.
+     */
+    public final ApiElement apiElement;
+    /**
+     * The access level granted to {@link #apiElement}.
+     */
+    public final AccessLevel accessLevel;
+    /**
+     * The reason if any for controlling access.
+     */
+    public final Optional<String> rationale;
 
-    ApiAccessPolicy(
+    AccessControlDecision(
         ApiElement apiElement, AccessLevel accessLevel,
         Optional<String> rationale) {
       this.apiElement = apiElement;
@@ -77,21 +91,76 @@ public final class Policy {
     public String toString() {
       return "{" + apiElement + " " + accessLevel + "}";
     }
+
+    @Override
+    public boolean equals(Object o) {
+      if (!(o instanceof AccessControlDecision)) {
+        return false;
+      }
+      AccessControlDecision that = (AccessControlDecision) o;
+      return this.accessLevel == that.accessLevel
+          && this.apiElement.equals(that.apiElement)
+          && this.rationale.equals(that.rationale);
+    }
+
+    @Override
+    public int hashCode() {
+      return Objects.hashCode(accessLevel, apiElement, rationale);
+    }
+
+    static AccessControlDecision mostRestrictive(
+        AccessControlDecision a, AccessControlDecision b) {
+      AccessLevel mostRestrictiveLevel = AccessLevel.mostRestrictive(
+          a.accessLevel, b.accessLevel);
+      if (a.accessLevel == mostRestrictiveLevel) {
+        if (b.accessLevel == mostRestrictiveLevel) {
+          Preconditions.checkState(a.apiElement.equals(b.apiElement));
+          if (a.rationale.isPresent()) {
+            if (b.rationale.isPresent()) {
+              String aRationale = a.rationale.get();
+              String bRationale = b.rationale.get();
+              if (aRationale.contains(bRationale)) {
+                return a;
+              } else if (bRationale.contains(aRationale)) {
+                return b;
+              } else {
+                return new AccessControlDecision(
+                    a.apiElement,
+                    mostRestrictiveLevel,
+                    Optional.of(aRationale + "\n\n" + bRationale)
+                    );
+              }
+            } else {
+              return a;
+            }
+          } else {
+            return b;
+          }
+        } else {
+          return a;
+        }
+      } else {
+        Preconditions.checkState(b.accessLevel == mostRestrictiveLevel);
+        return b;
+      }
+    }
   }
 
   /**
-   * AccessLevels relevant to a particular namespace.
+   * {@link com.google.security.fences.policy.Policy.AccessControlDecision}s
+   * relevant to a particular namespace.
+   * This is a row in the Namespace x ApiElement access control matrix.
    */
-  public static final class AccessLevels {
+  public static final class NamespacePolicy {
     /** Supplies new instances for Trie nodes. */
-    public static final Supplier<AccessLevels> EMPTY_SUPPLIER =
-        new Supplier<AccessLevels>() {
-      public AccessLevels get() {
-        return new AccessLevels();
+    public static final Supplier<NamespacePolicy> EMPTY_SUPPLIER =
+        new Supplier<NamespacePolicy>() {
+      public NamespacePolicy get() {
+        return new NamespacePolicy();
       }
     };
 
-    private final Map<ApiElement, AccessLevel> accessLevelMap =
+    private final Map<ApiElement, AccessControlDecision> apiElementToPolicy =
         Maps.newLinkedHashMap();
 
     /**
@@ -99,59 +168,74 @@ public final class Policy {
      * This is based on looking for the most specific rule that applies to that
      * element or any containing api element.
      */
-    public Optional<AccessLevel> accessLevelForApiElement(ApiElement element) {
+    public Optional<AccessControlDecision> accessPolicyForApiElement(
+        ApiElement element) {
       for (Optional<ApiElement> e = Optional.of(element);
            e.isPresent();
            e = e.get().parent) {
         ApiElement el = e.get();
-        AccessLevel lvl = accessLevelMap.get(el);
-        if (lvl != null) {
-          return Optional.of(lvl);
+        AccessControlDecision p = apiElementToPolicy.get(el);
+        if (p != null) {
+          return Optional.of(p);
         }
       }
       return Optional.absent();
     }
 
-    AccessLevel getAccessLevel(ApiElement el) {
-      return accessLevelMap.get(el);
+    AccessControlDecision getAccessPolicy(ApiElement el) {
+      return apiElementToPolicy.get(el);
     }
 
-    void restrictAccess(ApiElement el, AccessLevel lvl) {
-      Preconditions.checkNotNull(el);
-      Preconditions.checkNotNull(lvl);
-      AccessLevel newLevel = lvl;
-      AccessLevel oldLevel = accessLevelMap.get(el);
-      if (oldLevel != null) {
-        newLevel = AccessLevel.mostRestrictive(oldLevel, newLevel);
+    void restrictAccess(AccessControlDecision p) {
+      AccessControlDecision newPolicy = Preconditions.checkNotNull(p);
+      ApiElement el = newPolicy.apiElement;
+      AccessControlDecision oldPolicy = apiElementToPolicy.get(el);
+      if (oldPolicy != null) {
+        newPolicy = AccessControlDecision.mostRestrictive(oldPolicy, newPolicy);
       }
-      accessLevelMap.put(el, newLevel);
+      apiElementToPolicy.put(el, newPolicy);
     }
 
     @VisibleForTesting
-    static AccessLevels fromMap(Map<ApiElement, AccessLevel> m) {
-      AccessLevels al = new AccessLevels();
-      al.accessLevelMap.putAll(m);
+    static NamespacePolicy fromMap(Map<ApiElement, AccessControlDecision> m) {
+      NamespacePolicy al = new NamespacePolicy();
+      al.apiElementToPolicy.putAll(m);
       return al;
+    }
+
+    @VisibleForTesting
+    static NamespacePolicy fromAccessLevelMap(Map<ApiElement, AccessLevel> m) {
+      return fromMap(
+          Maps.transformEntries(
+              m,
+              new EntryTransformer<
+                  ApiElement, AccessLevel, AccessControlDecision>() {
+                public AccessControlDecision transformEntry(
+                    ApiElement k, AccessLevel v) {
+                  return new AccessControlDecision(
+                      k, v, Optional.<String>absent());
+                }
+              }));
     }
 
 
     @Override
     public String toString() {
-      return accessLevelMap.toString();
+      return apiElementToPolicy.toString();
     }
 
     @Override
     public boolean equals(Object o) {
-      if (!(o instanceof AccessLevels)) {
+      if (!(o instanceof NamespacePolicy)) {
         return false;
       }
-      AccessLevels that = (AccessLevels) o;
-      return this.accessLevelMap.equals(that.accessLevelMap);
+      NamespacePolicy that = (NamespacePolicy) o;
+      return this.apiElementToPolicy.equals(that.apiElementToPolicy);
     }
 
     @Override
     public int hashCode() {
-      return this.accessLevelMap.hashCode();
+      return this.apiElementToPolicy.hashCode();
     }
   }
 
@@ -177,7 +261,7 @@ public final class Policy {
           Iterable<Namespace> nss, AccessLevel lvl, ApiElement el,
           Optional<String> rationale) {
         for (Namespace ns : nss) {
-          policy.trie.put(ns, new ApiAccessPolicy(el, lvl, rationale));
+          policy.trie.put(ns, new AccessControlDecision(el, lvl, rationale));
         }
       }
     };
