@@ -1,0 +1,29 @@
+<?xml version="1.0" encoding="ISO-8859-1"?>
+<project>
+  <skin>
+    <groupId>org.apache.maven.skins</groupId>
+    <artifactId>maven-fluido-skin</artifactId>
+    <version>1.5</version>
+  </skin>
+
+  <body>
+    <links>
+      <item name="Github project" href="https://github.com/mikesamuel/fences-maven-enforcer-rule/" />
+      <item name="Maven Enforcer" href="http://maven.apache.org/enforcer/maven-enforcer-plugin/" />
+    </links>
+
+    <menu name="docs">
+      <item name="Background" href="background.html"/>
+      <item name="Usage" href="usage.html"/>
+      <item name="Configuration" href="configuration.html"/>
+      <item name="Caveats" href="caveats.html"/>
+      <item name="Alternatives" href="alternatives.html"/>
+    </menu>
+
+    <menu ref="reports"/>
+
+    <menu ref="modules"/>
+
+    <menu ref="parent"/>
+  </body>
+</project>
