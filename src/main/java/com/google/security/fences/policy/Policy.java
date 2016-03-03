@@ -63,10 +63,14 @@ public final class Policy {
   static final class ApiAccessPolicy {
     final ApiElement apiElement;
     final AccessLevel accessLevel;
+    final Optional<String> rationale;
 
-    ApiAccessPolicy(ApiElement apiElement, AccessLevel accessLevel) {
+    ApiAccessPolicy(
+        ApiElement apiElement, AccessLevel accessLevel,
+        Optional<String> rationale) {
       this.apiElement = apiElement;
       this.accessLevel = accessLevel;
+      this.rationale = rationale;
     }
 
     @Override
@@ -160,15 +164,20 @@ public final class Policy {
     FenceVisitor buildFencesVisitor = new FenceVisitor() {
       public void visit(Fence f, ApiElement apiElement) {
         Frenemies frenemies = f.getFrenemies();
-        addToPolicy(frenemies.friends, AccessLevel.ALLOWED, apiElement);
-        addToPolicy(frenemies.enemies, AccessLevel.DISALLOWED, apiElement);
+        addToPolicy(
+            frenemies.friends, AccessLevel.ALLOWED, apiElement,
+            Optional.<String>absent());
+        addToPolicy(
+            frenemies.enemies, AccessLevel.DISALLOWED, apiElement,
+            frenemies.rationale);
       }
 
       @SuppressWarnings("synthetic-access")
       private void addToPolicy(
-          Iterable<Namespace> nss, AccessLevel lvl, ApiElement el) {
+          Iterable<Namespace> nss, AccessLevel lvl, ApiElement el,
+          Optional<String> rationale) {
         for (Namespace ns : nss) {
-          policy.trie.put(ns, new ApiAccessPolicy(el, lvl));
+          policy.trie.put(ns, new ApiAccessPolicy(el, lvl, rationale));
         }
       }
     };

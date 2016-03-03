@@ -3,6 +3,7 @@ package com.google.security.fences.config;
 import java.util.LinkedHashSet;
 import java.util.Set;
 
+import com.google.common.base.Optional;
 import com.google.common.collect.ImmutableSet;
 import com.google.security.fences.namespace.Namespace;
 
@@ -16,11 +17,11 @@ public final class Frenemies {
   /** Namespaces explicitly distrusted. */
   public final ImmutableSet<Namespace> enemies;
   /** Explains how to work within the policy and get more help. */
-  public final String rationale;
+  public final Optional<String> rationale;
 
   private Frenemies(
       ImmutableSet<Namespace> friends, ImmutableSet<Namespace> enemies,
-      String rationale) {
+      Optional<String> rationale) {
     this.friends = friends;
     this.enemies = enemies;
     this.rationale = rationale;
@@ -57,7 +58,7 @@ public final class Frenemies {
     Frenemies build() {
       return new Frenemies(
           ImmutableSet.copyOf(friends), ImmutableSet.copyOf(enemies),
-          rationale);
+          Optional.fromNullable(rationale));
     }
   }
 }
