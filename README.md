@@ -130,6 +130,8 @@ Add the following to your POM.
         <executions>
           <execution>
             <id>enforce</id>
+            <!-- Default is validate which runs before classes are available. -->
+            <phase>verify</phase>
             <configuration>
               <rules>
                 <fences
