@@ -1,13 +1,14 @@
 # Configuration
 
 The following table shows which tags can appear in which contexts.
-The first three can appear in any of the rest so are not listed in the content column explicitly.
+The first four can appear in any of the rest so are not listed in the content column explicitly.
 
 | Configuration | Content | Meaning |
 | ------------- | ------- | ------- |
 | `<trusts>` | Name of the class or package or `*` for all. | Who can access the containing API element. |
 | `<distrusts>` | Ditto | Like `<trusts>` but revokes access. |
 | `<name>` | A dotted Java identifier | Specifies a Java package, class, or class member. |
+| `<rationale>` | Human readable text | An error message shown when a sibling `<distrusts>` triggers. |
 | <hr /> | <hr /> | <hr /> |
 | `<api>` | Many `<package>`, `<class>` | A group of sensitive API elements. |
 | `<package>` | 1 `<name>`, many `<package>`, `<class>` | A java package. |
@@ -57,3 +58,26 @@ Names can be dotted, so the configuration above can be simplified to
   <rationale>...</rationale>
 </class>
 ```
+
+## Writing good `<rationale>`s.
+
+The `<rationale>...</rationale>` element may appear in any API element.
+When a user builds code that violates the policy, the rationale is shown.
+
+It should
+
+1. Explain or give short link to documents explaining how to work within
+   the policy.
+2. Include contact information (email, IRC) where help can be found.
+3. Include bug-tracker information if you track bugs in policies or
+   white-list requests there.
+
+Rationales may include maven property expressions.
+
+In addition to the normal maven properties, these properties are available:
+
+| Property Name     | Meaning                                                  |
+| ----------------- | -------------------------------------------------------- |
+| fences.api        | The sensitive API.                                       |
+| fences.distrusted | The distrusted namespace which accessed `${fences.API}`. |
+| fences.trusts     | The namespaces which `${fences.API}` trusts.             |
