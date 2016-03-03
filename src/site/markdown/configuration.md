@@ -12,10 +12,10 @@ The first four can appear in any of the rest so are not listed in the content co
 | <hr /> | <hr /> | <hr /> |
 | `<api>` | Many `<package>`, `<class>` | A group of sensitive API elements. |
 | `<package>` | 1 `<name>`, many `<package>`, `<class>` | A java package. |
-| `<class>` | 1 `<name>`, many `<class>`, `<method>`, `<field>` | Names a class. |
+| `<class>` | 1 `<name>`, many `<class>`, `<method>`, `<field>`, `<constructor>` | A Java class. |
 | `<method>` | 1 `<name>` | Specifies a method in the enclosing `<class>` |
 | `<field>` | 1 `<name>` | Specifies a field in the enclosing `<class>` |
-| `<new>` | | Specifies a constructor for the containing class |
+| `<constructor>`| | Specifies a constructor in the enclosing `<class>` |
 
 For example,
 

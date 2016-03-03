@@ -188,6 +188,8 @@ public final class FencesMavenEnforcerRule implements EnforcerRule {
       throw new EnforcerRuleException(
           errorCount + " access policy violation"
           + (errorCount == 1 ? "" : "s"));
+    } else {
+      log.info("No access policy violations");
     }
   }
 

@@ -13,9 +13,21 @@ import junit.framework.TestCase;
 @SuppressWarnings("javadoc")
 public class FencesMavenEnforcerRuleTest extends TestCase {
 
+  enum Result {
+    PASS,
+    FAIL,
+    ;
+  }
+
+  enum Debug {
+    QUIET,
+    VERBOSE,
+  }
+
   private void verifyTestProject(
       String testProjectName,
-      boolean expectFailure,
+      Result expectedResult,
+      Debug debug,
       String...expectedTexts)
   throws Exception {
 
@@ -26,27 +38,28 @@ public class FencesMavenEnforcerRuleTest extends TestCase {
 
     Verifier verifier = new Verifier(
         testDir.getAbsolutePath(),
-        null, false /* debug */, true /* forkJvm */);
+        null, debug == Debug.VERBOSE, true /* forkJvm */);
     // Clean up after previous runs.
     verifier.deleteArtifacts("test");
-    boolean goalFailed = false;
+    Result goalResult = Result.PASS;
     // We use the -N flag so that Maven won't recurse.
     verifier.setCliOptions(ImmutableList.of("-N"));
     try {
       verifier.executeGoal("verify");
     } catch (@SuppressWarnings("unused") VerificationException ex) {
-      goalFailed = true;
+      goalResult = Result.FAIL;
     }
     for (String expectedText : expectedTexts) {
       verifier.verifyTextInLog(expectedText);
     }
-    assertEquals(expectFailure, goalFailed);
+    assertEquals(expectedResult, goalResult);
   }
 
   public final void testBannedUseProject() throws Exception {
     verifyTestProject(
         "test-banned-use-project",
-        true,
+        Result.FAIL,
+        Debug.QUIET,
 
         "BUILD FAILURE",
 
@@ -54,6 +67,34 @@ public class FencesMavenEnforcerRuleTest extends TestCase {
         + " foo.bar.NotAllowedToCallExit",
 
         "1 access policy violation");
+  }
+
+  public final void testAllUsesOkProject() throws Exception {
+    verifyTestProject(
+        "test-all-uses-ok-project",
+        Result.PASS,
+        Debug.QUIET,
+
+        "BUILD SUCCESS",
+
+        "enforce (enforce) @ test",
+
+        "No access policy violations");
+  }
+
+  public final void testBannedCtorAccess() throws Exception {
+    verifyTestProject(
+        "test-banned-ctor-access-project",
+        Result.FAIL,
+        Debug.QUIET,
+
+        "BUILD FAILURE",
+
+        "access denied to [CONSTRUCTOR : java.net.URL.<init>] from foo.bar.Baz",
+
+        "1 access policy violation",
+
+        "Use java.net.URI instead.");
   }
 
 }
