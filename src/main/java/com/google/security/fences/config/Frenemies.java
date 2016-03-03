@@ -15,11 +15,15 @@ public final class Frenemies {
   public final ImmutableSet<Namespace> friends;
   /** Namespaces explicitly distrusted. */
   public final ImmutableSet<Namespace> enemies;
+  /** Explains how to work within the policy and get more help. */
+  public final String rationale;
 
   private Frenemies(
-      ImmutableSet<Namespace> friends, ImmutableSet<Namespace> enemies) {
+      ImmutableSet<Namespace> friends, ImmutableSet<Namespace> enemies,
+      String rationale) {
     this.friends = friends;
     this.enemies = enemies;
+    this.rationale = rationale;
   }
 
   @SuppressWarnings("synthetic-access")
@@ -32,6 +36,7 @@ public final class Frenemies {
 
     private final Set<Namespace> friends = new LinkedHashSet<Namespace>();
     private final Set<Namespace> enemies = new LinkedHashSet<Namespace>();
+    private String rationale;
 
     Builder addFriend(Namespace ns) {
       friends.add(ns);
@@ -43,10 +48,16 @@ public final class Frenemies {
       return this;
     }
 
+    Builder setRationale(String s) {
+      rationale = s;
+      return this;
+    }
+
     @SuppressWarnings("synthetic-access")
     Frenemies build() {
       return new Frenemies(
-          ImmutableSet.copyOf(friends), ImmutableSet.copyOf(enemies));
+          ImmutableSet.copyOf(friends), ImmutableSet.copyOf(enemies),
+          rationale);
     }
   }
 }

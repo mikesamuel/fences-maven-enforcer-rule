@@ -81,3 +81,8 @@ In addition to the normal maven properties, these properties are available:
 | fences.api        | The sensitive API.                                       |
 | fences.distrusted | The distrusted namespace which accessed `${fences.API}`. |
 | fences.trusts     | The namespaces which `${fences.API}` trusts.             |
+
+The documentation on plexus-interpolation (the module Maven uses to do
+property substitution) is pretty sparse, but
+[the unittests](https://github.com/codehaus-plexus/plexus-interpolation/blob/master/src/test/java/org/codehaus/plexus/interpolation/StringSearchInterpolatorTest.java)
+provide some guidance.
