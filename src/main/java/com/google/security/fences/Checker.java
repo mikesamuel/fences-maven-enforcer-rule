@@ -1,5 +1,7 @@
 package com.google.security.fences;
 
+import java.io.File;
+import java.io.FileInputStream;
 import java.io.IOException;
 import java.io.InputStream;
 import java.util.Set;
@@ -16,6 +18,7 @@ import org.objectweb.asm.MethodVisitor;
 import org.objectweb.asm.Opcodes;
 
 import com.google.common.base.Optional;
+import com.google.common.base.Preconditions;
 import com.google.common.collect.Sets;
 import com.google.security.fences.namespace.Namespace;
 import com.google.security.fences.policy.AccessLevel;
@@ -26,14 +29,14 @@ import com.google.security.fences.util.LazyString;
 import com.google.security.fences.util.Utils;
 
 /**
- * Given a JAR, checks each ".class" file against a policy.
+ * Given a bundle of class files, checks each ".class" file against a policy.
  */
-final class JarChecker {
+final class Checker {
   final Log log;
   final Policy policy;
   private int errorCount;
 
-  JarChecker(Log log, Policy policy) {
+  Checker(Log log, Policy policy) {
     this.log = log;
     this.policy = policy;
   }
@@ -43,13 +46,43 @@ final class JarChecker {
     return errorCount;
   }
 
-  synchronized void incrementErrorCount() {
+  private synchronized void incrementErrorCount() {
     if (errorCount != Integer.MAX_VALUE) {
       ++errorCount;
     }
   }
 
+  void checkClassRoot(Artifact art, File directory)
+  throws IOException, EnforcerRuleException{
+    log.debug(
+        "Visiting dir " + directory
+        + " for artifact " + Utils.artToString(art));
+    Preconditions.checkArgument(directory.isDirectory(), directory.getPath());
+    File[] contents = directory.listFiles();
+    if (contents == null) {
+      throw new IOException("Cannot list contents of " + directory);
+    } else {
+      for (File child : contents) {
+        if (child.isDirectory()) {
+          // Maven does not create symlink trees AFAICT.
+          checkClassRoot(art, child);
+        } else if (child.getName().endsWith(".class")) {
+          InputStream in = new FileInputStream(child);
+          try {
+            ClassReader reader = new ClassReader(in);
+            ClassVisitor classChecker = new ClassChecker(art, reader);
+            reader.accept(classChecker, 0 /* flags */);
+          } finally {
+            in.close();
+          }
+        }
+      }
+    }
+  }
+
   /**
+   * Given a JAR file, checks each ".class" file against a policy.
+   *
    * @param art The artifact containing the JAR file.
    *    Used in diagnostic messages.
    * @param in An input stream containing a well-formed ZIP file.
@@ -57,7 +90,7 @@ final class JarChecker {
    */
   void checkJar(Artifact art, InputStream in)
   throws IOException, EnforcerRuleException {
-    log.debug("Visiting artifact " + Utils.artToString(art));
+    log.debug("Visiting JAR for artifact " + Utils.artToString(art));
     ZipInputStream zipIn = new ZipInputStream(in);
     try {
       for (ZipEntry zipEntry; (zipEntry = zipIn.getNextEntry()) != null;) {
@@ -106,7 +139,7 @@ final class JarChecker {
     }
   }
 
-  final class MethodChecker extends MethodVisitor {
+  private final class MethodChecker extends MethodVisitor {
     final Artifact art;
     final ClassReader reader;
     final String className;
@@ -154,14 +187,15 @@ final class JarChecker {
       checkAllowed(methodApiElement);
     }
 
+    @SuppressWarnings("synthetic-access")
     void checkAllowed(ApiElement el) {
       if (alreadyChecked.add(el)) {
-        JarChecker.this.checkAllowed(art, ns, el);
+        Checker.this.checkAllowed(art, ns, el);
       }
     }
   }
 
-  void checkAllowed(
+  private void checkAllowed(
       final Artifact art, final Namespace ns, final ApiElement el) {
     log.debug(new LazyString() {
         @Override

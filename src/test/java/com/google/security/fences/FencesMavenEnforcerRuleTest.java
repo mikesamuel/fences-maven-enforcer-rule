@@ -14,13 +14,16 @@ import junit.framework.TestCase;
 @SuppressWarnings("javadoc")
 public class FencesMavenEnforcerRuleTest extends TestCase {
 
-  @Test
-  public void testBannedUseProject() throws Exception {
-    // Typically, the log file is in
-    // target/test-classes/test-banned-use-project/log.txt
+  private void verifyTestProject(
+      String testProjectName,
+      boolean expectFailure,
+      String...expectedTexts)
+  throws Exception {
 
+    // Typically, the log file is in
+    // target/test-classes/<test-project-name>/log.txt
     File testDir = ResourceExtractor.simpleExtractResources(
-        getClass(), "/test-banned-use-project");
+        getClass(), "/" + testProjectName);
 
     Verifier verifier = new Verifier(
         testDir.getAbsolutePath(),
@@ -31,15 +34,28 @@ public class FencesMavenEnforcerRuleTest extends TestCase {
     // We use the -N flag so that Maven won't recurse.
     verifier.setCliOptions(ImmutableList.of("-N"));
     try {
-      // Compile the jars so that the Jar Checker can find them.
-      verifier.executeGoal("compile");
-      // Package it up so that the verifier runs.
-      verifier.executeGoal("package");
+      verifier.executeGoal("verify");
     } catch (@SuppressWarnings("unused") VerificationException ex) {
       goalFailed = true;
     }
-    verifier.verifyTextInLog("BUILD FAILURE");
-    assertTrue(goalFailed);
+    for (String expectedText : expectedTexts) {
+      verifier.verifyTextInLog(expectedText);
+    }
+    assertEquals(expectFailure, goalFailed);
+  }
+
+  @Test
+  public void testBannedUseProject() throws Exception {
+    verifyTestProject(
+        "test-banned-use-project",
+        true,
+
+        "BUILD FAILURE",
+
+        "access denied to [METHOD : java.lang.System.exit] from"
+        + " foo.bar.NotAllowedToCallExit",
+
+        "1 access policy violation");
   }
 
 }

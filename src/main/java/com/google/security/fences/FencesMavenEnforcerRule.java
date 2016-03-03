@@ -10,17 +10,14 @@ import org.apache.maven.enforcer.rule.api.EnforcerRuleException;
 import org.apache.maven.enforcer.rule.api.EnforcerRuleHelper;
 import org.apache.maven.plugin.logging.Log;
 import org.apache.maven.project.MavenProject;
-import org.apache.maven.shared.dependency.tree.DependencyNode;
 import org.apache.maven.shared.dependency.tree.DependencyTreeBuilder;
 import org.apache.maven.shared.dependency.tree.DependencyTreeBuilderException;
 import org.codehaus.plexus.component.configurator.expression.ExpressionEvaluationException;
 import org.codehaus.plexus.component.repository.exception.ComponentLookupException;
 
-import com.google.common.base.Preconditions;
 import com.google.common.collect.ImmutableList;
 import com.google.common.collect.ImmutableSet;
 import com.google.common.collect.Lists;
-import com.google.common.collect.Sets;
 import com.google.security.fences.config.ApiFence;
 import com.google.security.fences.config.ClassFence;
 import com.google.security.fences.config.Fence;
@@ -32,7 +29,6 @@ import com.google.security.fences.util.Utils;
 import java.io.File;
 import java.io.FileInputStream;
 import java.io.IOException;
-import java.util.Collection;
 import java.util.List;
 import java.util.Set;
 
@@ -90,6 +86,7 @@ public final class FencesMavenEnforcerRule implements EnforcerRule {
     MavenProject project;
     ArtifactRepository localRepository;
     List<ArtifactRepository> remoteRepositories;
+    String projectBuildOutputDirectory;
     try {
       project = (MavenProject) helper.evaluate("${project}");
       localRepository = (ArtifactRepository) helper.evaluate("${localRepository}");
@@ -97,6 +94,9 @@ public final class FencesMavenEnforcerRule implements EnforcerRule {
       List<ArtifactRepository> rr = (List<ArtifactRepository>)
           helper.evaluate("${project.remoteArtifactRepositories}");
       remoteRepositories = rr;
+      // Per https://books.sonatype.com/mvnref-book/reference/resource-filtering-sect-properties.html
+      projectBuildOutputDirectory = (String)
+          helper.evaluate("${project.build.outputDirectory}");
     } catch (ExpressionEvaluationException ex) {
       throw new EnforcerRuleException(
           "Failed to locate component: " + ex.getLocalizedMessage(), ex);
@@ -107,7 +107,7 @@ public final class FencesMavenEnforcerRule implements EnforcerRule {
 
     Set<Artifact> artifacts;
     try {
-      artifacts = finder.getArtifacts();
+      artifacts = finder.getArtifacts(false);
     } catch (DependencyTreeBuilderException ex) {
       throw new EnforcerRuleException("Failed to find artifacts", ex);
     } catch (ArtifactResolutionException ex) {
@@ -116,10 +116,12 @@ public final class FencesMavenEnforcerRule implements EnforcerRule {
       throw new EnforcerRuleException("Failed to find artifacts", ex);
     }
 
-    checkAllArtifacts(log, artifacts);
+    checkAllClasses(project, log, projectBuildOutputDirectory, artifacts);
   }
 
-  protected void checkAllArtifacts(Log log, Set<Artifact> artifacts)
+  protected void checkAllClasses(
+      MavenProject project, Log log,
+      String projectClassRoot, Set<Artifact> artifacts)
   throws EnforcerRuleException {
     ImmutableList<Fence> allFences = ImmutableList.copyOf(fences);
     Set<Artifact> allArtifacts = ImmutableSet.<Artifact>builder()
@@ -138,7 +140,14 @@ public final class FencesMavenEnforcerRule implements EnforcerRule {
       }
     });
 
-    JarChecker jarChecker = new JarChecker(log, p);
+    Checker checker = new Checker(log, p);
+
+    try {
+      checker.checkClassRoot(project.getArtifact(), new File(projectClassRoot));
+    } catch (IOException ex) {
+      throw new EnforcerRuleException(
+          "Failed to check " + Utils.artToString(project.getArtifact()), ex);
+    }
 
     for (Artifact art : allArtifacts) {
       // TODO: Do we need to handle wars, etc.?
@@ -157,23 +166,21 @@ public final class FencesMavenEnforcerRule implements EnforcerRule {
         try {
           FileInputStream in = new FileInputStream(f);
           try {
-            jarChecker.checkJar(art, in);
+            checker.checkJar(art, in);
           } finally {
             in.close();
           }
         } catch (IOException ex) {
-          // TODO: recent versions of ArtifactUtils do group:art:ver
           throw new EnforcerRuleException(
               "Failed to check " + Utils.artToString(art), ex);
         }
       } else {
-        // TODO: recent versions of ArtifactUtils do group:art:ver
         log.info("Not checking artifact " + Utils.artToString(art)
-        + " with type " + artType);
+                 + " with type " + artType);
       }
     }
 
-    int errorCount = jarChecker.getErrorCount();
+    int errorCount = checker.getErrorCount();
     if (errorCount != 0) {
       throw new EnforcerRuleException(
           errorCount + " access policy violation"
@@ -191,58 +198,6 @@ public final class FencesMavenEnforcerRule implements EnforcerRule {
 
   public boolean isResultValid(EnforcerRule arg0) {
     return false;
-  }
-
-
-  /**
-   * Recursively finds artifacts.
-   * Largely adapted from https://github.com/mojohaus/extra-enforcer-rules
-   * but that does not resolve modules or the project itself.
-   */
-  private static final class ArtifactFinder {
-    private final MavenProject project;
-    private final ArtifactResolver resolver;
-    private final DependencyTreeBuilder treeBuilder;
-    private final ArtifactRepository localRepository;
-    private final List<ArtifactRepository> remoteRepositories;
-
-    ArtifactFinder(
-        MavenProject project,
-        ArtifactResolver resolver,
-        DependencyTreeBuilder treeBuilder,
-        ArtifactRepository localRepository,
-        List<ArtifactRepository> remoteRepositories) {
-      this.project = Preconditions.checkNotNull(project);
-      this.resolver = Preconditions.checkNotNull(resolver);
-      this.treeBuilder = Preconditions.checkNotNull(treeBuilder);
-      this.localRepository = Preconditions.checkNotNull(localRepository);
-      this.remoteRepositories = ImmutableList.copyOf(remoteRepositories);
-    }
-
-    Set<Artifact> getArtifacts()
-    throws ArtifactNotFoundException, ArtifactResolutionException,
-           DependencyTreeBuilderException {
-      Set<Artifact> dependencies = Sets.newLinkedHashSet();
-      DependencyNode node = treeBuilder.buildDependencyTree(
-          project, localRepository, null);
-      addAllDescendants(node, dependencies);
-      return dependencies;
-    }
-
-    private void addAllDescendants(
-        DependencyNode node, Collection<? super Artifact> out)
-    throws ArtifactNotFoundException, ArtifactResolutionException {
-      Artifact artifact = node.getArtifact();
-      resolver.resolve(artifact, remoteRepositories, localRepository);
-      out.add(artifact);
-
-      List<DependencyNode> childNodes = node.getChildren();
-      if (childNodes != null) {
-        for(DependencyNode depNode : childNodes) {
-          addAllDescendants(depNode, out);
-        }
-      }
-    }
   }
 
 }

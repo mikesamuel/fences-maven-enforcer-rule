@@ -38,6 +38,7 @@
         <executions>
           <execution>
             <id>enforce</id>
+            <phase>verify</phase>
             <configuration>
               <rules>
                 <fences
