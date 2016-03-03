@@ -157,11 +157,12 @@ Add the following to your POM.
 
 ## Configuration
 
-The following tag can appear in a 
+The following table shows which tags can appear in which contexts.
+The first three can appear in any of the rest so are not listed in the content column explicitly.
 
 | Configuration | Content | Meaning |
 | ------------- | ------- | ------- |
-| `<trusts>` | Name of the class or package or `*` for all. | Who can access the parent API element. |
+| `<trusts>` | Name of the class or package or `*` for all. | Who can access the containing API element. |
 | `<distrusts>` | Ditto | Like `<trusts>` but revokes access. |
 | `<name>` | A dotted Java identifier | Specifies a Java package, class, or class member. |
 | <hr> | <hr> | <hr> |
