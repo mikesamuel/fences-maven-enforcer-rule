@@ -141,6 +141,7 @@ public abstract class Fence {
     for (int j = 1; j < nLines; ++j) {
       int leadingWhitespace = 0;
       String line = lines[j];
+      if (line.trim().isEmpty()) { continue; }
       int n = line.length();
       for (int i = 0; i < n; ++i) {
         int spaceWidth = spaceWidthOf(line.charAt(i));
@@ -165,7 +166,7 @@ public abstract class Fence {
       }
       lines[j] = line.substring(trimPt);
     }
-    return Joiner.on('\n').join(lines);
+    return Joiner.on('\n').join(lines).replaceFirst("^[\r\n]+", "");
   }
 
   private static int spaceWidthOf(char ch) {
