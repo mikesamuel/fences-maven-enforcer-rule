@@ -6,8 +6,6 @@ import org.apache.maven.it.VerificationException;
 import org.apache.maven.it.Verifier;
 import org.apache.maven.it.util.ResourceExtractor;
 
-import com.google.common.collect.ImmutableList;
-
 import junit.framework.TestCase;
 
 @SuppressWarnings("javadoc")
@@ -66,7 +64,8 @@ public class FencesMavenEnforcerRuleTest extends TestCase {
 
         "BUILD FAILURE",
 
-        "access denied to [METHOD : java.lang.System.exit] from"
+        "test:test:1.0-SNAPSHOT : NotAllowedToCallExit.java:7: "
+        + "access denied to [METHOD : java.lang.System.exit] from"
         + " foo.bar.NotAllowedToCallExit",
 
         "1 access policy violation");

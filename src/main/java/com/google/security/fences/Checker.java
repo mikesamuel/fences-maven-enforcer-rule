@@ -20,6 +20,7 @@ import org.codehaus.plexus.interpolation.ValueSource;
 import org.objectweb.asm.ClassReader;
 import org.objectweb.asm.ClassVisitor;
 import org.objectweb.asm.Handle;
+import org.objectweb.asm.Label;
 import org.objectweb.asm.MethodVisitor;
 import org.objectweb.asm.Opcodes;
 
@@ -123,6 +124,7 @@ final class Checker {
     final ClassReader reader;
     final String className;
     final Namespace ns;
+    private Optional<String> sourceFilePath = Optional.absent();
 
     ClassChecker(Artifact art, ClassReader reader)
     throws EnforcerRuleException {
@@ -141,28 +143,33 @@ final class Checker {
     }
 
     @Override
+    public void visitSource(String source, String debug) {
+      this.sourceFilePath = Optional.fromNullable(source);
+    }
+
+    @Override
     public MethodVisitor visitMethod(
         int access, String name, String desc, String signature,
         String[] exceptions) {
-      return new MethodChecker(art, reader, ns, name);
+      return new MethodChecker(art, reader, sourceFilePath, ns, name);
     }
   }
 
   private final class MethodChecker extends MethodVisitor {
     final Artifact art;
-    final ClassReader reader;
+    final Optional<String> sourceFilePath;
     final String className;
     final Namespace ns;
     final String methodName;
     private final Set<ApiElement> alreadyChecked = Sets.newHashSet();
-    // TODO: Keep track of line number hints so we can include those in the
-    // error message.
+    private int latestLineNumber = -1;
 
     MethodChecker(
-        Artifact art, ClassReader reader, Namespace ns, String methodName) {
+        Artifact art, ClassReader reader, Optional<String> sourceFilePath,
+        Namespace ns, String methodName) {
       super(Opcodes.ASM5);
       this.art = art;
-      this.reader = reader;
+      this.sourceFilePath = sourceFilePath;
       this.className = reader.getClassName();
       this.ns = ns;
       this.methodName = methodName;
@@ -198,16 +205,25 @@ final class Checker {
       checkAllowed(methodApiElement);
     }
 
+    @Override
+    public void visitLineNumber(int lineNumber, Label start) {
+      // Keep track of line number hints so we can include those in
+      // error messages.
+      this.latestLineNumber = lineNumber;
+    }
+
     @SuppressWarnings("synthetic-access")
     void checkAllowed(ApiElement el) {
       if (alreadyChecked.add(el)) {
-        Checker.this.checkAllowed(art, ns, el);
+        Checker.this.checkAllowed(
+            art, sourceFilePath.or(className), latestLineNumber, ns, el);
       }
     }
   }
 
   private void checkAllowed(
-      final Artifact art, final Namespace ns, final ApiElement el) {
+      final Artifact art, String classDebugString, int latestLineNumber,
+      final Namespace ns, final ApiElement el) {
     log.debug(new LazyString() {
         @Override
         protected String makeString() {
@@ -229,9 +245,12 @@ final class Checker {
       case ALLOWED:
         break;
       case DISALLOWED:
-        log.error(
+        String source =
             Utils.artToString(art)
-            + ": access denied to " + el + " from " + ns);
+            + " : " + classDebugString
+            + (latestLineNumber < 0 ? "" : ":" + latestLineNumber);
+
+        log.error(source + ": access denied to " + el + " from " + ns);
         incrementErrorCount();
         // Find the most-specific rationale.
         Optional<String> rationale = Optional.absent();
