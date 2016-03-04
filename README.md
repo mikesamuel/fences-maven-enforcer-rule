@@ -1,4 +1,4 @@
-# Fences Maven Enforcer Rule
+# Fences Maven Enforcer Rule [<img src="https://travis-ci.org/mikesamuel/fences-maven-enforcer-rule.svg">](https://travis-ci.org/mikesamuel/fences-maven-enforcer-rule)
 
 Augments Java's access control by checking that a Maven Project and all its
 dependencies conform to a policy that specifies which classes/pacakges can
