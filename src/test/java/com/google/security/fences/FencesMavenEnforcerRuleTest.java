@@ -43,7 +43,7 @@ public class FencesMavenEnforcerRuleTest extends TestCase {
     verifier.deleteArtifacts("test");
     Result goalResult = Result.PASS;
     // We use the -N flag so that Maven won't recurse.
-    verifier.setCliOptions(ImmutableList.of("-N"));
+    //verifier.setCliOptions(ImmutableList.of("-N"));
     try {
       verifier.executeGoal("verify");
     } catch (@SuppressWarnings("unused") VerificationException ex) {
@@ -53,6 +53,9 @@ public class FencesMavenEnforcerRuleTest extends TestCase {
       verifier.verifyTextInLog(expectedText);
     }
     assertEquals(expectedResult, goalResult);
+    if (expectedResult == Result.PASS) {
+      verifier.verifyErrorFreeLog();
+    }
   }
 
   public final void testBannedUseProject() throws Exception {
@@ -95,6 +98,28 @@ public class FencesMavenEnforcerRuleTest extends TestCase {
         "1 access policy violation",
 
         "Use java.net.URI instead.");
+  }
+
+  public final void testBannedUseInTransitiveDependency() throws Exception {
+    verifyTestProject(
+        "test-banned-use-in-transitive-dependency-project",
+        Result.FAIL,
+        Debug.QUIET,
+
+        "BUILD FAILURE",
+
+        "access denied to [METHOD : java.lang.Runtime.getRuntime]"
+        + " from foo.dependee.Dependee",
+
+        "access denied to [METHOD : java.lang.Runtime.exec]"
+        + " from foo.dependee.Dependee",
+
+        "2 access policy violations",
+
+        // <rationale> from the POM.
+        "[ERROR] Code that uses [METHOD : java.lang.Runtime.exec]",
+        "to execute shell scripts or check environment variables",
+        "will probably break when we move to new hosting.");
   }
 
 }
