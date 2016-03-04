@@ -12,13 +12,69 @@
   <name>Fences Enforcer Rule</name>
   <description>
   Augments Java's access control by checking that a Maven Project and all its
-  dependencies conform to a policy that specifies which classes/pacakges can
+  dependencies conform to a policy that specifies which classes/packages can
   link to which others.
   </description>
   <url>https://github.com/mikesamuel/fences-maven-enforcer-rule</url>
 
+  <licenses>
+    <license>
+      <!-- Per https://repo.maven.apache.org/maven2/org/apache/apache/2/apache-2.pom -->
+      <name>The Apache Software License, Version 2.0</name>
+      <url>http://www.apache.org/licenses/LICENSE-2.0.txt</url>
+      <distribution>repo</distribution>
+    </license>
+  </licenses>
+
+  <developers>
+    <developer>
+      <name>Mike Samuel</name>
+      <email>mikesamuel@gmail.com</email>
+      <organization>Google ISE</organization>
+      <organizationUrl>https://www.google.com/about/appsecurity/</organizationUrl>
+    </developer>
+  </developers>
+
+  <organization>
+    <name>Google ISE</name>
+    <url>https://www.google.com/about/appsecurity/</url>
+  </organization>
+
+  <scm>
+    <connection>scm:git:git://github.com/mikesamuel/fences-maven-enforcer-rule.git</connection>
+    <developerConnection>scm:git:git://github.com/mikesamuel/fences-maven-enforcer-rule.git</developerConnection>
+    <url>https://github.com/mikesamuel/fences-maven-enforcer-rule</url>
+  </scm>
+
+  <issueManagement>
+    <system>GitHub</system>
+    <url>https://github.com/mikesamuel/fences-maven-enforcer-rule/issues</url>
+  </issueManagement>
+
+  <mailingLists>
+    <mailingList>
+      <name>User Support List</name>
+      <subscribe>fences-maven-enforcer-rule-support+subscribe@googlegroups.com</subscribe>
+      <unsubscribe>fences-maven-enforcer-rule-support+unsubscribe@googlegroups.com</unsubscribe>
+      <archive>https://groups.google.com/forum/#!forum/fences-maven-enforcer-rule</archive>
+    </mailingList>
+  </mailingLists>
+
+  <distributionManagement>
+    <snapshotRepository>
+      <id>ossrh</id>
+      <url>https://oss.sonatype.org/content/repositories/snapshots</url>
+    </snapshotRepository>
+    <repository>
+      <id>ossrh</id>
+      <url>https://oss.sonatype.org/service/local/staging/deploy/maven2/</url>
+    </repository>
+  </distributionManagement>
+  
+
   <properties>
     <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
+    <project.reporting.outputEncoding>UTF-8</project.reporting.outputEncoding>
     <api.version>1.4.1</api.version>
     <maven.version>2.0.9</maven.version>
   </properties>
@@ -125,6 +181,11 @@
             <version>1.7</version>
           </dependency>
         </dependencies>
+      </plugin>
+      <plugin>
+        <groupId>org.apache.maven.plugins</groupId>
+        <artifactId>maven-project-info-reports-plugin</artifactId>
+        <version>2.8.1</version>
       </plugin>
     </plugins>
   </build>
