@@ -4,3 +4,8 @@ jdk:
   - oraclejdk7
   - oraclejdk8
 #  - openjdk6   # Conflicts with findbugs dependency.
+
+# Additionally pass -Dgpg.skip to suppress signing instead of trying to provision
+# Travis's containers with keys.
+install: "mvn install -DskipTests=true -Dmaven.javadoc.skip=true -Dgpg.skip=true -B -V"
+script: "mvn verify -Dgpg.skip=true -B -V"
