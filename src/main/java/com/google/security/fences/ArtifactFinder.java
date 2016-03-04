@@ -16,6 +16,7 @@ import org.apache.maven.shared.dependency.tree.DependencyTreeBuilderException;
 
 import com.google.common.base.Preconditions;
 import com.google.common.collect.ImmutableList;
+import com.google.common.collect.ImmutableSet;
 import com.google.common.collect.Sets;
 
 /**
@@ -51,14 +52,14 @@ final class ArtifactFinder {
    *     If the project is not yet packaged, then there's no use trying to
    *     resolve its artifact.
    */
-  Set<Artifact> getArtifacts(boolean includeProjectArtifact)
+  ImmutableSet<Artifact> getArtifacts(boolean includeProjectArtifact)
   throws ArtifactNotFoundException, ArtifactResolutionException,
          DependencyTreeBuilderException {
     Set<Artifact> dependencies = Sets.newLinkedHashSet();
     DependencyNode node = treeBuilder.buildDependencyTree(
         project, localRepository, null);
     addAllDescendants(node, includeProjectArtifact, dependencies);
-    return dependencies;
+    return ImmutableSet.copyOf(dependencies);
   }
 
   private void addAllDescendants(
