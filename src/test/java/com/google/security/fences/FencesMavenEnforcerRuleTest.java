@@ -121,4 +121,19 @@ public class FencesMavenEnforcerRuleTest extends TestCase {
         "will probably break when we move to new hosting.");
   }
 
+  public final void testBannedField() throws Exception {
+    verifyTestProject(
+        "test-banned-field-access",
+        Result.FAIL,
+        Debug.QUIET,
+
+        "BUILD FAILURE",
+
+        "Baz.java:5: access denied to [FIELD : java.util.Locale.US]",
+
+        "1 access policy violation",
+
+        "We have to support users from many countries, so please");
+  }
+
 }
