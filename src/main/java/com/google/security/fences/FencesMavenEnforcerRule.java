@@ -31,7 +31,6 @@ import java.io.File;
 import java.io.FileInputStream;
 import java.io.IOException;
 import java.util.List;
-import java.util.Set;
 
 /**
  * Augments Java access control by verifying that a project and its dependencies
@@ -90,7 +89,8 @@ public final class FencesMavenEnforcerRule implements EnforcerRule {
     String projectBuildOutputDirectory;
     try {
       project = (MavenProject) helper.evaluate("${project}");
-      localRepository = (ArtifactRepository) helper.evaluate("${localRepository}");
+      localRepository = (ArtifactRepository)
+          helper.evaluate("${localRepository}");
       @SuppressWarnings("unchecked")
       List<ArtifactRepository> rr = (List<ArtifactRepository>)
           helper.evaluate("${project.remoteArtifactRepositories}");
@@ -106,7 +106,7 @@ public final class FencesMavenEnforcerRule implements EnforcerRule {
     ArtifactFinder finder = new ArtifactFinder(
         project, resolver, treeBuilder, localRepository, remoteRepositories);
 
-    Set<Artifact> artifacts;
+    ImmutableSet<Artifact> artifacts;
     try {
       artifacts = finder.getArtifacts(false);
     } catch (DependencyTreeBuilderException ex) {
@@ -122,12 +122,9 @@ public final class FencesMavenEnforcerRule implements EnforcerRule {
 
   protected void checkAllClasses(
       MavenProject project, Log log,
-      String projectClassRoot, Set<Artifact> artifacts)
+      String projectClassRoot, ImmutableSet<Artifact> artifacts)
   throws EnforcerRuleException {
     ImmutableList<Fence> allFences = ImmutableList.copyOf(fences);
-    Set<Artifact> allArtifacts = ImmutableSet.<Artifact>builder()
-        .addAll(artifacts)
-        .build();
 
     if (allFences.isEmpty()) {
       throw new EnforcerRuleException("No fences");
@@ -145,14 +142,17 @@ public final class FencesMavenEnforcerRule implements EnforcerRule {
     checker.interpolator.addValueSource(
         new PropertiesBasedValueSource(project.getProperties()));
 
-    try {
-      checker.checkClassRoot(project.getArtifact(), new File(projectClassRoot));
-    } catch (IOException ex) {
-      throw new EnforcerRuleException(
-          "Failed to check " + Utils.artToString(project.getArtifact()), ex);
+    if (!"pom".equals(project.getPackaging())) {
+      try {
+        checker.checkClassRoot(
+            project.getArtifact(), new File(projectClassRoot));
+      } catch (IOException ex) {
+        throw new EnforcerRuleException(
+            "Failed to check " + Utils.artToString(project.getArtifact()), ex);
+      }
     }
 
-    for (Artifact art : allArtifacts) {
+    for (Artifact art : artifacts) {
       // TODO: Do we need to handle wars, etc.?
       String artType = art.getType();
       String artScope = art.getScope();
