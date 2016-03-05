@@ -41,7 +41,7 @@
   </organization>
 
   <scm>
-    <connection>scm:git:git://github.com/mikesamuel/fences-maven-enforcer-rule.git</connection>
+    <connection>scm:git:https://github.com/mikesamuel/fences-maven-enforcer-rule.git</connection>
     <developerConnection>scm:git:git://github.com/mikesamuel/fences-maven-enforcer-rule.git</developerConnection>
     <url>https://github.com/mikesamuel/fences-maven-enforcer-rule</url>
   </scm>
