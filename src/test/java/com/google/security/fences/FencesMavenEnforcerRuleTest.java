@@ -64,7 +64,8 @@ public class FencesMavenEnforcerRuleTest extends TestCase {
 
         "BUILD FAILURE",
 
-        "test:test:1.0-SNAPSHOT : NotAllowedToCallExit.java:7: "
+        "test:test-banned-use-project:1.0-SNAPSHOT"
+        + " : NotAllowedToCallExit.java:7: "
         + "access denied to [METHOD : java.lang.System.exit] from"
         + " foo.bar.NotAllowedToCallExit",
 
