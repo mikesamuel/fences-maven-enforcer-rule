@@ -59,7 +59,7 @@ Names can be dotted, so the configuration above can be simplified to
 </class>
 ```
 
-## Writing good `<rationale>`s.
+## Writing good `<rationale>`s. <a name="writing_good_rationales"></a>
 
 The `<rationale>...</rationale>` element may appear in any API element.
 When a user builds code that violates the policy, the rationale is shown.
