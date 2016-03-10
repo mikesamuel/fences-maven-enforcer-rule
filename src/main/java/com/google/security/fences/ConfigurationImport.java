@@ -56,7 +56,7 @@ final class ConfigurationImport {
             + " from " + key, ex);
       }
 
-      // TODO: is this right.
+      // TODO: Is this right?
       // Newer versions have a MavenProject.getClassRealm() says
       // """
       // Warning: This is an internal utility method that is only public for
@@ -64,7 +64,12 @@ final class ConfigurationImport {
       // this method can be changed or deleted without prior notice and must
       // not be used by plugins.
       // """
+      // so trying to get it directly seems dodgy.
       ClassRealm realm = null;
+      ClassLoader cl = configurable.getClass().getClassLoader();
+      if (cl instanceof ClassRealm) {
+        realm = (ClassRealm) cl;
+      }
 
       try {
         configurator.configureComponent(configurable, configuration, realm);

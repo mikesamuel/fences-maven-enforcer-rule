@@ -144,12 +144,7 @@ public class FencesMavenEnforcerRuleTest extends TestCase {
     verifyTestProject(
         "test-imports-project",
         Result.FAIL,
-        // HACK: If this is QUIET, then the test fails with an exception
-        // claiming the configurator is a MapOrientedConfigurator which
-        // expects a MapOrientedComponent to configure.
-        // See http://stackoverflow.com/questions/35919157
-        //     /importing-more-maven-configuration-from-xml-files
-        Debug.VERBOSE,
+        Debug.QUIET,
 
         "BUILD FAILURE",
 
