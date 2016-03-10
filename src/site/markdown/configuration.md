@@ -16,6 +16,8 @@ The first four can appear in any of the rest so are not listed in the content co
 | `<method>` | 1 `<name>` | Specifies a method in the enclosing `<class>` |
 | `<field>` | 1 `<name>` | Specifies a field in the enclosing `<class>` |
 | `<constructor>`| | Specifies a constructor in the enclosing `<class>` |
+| <hr /> | <hr /> | <hr /> |
+| `<import>` | *Group*:*Artifact*:*Version* | Load more configuration from `META-INF/fences.xml` in that artifact's JAR |
 
 For example,
 
@@ -86,3 +88,40 @@ The documentation on plexus-interpolation (the module Maven uses to do
 property substitution) is pretty sparse, but
 [the unittests](https://github.com/codehaus-plexus/plexus-interpolation/blob/master/src/test/java/org/codehaus/plexus/interpolation/StringSearchInterpolatorTest.java)
 provide some guidance.
+
+## Importing configuration
+
+Sometimes a library author needs to use sensitive APIs.
+They can include, in their JAR a `META-INF/fences.xml` file with content like
+
+```xml
+<configuration>
+   <package>
+     ...
+   </package>
+   <import>...</import>
+</configuration>
+```
+
+to specify what they require to do their jobs by **proposing** that they be
+trusted to use certain APIs and/or that certain of their APIs be distrusted
+by default.  The API elements and namespaces involved in trust relationships
+in imported configurations are not limited to those relating to classes
+defined in that JAR.
+
+This allows different versions to request access to different sensitive APIs,
+and when the artifacts are stored in Maven central, the APIs they request
+access to are a matter of public record.
+
+A project-lead can then **second** their requests by adding to the Fences
+configuration a line like
+
+```xml
+   <import>group:artifact:version</import>
+```
+
+which says, find the JAR for the dependency with ID `group:artifact:version`,
+load the `META-INF/fences.xml` file, parse it, and incorporate its `<trusts>`
+and `<distrusts>`.
+
+The version may be omitted : `<import>group:artifact</import>`.
