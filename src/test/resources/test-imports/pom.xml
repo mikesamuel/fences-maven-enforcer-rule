@@ -6,13 +6,22 @@
   <parent>
     <groupId>test</groupId>
     <artifactId>integration-test-parent</artifactId>
-    <relativePath>../pom.xml</relativePath>
+    <relativePath>..</relativePath>
     <version>1.0-SNAPSHOT</version>
   </parent>
-  <artifactId>test-all-uses-ok-project</artifactId>
+  <artifactId>test-imports</artifactId>
 
-  <packaging>jar</packaging>
-  <name>Test that approved uses do not cause build failures</name>
+  <properties>
+    <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
+  </properties>
+
+  <packaging>pom</packaging>
+  <name>Test imports load and configure properly.</name>
+
+  <modules>
+    <module>unsafe-api</module>
+    <module>partially-safe-client</module>
+  </modules>
 
   <build>
     <plugins>
@@ -35,17 +44,8 @@
               <rules>
                 <fences
                  implementation="com.google.security.fences.FencesMavenEnforcerRule">
-                  <package>
-                    <name>java.lang</name>
-                    <class>
-                      <name>System</name>
-                      <method>
-                        <name>exit</name>
-                        <distrusts>*</distrusts>
-                        <trusts>foo.bar.AllowedToCallExit</trusts>
-                      </method>
-                    </class>
-                  </package>
+                  <import>test:unsafe-api</import>
+                  <import>test:partially-safe-client:1.0-SNAPSHOT</import>
                 </fences>
               </rules>
             </configuration>

@@ -60,24 +60,24 @@ public class FencesMavenEnforcerRuleTest extends TestCase {
     }
   }
 
-  public final void testBannedUseProject() throws Exception {
+  public final void testMethodCall() throws Exception {
     verifyTestProject(
-        "test-banned-use-project",
+        "test-method-call",
         Result.FAIL,
         Debug.QUIET,
 
         "BUILD FAILURE",
 
-        "test:test-banned-use-project:1.0-SNAPSHOT"
+        "test:test-method-call:1.0-SNAPSHOT"
         + " : NotAllowedToCallExit.java:7: access denied to [METHOD"
         + " : java.lang.System.exit] from foo.bar.NotAllowedToCallExit",
 
         "1 access policy violation");
   }
 
-  public final void testAllUsesOkProject() throws Exception {
+  public final void testAllOk() throws Exception {
     verifyTestProject(
-        "test-all-uses-ok-project",
+        "test-all-ok",
         Result.PASS,
         Debug.QUIET,
 
@@ -88,9 +88,9 @@ public class FencesMavenEnforcerRuleTest extends TestCase {
         "No access policy violations");
   }
 
-  public final void testBannedCtorAccess() throws Exception {
+  public final void testCtorAccess() throws Exception {
     verifyTestProject(
-        "test-banned-ctor-access-project",
+        "test-ctor-access",
         Result.FAIL,
         Debug.QUIET,
 
@@ -103,9 +103,9 @@ public class FencesMavenEnforcerRuleTest extends TestCase {
         "Use java.net.URI instead.");
   }
 
-  public final void testBannedUseInTransitiveDependency() throws Exception {
+  public final void testTransitiveDependency() throws Exception {
     verifyTestProject(
-        "test-banned-use-in-transitive-dependency-project",
+        "test-transitive-dependency",
         Result.FAIL,
         Debug.QUIET,
 
@@ -125,9 +125,9 @@ public class FencesMavenEnforcerRuleTest extends TestCase {
         "will probably break when we move to new hosting.");
   }
 
-  public final void testBannedField() throws Exception {
+  public final void testFieldRead() throws Exception {
     verifyTestProject(
-        "test-banned-field-access",
+        "test-field-read",
         Result.FAIL,
         Debug.QUIET,
 
@@ -142,7 +142,7 @@ public class FencesMavenEnforcerRuleTest extends TestCase {
 
   public final void testImports() throws Exception {
     verifyTestProject(
-        "test-imports-project",
+        "test-imports",
         Result.FAIL,
         Debug.QUIET,
 

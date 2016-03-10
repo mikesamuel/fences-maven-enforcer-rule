@@ -6,22 +6,13 @@
   <parent>
     <groupId>test</groupId>
     <artifactId>integration-test-parent</artifactId>
-    <relativePath>..</relativePath>
+    <relativePath>../pom.xml</relativePath>
     <version>1.0-SNAPSHOT</version>
   </parent>
-  <artifactId>test-imports-project</artifactId>
+  <artifactId>test-method-call</artifactId>
 
-  <properties>
-    <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
-  </properties>
-
-  <packaging>pom</packaging>
-  <name>Test imports load and configure properly.</name>
-
-  <modules>
-    <module>unsafe-api</module>
-    <module>partially-safe-client</module>
-  </modules>
+  <packaging>jar</packaging>
+  <name>Test That a Banned Use Is Flagged</name>
 
   <build>
     <plugins>
@@ -44,8 +35,17 @@
               <rules>
                 <fences
                  implementation="com.google.security.fences.FencesMavenEnforcerRule">
-                  <import>test:unsafe-api</import>
-                  <import>test:partially-safe-client:1.0-SNAPSHOT</import>
+                  <package>
+                    <name>java.lang</name>
+                    <class>
+                      <name>System</name>
+                      <method>
+                        <name>exit</name>
+                        <distrusts>*</distrusts>
+                        <trusts>foo.bar.AllowedToCallExit</trusts>
+                      </method>
+                    </class>
+                  </package>
                 </fences>
               </rules>
             </configuration>

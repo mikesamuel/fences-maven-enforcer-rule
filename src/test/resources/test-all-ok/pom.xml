@@ -6,30 +6,13 @@
   <parent>
     <groupId>test</groupId>
     <artifactId>integration-test-parent</artifactId>
-    <relativePath>..</relativePath>
+    <relativePath>../pom.xml</relativePath>
     <version>1.0-SNAPSHOT</version>
   </parent>
-  <artifactId>test-banned-use-in-transitive-dependency-project</artifactId>
+  <artifactId>test-all-ok</artifactId>
 
-  <properties>
-    <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
-  </properties>
-
-  <packaging>pom</packaging>
-  <name>Test that banned use in transitive dependency found.</name>
-
-  <modules>
-    <module>depended-upon</module>
-    <module>depends-upon-sibling</module>
-  </modules>
-
-  <dependencies>
-    <dependency>
-      <groupId>test</groupId>
-      <artifactId>depends-upon-sibling</artifactId>
-      <version>1.0-SNAPSHOT</version>
-    </dependency>
-  </dependencies>
+  <packaging>jar</packaging>
+  <name>Test that approved uses do not cause build failures</name>
 
   <build>
     <plugins>
@@ -55,19 +38,11 @@
                   <package>
                     <name>java.lang</name>
                     <class>
-                      <name>Runtime</name>
-                      <distrusts>*</distrusts>
-                      <rationale>
-                        Code that uses ${fences.api}
-                        to execute shell scripts or check environment variables
-                        will probably break when we move to new hosting.
-
-                        The folk at migration-team@ are happy to help find ways
-                        to do things that have previously done via shell callouts.
-                      </rationale>
+                      <name>System</name>
                       <method>
-                        <name>gc</name>
-                        <trusts>*</trusts>
+                        <name>exit</name>
+                        <distrusts>*</distrusts>
+                        <trusts>foo.bar.AllowedToCallExit</trusts>
                       </method>
                     </class>
                   </package>

@@ -6,13 +6,13 @@
   <parent>
     <groupId>test</groupId>
     <artifactId>integration-test-parent</artifactId>
-    <relativePath>../pom.xml</relativePath>
+    <relativePath>..</relativePath>
     <version>1.0-SNAPSHOT</version>
   </parent>
-  <artifactId>test-banned-use-project</artifactId>
+  <artifactId>test-field-read</artifactId>
 
   <packaging>jar</packaging>
-  <name>Test That a Banned Use Is Flagged</name>
+  <name>Test That a Banned Field Access is Flagged</name>
 
   <build>
     <plugins>
@@ -36,14 +36,26 @@
                 <fences
                  implementation="com.google.security.fences.FencesMavenEnforcerRule">
                   <package>
-                    <name>java.lang</name>
+                    <name>java.util</name>
                     <class>
-                      <name>System</name>
-                      <method>
-                        <name>exit</name>
+                      <name>Locale</name>
+                      <field>
+                        <name>US</name>
                         <distrusts>*</distrusts>
-                        <trusts>foo.bar.AllowedToCallExit</trusts>
-                      </method>
+                        <rationale>
+                          We have to support users from many countries, so please
+                          do not hardcode locale constants.
+                          See http://shorturl/i18n-initiative
+                          
+                          If you need to do lexicographic comparison or collating
+                          please use Locale.ROOT instead.
+
+                          If you need to figure out a user's preferred locale, see
+                          http://shorturl/respecting-locale-preferences
+
+                          For more information please contact i18n@.
+                        </rationale>
+                      </field>
                     </class>
                   </package>
                 </fences>
