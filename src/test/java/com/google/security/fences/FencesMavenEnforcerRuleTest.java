@@ -42,10 +42,12 @@ public class FencesMavenEnforcerRuleTest extends TestCase {
     // Clean up after previous runs.
     verifier.deleteArtifacts("test");
     Result goalResult = Result.PASS;
-    // We use the -N flag so that Maven won't recurse.
-    //verifier.setCliOptions(ImmutableList.of("-N"));
+
+    if (debug == Debug.VERBOSE) {
+      verifier.setCliOptions(ImmutableList.of("-X"));
+    }
     try {
-      verifier.executeGoals(ImmutableList.of("package", "verify"));
+      verifier.executeGoals(ImmutableList.of("verify"));
     } catch (@SuppressWarnings("unused") VerificationException ex) {
       goalResult = Result.FAIL;
     }
@@ -139,19 +141,21 @@ public class FencesMavenEnforcerRuleTest extends TestCase {
   }
 
   public final void testImports() throws Exception {
-    // HACK Disabled.
-    // See http://stackoverflow.com/questions/35919157/importing-more-maven-configuration-from-xml-files
-if (false)
     verifyTestProject(
         "test-imports-project",
         Result.FAIL,
-        Debug.QUIET,
+        // HACK: If this is QUIET, then the test fails with an exception
+        // claiming the configurator is a MapOrientedConfigurator which
+        // expects a MapOrientedComponent to configure.
+        // See http://stackoverflow.com/questions/35919157
+        //     /importing-more-maven-configuration-from-xml-files
+        Debug.VERBOSE,
 
         "BUILD FAILURE",
 
-        "Roulette.java:8: access denied to [CONSTRUCTOR com.example.api.Unsafe.<init>]",
+        "Roulette.java:8: access denied to [CONSTRUCTOR : com.example.api.Unsafe.<init>]",
         "Roulette.java:8: access denied to [METHOD : com.example.api.Unsafe.pushRedButton]",
-        "Roulette.java:10: access denied to [CONSTRUCTOR com.example.api.Unsafe.<init>]",
+        "Roulette.java:10: access denied to [CONSTRUCTOR : com.example.api.Unsafe.<init>]",
 
         "3 access policy violations");
   }
