@@ -161,8 +161,8 @@ final class ConfigurationImport {
               Optional.of(art.getVersion()));
           PartialArtifactKey partial = new PartialArtifactKey(
               full.groupId, full.artifactId);
-          map.putIfAbsent(full, cr);
-          map.putIfAbsent(partial, cr);
+          putIfAbsent(map, full, cr);
+          putIfAbsent(map, partial, cr);
           if (k.equals(full) || k.equals(partial)) {
             result = cr;
             break;
@@ -199,5 +199,13 @@ final class ConfigurationImport {
           }
         });
     return new XmlPlexusConfiguration(dom);
+  }
+
+
+  /** Map.putIfAbsent is @since Java 8. */
+  private static <K, V> void putIfAbsent(Map<K, V> m, K k, V v) {
+    if (!m.containsKey(k)) {
+      m.put(k, v);
+    }
   }
 }
