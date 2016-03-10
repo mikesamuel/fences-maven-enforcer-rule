@@ -1,0 +1,6 @@
+<configuration>
+  <class>
+    <name>com.example.api.Unsafe</name>
+    <trusts>com.example.client.OkToUse</trusts>
+  </class>
+</configuration>

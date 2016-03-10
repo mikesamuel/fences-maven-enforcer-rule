@@ -9,8 +9,8 @@ import com.google.common.base.Optional;
 import com.google.common.base.Preconditions;
 import com.google.common.base.Supplier;
 import com.google.common.collect.ImmutableList;
+import com.google.common.collect.ImmutableMap;
 import com.google.common.collect.Maps;
-import com.google.common.collect.Maps.EntryTransformer;
 import com.google.security.fences.config.Fence;
 import com.google.security.fences.config.FenceVisitor;
 import com.google.security.fences.config.Frenemies;
@@ -205,17 +205,14 @@ public final class Policy {
 
     @VisibleForTesting
     static NamespacePolicy fromAccessLevelMap(Map<ApiElement, AccessLevel> m) {
-      return fromMap(
-          Maps.transformEntries(
-              m,
-              new EntryTransformer<
-                  ApiElement, AccessLevel, AccessControlDecision>() {
-                public AccessControlDecision transformEntry(
-                    ApiElement k, AccessLevel v) {
-                  return new AccessControlDecision(
-                      k, v, Optional.<String>absent());
-                }
-              }));
+      ImmutableMap.Builder<ApiElement, AccessControlDecision> b =
+          ImmutableMap.builder();
+      for (Map.Entry<ApiElement, AccessLevel> e : m.entrySet()) {
+        ApiElement k = e.getKey();
+        AccessLevel v = e.getValue();
+        b.put(k, new AccessControlDecision(k, v, Optional.<String>absent()));
+      }
+      return fromMap(b.build());
     }
 
 

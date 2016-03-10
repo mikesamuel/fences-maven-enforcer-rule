@@ -105,11 +105,16 @@
       <artifactId>maven-plugin-api</artifactId>
       <version>${maven.version}</version>
     </dependency>
-    <!--dependency>
+    <dependency>
       <groupId>org.codehaus.plexus</groupId>
       <artifactId>plexus-container-default</artifactId>
-      <version>1.0-alpha-9</version>
-    </dependency-->
+      <version>1.6</version>
+    </dependency>
+    <dependency>
+      <groupId>org.codehaus.plexus</groupId>
+      <artifactId>plexus-classworlds</artifactId>
+      <version>2.5.2</version>
+    </dependency>
     <dependency>
       <groupId>org.codehaus.plexus</groupId>
       <artifactId>plexus-interpolation</artifactId>

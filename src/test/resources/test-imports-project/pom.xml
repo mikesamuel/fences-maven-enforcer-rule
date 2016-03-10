@@ -9,27 +9,19 @@
     <relativePath>..</relativePath>
     <version>1.0-SNAPSHOT</version>
   </parent>
-  <artifactId>test-banned-use-in-transitive-dependency-project</artifactId>
+  <artifactId>test-imports-project</artifactId>
 
   <properties>
     <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
   </properties>
 
   <packaging>pom</packaging>
-  <name>Test that banned use in transitive dependency found.</name>
+  <name>Test imports load and configure properly.</name>
 
   <modules>
-    <module>depended-upon</module>
-    <module>depends-upon-sibling</module>
+    <module>unsafe-api</module>
+    <module>partially-safe-client</module>
   </modules>
-
-  <dependencies>
-    <dependency>
-      <groupId>test</groupId>
-      <artifactId>depends-upon-sibling</artifactId>
-      <version>1.0-SNAPSHOT</version>
-    </dependency>
-  </dependencies>
 
   <build>
     <plugins>
@@ -52,25 +44,8 @@
               <rules>
                 <fences
                  implementation="com.google.security.fences.FencesMavenEnforcerRule">
-                  <package>
-                    <name>java.lang</name>
-                    <class>
-                      <name>Runtime</name>
-                      <distrusts>*</distrusts>
-                      <rationale>
-                        Code that uses ${fences.api}
-                        to execute shell scripts or check environment variables
-                        will probably break when we move to new hosting.
-
-                        The folk at migration-team@ are happy to help find ways
-                        to do things that have previously done via shell callouts.
-                      </rationale>
-                      <method>
-                        <name>gc</name>
-                        <trusts>*</trusts>
-                      </method>
-                    </class>
-                  </package>
+                  <import>test:unsafe-api</import>
+                  <import>test:partially-safe-client:1.0-SNAPSHOT</import>
                 </fences>
               </rules>
             </configuration>

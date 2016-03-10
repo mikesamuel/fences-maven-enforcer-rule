@@ -2,6 +2,8 @@ package com.google.security.fences;
 
 import java.io.File;
 
+import com.google.common.collect.ImmutableList;
+
 import org.apache.maven.it.VerificationException;
 import org.apache.maven.it.Verifier;
 import org.apache.maven.it.util.ResourceExtractor;
@@ -43,7 +45,7 @@ public class FencesMavenEnforcerRuleTest extends TestCase {
     // We use the -N flag so that Maven won't recurse.
     //verifier.setCliOptions(ImmutableList.of("-N"));
     try {
-      verifier.executeGoal("verify");
+      verifier.executeGoals(ImmutableList.of("package", "verify"));
     } catch (@SuppressWarnings("unused") VerificationException ex) {
       goalResult = Result.FAIL;
     }
@@ -65,9 +67,8 @@ public class FencesMavenEnforcerRuleTest extends TestCase {
         "BUILD FAILURE",
 
         "test:test-banned-use-project:1.0-SNAPSHOT"
-        + " : NotAllowedToCallExit.java:7: "
-        + "access denied to [METHOD : java.lang.System.exit] from"
-        + " foo.bar.NotAllowedToCallExit",
+        + " : NotAllowedToCallExit.java:7: access denied to [METHOD"
+        + " : java.lang.System.exit] from foo.bar.NotAllowedToCallExit",
 
         "1 access policy violation");
   }
@@ -135,6 +136,24 @@ public class FencesMavenEnforcerRuleTest extends TestCase {
         "1 access policy violation",
 
         "We have to support users from many countries, so please");
+  }
+
+  public final void testImports() throws Exception {
+    // HACK Disabled.
+    // See http://stackoverflow.com/questions/35919157/importing-more-maven-configuration-from-xml-files
+if (false)
+    verifyTestProject(
+        "test-imports-project",
+        Result.FAIL,
+        Debug.QUIET,
+
+        "BUILD FAILURE",
+
+        "Roulette.java:8: access denied to [CONSTRUCTOR com.example.api.Unsafe.<init>]",
+        "Roulette.java:8: access denied to [METHOD : com.example.api.Unsafe.pushRedButton]",
+        "Roulette.java:10: access denied to [CONSTRUCTOR com.example.api.Unsafe.<init>]",
+
+        "3 access policy violations");
   }
 
 }

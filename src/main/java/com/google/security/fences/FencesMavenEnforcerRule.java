@@ -12,13 +12,15 @@ import org.apache.maven.plugin.logging.Log;
 import org.apache.maven.project.MavenProject;
 import org.apache.maven.shared.dependency.tree.DependencyTreeBuilder;
 import org.apache.maven.shared.dependency.tree.DependencyTreeBuilderException;
+import org.codehaus.classworlds.ClassRealm;
+import org.codehaus.plexus.component.configurator.ComponentConfigurator;
 import org.codehaus.plexus.component.configurator.expression.ExpressionEvaluationException;
 import org.codehaus.plexus.component.repository.exception.ComponentLookupException;
 import org.codehaus.plexus.interpolation.PropertiesBasedValueSource;
 
 import com.google.common.collect.ImmutableList;
-import com.google.common.collect.ImmutableSet;
 import com.google.common.collect.Lists;
+import com.google.common.collect.Sets;
 import com.google.security.fences.config.ApiFence;
 import com.google.security.fences.config.ClassFence;
 import com.google.security.fences.config.Fence;
@@ -30,7 +32,9 @@ import com.google.security.fences.util.Utils;
 import java.io.File;
 import java.io.FileInputStream;
 import java.io.IOException;
+import java.util.LinkedList;
 import java.util.List;
+import java.util.Set;
 
 /**
  * Augments Java access control by verifying that a project and its dependencies
@@ -39,6 +43,9 @@ import java.util.List;
 public final class FencesMavenEnforcerRule implements EnforcerRule {
 
   private final List<Fence> fences = Lists.newArrayList();
+  private final LinkedList<ConfigurationImport> imports = Lists.newLinkedList();
+  private final Set<ConfigurationImport.PartialArtifactKey> alreadyImported =
+      Sets.newLinkedHashSet();
 
   private void addFence(Fence f) throws EnforcerRuleException {
     f.check();
@@ -69,15 +76,30 @@ public final class FencesMavenEnforcerRule implements EnforcerRule {
     addFence(x);
   }
 
+  /**
+   * A setter called by reflection during configuration.  Actually adds
+   * instead of blowing away prior value.
+   */
+  public void setImport(String x) throws EnforcerRuleException {
+    imports.add(new ConfigurationImport(x));
+  }
+
   public void execute(EnforcerRuleHelper helper) throws EnforcerRuleException {
     Log log = helper.getLog();
 
+    // TODO: maybe check MavenSession.getGoals() to see if this is being
+    // run at phase "validate" instead of phase "verify" to warn of a
+    // missing <phase>verify</phase> in the enforcer plugin configuration.
+
     ArtifactResolver resolver;
     DependencyTreeBuilder treeBuilder;
+    ComponentConfigurator configurator;
     try {
       resolver = (ArtifactResolver) helper.getComponent(ArtifactResolver.class);
       treeBuilder = (DependencyTreeBuilder)
           helper.getComponent(DependencyTreeBuilder.class);
+      configurator = (ComponentConfigurator) helper.getComponent(
+          ComponentConfigurator.class);
     } catch (ComponentLookupException ex) {
       throw new EnforcerRuleException(
           "Failed to locate component: " + ex.getLocalizedMessage(), ex);
@@ -86,7 +108,6 @@ public final class FencesMavenEnforcerRule implements EnforcerRule {
     MavenProject project;
     ArtifactRepository localRepository;
     List<ArtifactRepository> remoteRepositories;
-    String projectBuildOutputDirectory;
     try {
       project = (MavenProject) helper.evaluate("${project}");
       localRepository = (ArtifactRepository)
@@ -95,20 +116,16 @@ public final class FencesMavenEnforcerRule implements EnforcerRule {
       List<ArtifactRepository> rr = (List<ArtifactRepository>)
           helper.evaluate("${project.remoteArtifactRepositories}");
       remoteRepositories = rr;
-      // Per https://books.sonatype.com/mvnref-book/reference/resource-filtering-sect-properties.html
-      projectBuildOutputDirectory = (String)
-          helper.evaluate("${project.build.outputDirectory}");
     } catch (ExpressionEvaluationException ex) {
       throw new EnforcerRuleException(
           "Failed to locate component: " + ex.getLocalizedMessage(), ex);
     }
 
     ArtifactFinder finder = new ArtifactFinder(
-        project, resolver, treeBuilder, localRepository, remoteRepositories);
+        resolver, treeBuilder, localRepository, remoteRepositories, log);
 
-    ImmutableSet<Artifact> artifacts;
     try {
-      artifacts = finder.getArtifacts(false);
+      finder.findClassRoots(project);
     } catch (DependencyTreeBuilderException ex) {
       throw new EnforcerRuleException("Failed to find artifacts", ex);
     } catch (ArtifactResolutionException ex) {
@@ -117,17 +134,38 @@ public final class FencesMavenEnforcerRule implements EnforcerRule {
       throw new EnforcerRuleException("Failed to find artifacts", ex);
     }
 
-    checkAllClasses(project, log, projectBuildOutputDirectory, artifacts);
+    ImmutableList<ClassRoot> classRoots = finder.getClassRoots();
+
+    // Do the imports.
+    // Since an import might load a configuration that adds more imports, we
+    // just walk the list destructively.
+    while (!imports.isEmpty()) {
+      ConfigurationImport imp = imports.removeFirst();
+      if (alreadyImported.add(imp.key)) {
+        log.debug("Importing " + imp.key);
+        imp.configure(
+            this, configurator,
+            new ConfigurationImport.ClassRoots(classRoots.iterator(), log),
+            log);
+      } else {
+        log.info("Not importing " + imp.key + " a second time");
+      }
+    }
+
+    checkAllClasses(project, log, classRoots);
   }
 
   protected void checkAllClasses(
-      MavenProject project, Log log,
-      String projectClassRoot, ImmutableSet<Artifact> artifacts)
+      MavenProject project, Log log, Iterable<? extends ClassRoot> classRoots)
   throws EnforcerRuleException {
     ImmutableList<Fence> allFences = ImmutableList.copyOf(fences);
 
     if (allFences.isEmpty()) {
-      throw new EnforcerRuleException("No fences");
+      throw new EnforcerRuleException(
+          "No fences.  Please configure this rule with a policy."
+          + "  See https://github.com/mikesamuel/"
+          + "fences-maven-enforcer-rule/blob/master/src/site/markdown/usage.md"
+          + " for details");
     }
 
     final Policy p = Policy.fromFences(allFences);
@@ -142,44 +180,31 @@ public final class FencesMavenEnforcerRule implements EnforcerRule {
     checker.interpolator.addValueSource(
         new PropertiesBasedValueSource(project.getProperties()));
 
-    if (!"pom".equals(project.getPackaging())) {
+    for (ClassRoot classRoot : classRoots) {
+      Artifact art = classRoot.art;
+      log.info(
+          "Checking " + Utils.artToString(classRoot.art) + " from scope " + art.getScope());
+
+      File classRootFile = classRoot.classRoot;
+
       try {
-        checker.checkClassRoot(
-            project.getArtifact(), new File(projectClassRoot));
+        switch (classRoot.kind) {
+          case ZIPFILE:
+            FileInputStream in = new FileInputStream(classRootFile);
+            try {
+              checker.checkJar(art, in);
+            } finally {
+              in.close();
+            }
+            continue;
+          case BUILD_OUTPUT_DIRECTORY:
+            checker.checkClassRoot(art, classRootFile);
+            continue;
+        }
+        throw new AssertionError(classRoot.kind);
       } catch (IOException ex) {
         throw new EnforcerRuleException(
-            "Failed to check " + Utils.artToString(project.getArtifact()), ex);
-      }
-    }
-
-    for (Artifact art : artifacts) {
-      // TODO: Do we need to handle wars, etc.?
-      String artType = art.getType();
-      String artScope = art.getScope();
-      if ("jar".equals(artType)) {
-        log.info(
-            "Checking " + Utils.artToString(art) + " from scope " + artScope);
-        File f = art.getFile();
-        if (f == null) {
-          throw new EnforcerRuleException(
-              "Cannot check artifact " + Utils.artToString(art)
-              + " since it has not been packaged.");
-        }
-
-        try {
-          FileInputStream in = new FileInputStream(f);
-          try {
-            checker.checkJar(art, in);
-          } finally {
-            in.close();
-          }
-        } catch (IOException ex) {
-          throw new EnforcerRuleException(
-              "Failed to check " + Utils.artToString(art), ex);
-        }
-      } else {
-        log.info("Not checking artifact " + Utils.artToString(art)
-                 + " with type " + artType);
+            "Failed to check " + Utils.artToString(art), ex);
       }
     }
 
