@@ -74,7 +74,6 @@ final class ConfigurationImport {
       try {
         configurator.configureComponent(configurable, configuration, realm);
       } catch (ComponentConfigurationException ex) {
-        ex.printStackTrace();  // HACK DEBUG
         throw new EnforcerRuleException(
             "Failed to process configuration "
             + FENCES_CONFIGURATION_XML_RELATIVE_PATH + " from " + key,
