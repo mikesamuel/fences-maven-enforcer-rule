@@ -164,7 +164,9 @@ final class ArtifactFinder {
 
         boolean isProductionCode = true;  // until proven otherwise.
         if (depNode.getState() != DependencyNode.INCLUDED
-            || "test".equals(depNode.getOriginalScope())) {
+            // TODO: How does artifact.getScope
+            // relate to the DependencyNode's scopes?
+            || Artifact.SCOPE_TEST.equals(depNode.getOriginalScope())) {
           // IMHO, test code should be allowed to break abstractions
           // like debug hooks, so we don't limit test code's ability
           // to access non-private APIs in the same way that we
