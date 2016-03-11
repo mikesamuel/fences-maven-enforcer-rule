@@ -1,7 +1,6 @@
 package com.google.security.fences;
 
 import java.io.IOException;
-import java.io.InputStream;
 import java.util.Set;
 
 import org.apache.maven.artifact.Artifact;
@@ -21,7 +20,6 @@ import org.objectweb.asm.MethodVisitor;
 import org.objectweb.asm.Opcodes;
 
 import com.google.common.base.Optional;
-import com.google.common.base.Predicate;
 import com.google.common.collect.ImmutableMap;
 import com.google.common.collect.Sets;
 import com.google.security.fences.namespace.Namespace;
@@ -35,7 +33,7 @@ import com.google.security.fences.util.Utils;
 /**
  * Given a bundle of class files, checks each ".class" file against a policy.
  */
-final class Checker {
+final class Checker extends AbstractClassesVisitor {
   final Log log;
   final Policy policy;
   final Interpolator interpolator;
@@ -58,35 +56,20 @@ final class Checker {
     }
   }
 
-  /**
-   * Given a class root, checks each ".class" file against a policy.
-   *
-   * @throws IOException on problems reading or finding the class files.
-   */
-  void checkClassRoot(ClassRoot root) throws IOException {
+  @Override
+  protected void startClassRoot(ClassRoot root) {
     log.debug("Visiting " + root);
-    root.readEachPathMatching(
-        new Predicate<String>() {
-          public boolean apply(String relativePath) {
-            return relativePath.endsWith(".class");
-          }
-        },
-        new ClassRoot.IOConsumer<InputStream, Boolean>() {
-          public Boolean consume(
-              ClassRoot cr, String relativePath, InputStream is)
-          throws IOException {
-            ClassReader reader = new ClassReader(is);
-            ClassVisitor classChecker;
-            try {
-              classChecker = new ClassChecker(cr.art, reader);
-            } catch (EnforcerRuleException ex) {
-              log.error(ex);
-              return false;
-            }
-            reader.accept(classChecker, 0 /* flags */);
-            return true;
-          }
-        });
+  }
+
+  @Override
+  protected ClassVisitor makeVisitorForClass(
+      ClassRoot root, String relPath, ClassReader reader)
+  throws IOException {
+    try {
+      return new ClassChecker(root.art, reader);
+    } catch (EnforcerRuleException ex) {
+      throw new IOException("Failed to check " + root, ex);
+    }
   }
 
   final class ClassChecker extends ClassVisitor {

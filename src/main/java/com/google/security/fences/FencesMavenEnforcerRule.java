@@ -192,7 +192,7 @@ public final class FencesMavenEnforcerRule implements EnforcerRule {
       Artifact art = classRoot.art;
       log.info("Checking " + art.getId() + " from scope " + art.getScope());
       try {
-        checker.checkClassRoot(classRoot);
+        checker.visitAll(ImmutableList.of(classRoot));
       } catch (IOException ex) {
         throw new EnforcerRuleException(
             "Failed to check " + Utils.artToString(art), ex);
