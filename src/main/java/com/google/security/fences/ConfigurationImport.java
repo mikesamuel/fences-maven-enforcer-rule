@@ -148,11 +148,9 @@ final class ConfigurationImport {
     private final Map<PartialArtifactKey, ClassRoot> map =
         Maps.newLinkedHashMap();
     private final Iterator<ClassRoot> classRoots;
-    private final Log log;
 
-    ClassRoots(Iterator<ClassRoot> classRoots, Log log) {
+    ClassRoots(Iterator<ClassRoot> classRoots) {
       this.classRoots = classRoots;
-      this.log = log;
     }
 
     Optional<ClassRoot> lookup(PartialArtifactKey k) {
@@ -208,7 +206,7 @@ final class ConfigurationImport {
 
 
   /** Map.putIfAbsent is @since Java 8. */
-  private static <K, V> void putIfAbsent(Map<K, V> m, K k, V v) {
+  static <K, V> void putIfAbsent(Map<K, V> m, K k, V v) {
     if (!m.containsKey(k)) {
       m.put(k, v);
     }
