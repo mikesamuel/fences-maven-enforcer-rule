@@ -12,7 +12,6 @@ import org.apache.maven.plugin.logging.Log;
 import org.apache.maven.project.MavenProject;
 import org.apache.maven.shared.dependency.tree.DependencyTreeBuilder;
 import org.apache.maven.shared.dependency.tree.DependencyTreeBuilderException;
-import org.codehaus.classworlds.ClassRealm;
 import org.codehaus.plexus.component.configurator.BasicComponentConfigurator;
 import org.codehaus.plexus.component.configurator.ComponentConfigurator;
 import org.codehaus.plexus.component.configurator.expression.ExpressionEvaluationException;
@@ -156,7 +155,7 @@ public final class FencesMavenEnforcerRule implements EnforcerRule {
         log.debug("Importing " + imp.key);
         imp.configure(
             this, configurator,
-            new ConfigurationImport.ClassRoots(classRoots.iterator(), log),
+            new ConfigurationImport.ClassRoots(classRoots.iterator()),
             log);
       } else {
         log.info("Not importing " + imp.key + " a second time");
