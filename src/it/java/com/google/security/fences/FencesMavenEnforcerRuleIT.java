@@ -11,7 +11,7 @@ import org.apache.maven.it.util.ResourceExtractor;
 import junit.framework.TestCase;
 
 @SuppressWarnings("javadoc")
-public class FencesMavenEnforcerRuleTest extends TestCase {
+public class FencesMavenEnforcerRuleIT extends TestCase {
 
   enum Result {
     PASS,
