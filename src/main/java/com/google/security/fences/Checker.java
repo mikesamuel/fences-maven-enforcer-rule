@@ -1,12 +1,8 @@
 package com.google.security.fences;
 
-import java.io.File;
-import java.io.FileInputStream;
 import java.io.IOException;
 import java.io.InputStream;
 import java.util.Set;
-import java.util.zip.ZipEntry;
-import java.util.zip.ZipInputStream;
 
 import org.apache.maven.artifact.Artifact;
 import org.apache.maven.enforcer.rule.api.EnforcerRuleException;
@@ -25,7 +21,7 @@ import org.objectweb.asm.MethodVisitor;
 import org.objectweb.asm.Opcodes;
 
 import com.google.common.base.Optional;
-import com.google.common.base.Preconditions;
+import com.google.common.base.Predicate;
 import com.google.common.collect.ImmutableMap;
 import com.google.common.collect.Sets;
 import com.google.security.fences.namespace.Namespace;
@@ -62,61 +58,35 @@ final class Checker {
     }
   }
 
-  void checkClassRoot(Artifact art, File directory)
-  throws IOException, EnforcerRuleException{
-    log.debug(
-        "Visiting dir " + directory
-        + " for artifact " + Utils.artToString(art));
-    Preconditions.checkArgument(directory.isDirectory(), directory.getPath());
-    File[] contents = directory.listFiles();
-    if (contents == null) {
-      throw new IOException("Cannot list contents of " + directory);
-    } else {
-      for (File child : contents) {
-        if (child.isDirectory()) {
-          // Maven does not create symlink trees AFAICT.
-          checkClassRoot(art, child);
-        } else if (child.getName().endsWith(".class")) {
-          InputStream in = new FileInputStream(child);
-          try {
-            ClassReader reader = new ClassReader(in);
-            ClassVisitor classChecker = new ClassChecker(art, reader);
-            reader.accept(classChecker, 0 /* flags */);
-          } finally {
-            in.close();
-          }
-        }
-      }
-    }
-  }
-
   /**
-   * Given a JAR file, checks each ".class" file against a policy.
+   * Given a class root, checks each ".class" file against a policy.
    *
-   * @param art The artifact containing the JAR file.
-   *    Used in diagnostic messages.
-   * @param in An input stream containing a well-formed ZIP file.
-   * @throws IOException if there is a problem reading in.
+   * @throws IOException on problems reading or finding the class files.
    */
-  void checkJar(Artifact art, InputStream in)
-  throws IOException, EnforcerRuleException {
-    log.debug("Visiting JAR for artifact " + Utils.artToString(art));
-    ZipInputStream zipIn = new ZipInputStream(in);
-    try {
-      for (ZipEntry zipEntry; (zipEntry = zipIn.getNextEntry()) != null;) {
-        if (!zipEntry.isDirectory()) {
-          String entryName = zipEntry.getName();
-          if (entryName.endsWith(".class")) {
-            ClassReader reader = new ClassReader(zipIn);
-            ClassVisitor classChecker = new ClassChecker(art, reader);
-            reader.accept(classChecker, 0 /* flags */);
+  void checkClassRoot(ClassRoot root) throws IOException {
+    log.debug("Visiting " + root);
+    root.readEachPathMatching(
+        new Predicate<String>() {
+          public boolean apply(String relativePath) {
+            return relativePath.endsWith(".class");
           }
-        }
-        zipIn.closeEntry();
-      }
-    } finally {
-      zipIn.close();
-    }
+        },
+        new ClassRoot.IOConsumer<InputStream, Boolean>() {
+          public Boolean consume(
+              ClassRoot cr, String relativePath, InputStream is)
+          throws IOException {
+            ClassReader reader = new ClassReader(is);
+            ClassVisitor classChecker;
+            try {
+              classChecker = new ClassChecker(cr.art, reader);
+            } catch (EnforcerRuleException ex) {
+              log.error(ex);
+              return false;
+            }
+            reader.accept(classChecker, 0 /* flags */);
+            return true;
+          }
+        });
   }
 
   final class ClassChecker extends ClassVisitor {

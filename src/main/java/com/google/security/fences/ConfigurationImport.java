@@ -40,6 +40,7 @@ final class ConfigurationImport {
   static final String FENCES_CONFIGURATION_XML_RELATIVE_PATH
       = "META-INF/fences.xml";
 
+  @SuppressWarnings("resource")  // Realm not owned by this method
   void configure(
       Object configurable, ComponentConfigurator configurator,
       ClassRoots classRoots, Log log)
@@ -190,11 +191,13 @@ final class ConfigurationImport {
     Xpp3Dom dom = cr.readRelativePath(
         path,
         new ClassRoot.IOConsumer<InputStream, Xpp3Dom>() {
-          public Xpp3Dom read(InputStream is) throws IOException {
+          public Xpp3Dom consume(
+              ClassRoot root, String relPath, InputStream is)
+          throws IOException {
             try {
               return Xpp3DomBuilder.build(is, "UTF-8", true);
             } catch (XmlPullParserException ex) {
-              throw new IOException("Malformed XML", ex);
+              throw new IOException("Malformed XML " + relPath + " in " + root.art.getId(), ex);
             } finally {
               is.close();
             }

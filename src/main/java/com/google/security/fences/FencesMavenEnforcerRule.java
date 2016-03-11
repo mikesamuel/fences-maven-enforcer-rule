@@ -29,8 +29,6 @@ import com.google.security.fences.policy.Policy;
 import com.google.security.fences.util.LazyString;
 import com.google.security.fences.util.Utils;
 
-import java.io.File;
-import java.io.FileInputStream;
 import java.io.IOException;
 import java.util.LinkedList;
 import java.util.List;
@@ -192,26 +190,9 @@ public final class FencesMavenEnforcerRule implements EnforcerRule {
 
     for (ClassRoot classRoot : classRoots) {
       Artifact art = classRoot.art;
-      log.info(
-          "Checking " + Utils.artToString(classRoot.art) + " from scope " + art.getScope());
-
-      File classRootFile = classRoot.classRoot;
-
+      log.info("Checking " + art.getId() + " from scope " + art.getScope());
       try {
-        switch (classRoot.kind) {
-          case ZIPFILE:
-            FileInputStream in = new FileInputStream(classRootFile);
-            try {
-              checker.checkJar(art, in);
-            } finally {
-              in.close();
-            }
-            continue;
-          case BUILD_OUTPUT_DIRECTORY:
-            checker.checkClassRoot(art, classRootFile);
-            continue;
-        }
-        throw new AssertionError(classRoot.kind);
+        checker.checkClassRoot(classRoot);
       } catch (IOException ex) {
         throw new EnforcerRuleException(
             "Failed to check " + Utils.artToString(art), ex);
