@@ -121,26 +121,40 @@
       <version>1.22</version>
     </dependency>
 
+    <!-- For basic collection types and functional operators -->
     <dependency>
       <groupId>com.google.guava</groupId>
       <artifactId>guava</artifactId>
       <version>19.0</version>
     </dependency>
+    <!-- For classfile introspection to find the link points
+         that we need to check for policy compliance -->
     <dependency>
       <groupId>org.ow2.asm</groupId>
       <artifactId>asm</artifactId>
       <version>5.0.4</version>
     </dependency>
+    <!-- For persisting a map of subtype relationships in
+         the core Java libraries so that we don't have
+         to scan system JARs every time we build an
+         inheritance graph.
+    -->
     <dependency>
-      <groupId>org.apache.maven.shared</groupId>
-      <artifactId>maven-dependency-tree</artifactId>
-      <version>2.2</version>
+      <groupId>com.sleepycat</groupId>
+      <artifactId>je</artifactId>
+      <version>5.0.73</version>
     </dependency>
+    <!-- For annotating classes to avoid NPEs -->
     <dependency>
       <groupId>com.google.code.findbugs</groupId>
       <artifactId>jsr305</artifactId>
       <version>3.0.1</version>
       <scope>provided</scope>
+    </dependency>
+    <dependency>
+      <groupId>org.apache.maven.shared</groupId>
+      <artifactId>maven-dependency-tree</artifactId>
+      <version>2.2</version>
     </dependency>
 
     <dependency>
