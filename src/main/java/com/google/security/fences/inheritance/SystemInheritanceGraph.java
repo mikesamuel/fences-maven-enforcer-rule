@@ -13,6 +13,9 @@ import java.util.concurrent.ConcurrentHashMap;
 import java.util.zip.ZipEntry;
 import java.util.zip.ZipInputStream;
 
+import javax.annotation.Nonnull;
+import javax.annotation.Nullable;
+
 import org.objectweb.asm.ClassReader;
 import org.objectweb.asm.ClassVisitor;
 import org.objectweb.asm.Opcodes;
@@ -45,8 +48,12 @@ public class SystemInheritanceGraph {
    */
   public static final Function<String, ClassNode> LAZY_LOADER
   = new Function<String, ClassNode>() {
-    public ClassNode apply(String name) {
-      // Java's late Classloading delays initializing the berlkeley db until
+    @Nonnull
+    public ClassNode apply(@Nonnull String name) {
+      if (name == null) {
+        throw new NullPointerException();
+      }
+      // Java's late binding delays initializing the berkeley db until
       // this is called.
       return LazyLoader.INSTANCE.get(name);
     }
@@ -197,7 +204,8 @@ public class SystemInheritanceGraph {
       if (!Iterables.all(
               jars,
               new Predicate<String>() {
-                public boolean apply(String arg) {
+                public boolean apply(@Nonnull String arg) {
+                  if (arg == null) { throw new NullPointerException(); }
                   return arg.endsWith(".jar") && new File(arg).isFile();
                 }
               })) {
