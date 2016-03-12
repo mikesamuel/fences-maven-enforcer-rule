@@ -9,20 +9,21 @@ import com.google.common.collect.ImmutableList;
  */
 public final class ClassNode implements Comparable<ClassNode> {
   /**
-   * The raw class name of the class post inner-class to top-level conversion.
-   * Raw class names have the form {@code com/example/Outer$Inner}, not
+   * The internal class name of the class post inner-class to top-level
+   * conversion.
+   * Internal class names have the form {@code com/example/Outer$Inner}, not
    * dotted fully-qualified names.
    */
   public final String name;
   /**
-   * The raw name of the super-type if any.  {@code java.lang.Object} does not
-   * have a super-type.
+   * The internal name of the super-type if any.  {@code java.lang.Object} does
+   * not have a super-type.
    * ASM treats interfaces as having super-type {@code java.lang.Object}.
    */
   public final Optional<String> superType;
   /**
-   * For classes, the raw names of interfaces it {@code implements}, and for
-   * interfaces the interfaces it {@code extends}.
+   * For classes, the internal names of interfaces it {@code implements}, and
+   * for interfaces the interfaces it {@code extends}.
    */
   public final ImmutableList<String> interfaces;
 

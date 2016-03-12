@@ -53,9 +53,15 @@ public class SystemInheritanceGraph {
     }
   };
 
-  /** Name of a database from raw name to raw name of supertype. */
+  /**
+   * Name of a database that maps internal names to
+   * internal names of super-types.
+   */
   private static final String SUPERTYPE_DB_NAME = "supertype";
-  /** Name of a database from raw name to comma separated interface names. */
+  /**
+   * Name of a database that maps internal names to
+   * comma separated interface names.
+   */
   private static final String INTERFACE_DB_NAME = "interface";
 
   private static final class LazyLoader {

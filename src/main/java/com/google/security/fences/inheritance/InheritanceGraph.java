@@ -21,7 +21,11 @@ public final class InheritanceGraph {
     this.fallback = fallback;
   }
 
-  /** Returns the named node. */
+  /**
+   * Returns the named node.
+   *
+   * @param name an internal class name like {@code com/example/MyClass}.
+   */
   public Optional<ClassNode> named(String name) {
     ClassNode node = classNodes.get(name);
     if (node == null && !classNodes.containsKey(name)) {
