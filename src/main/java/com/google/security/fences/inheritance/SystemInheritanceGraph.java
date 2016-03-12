@@ -14,7 +14,6 @@ import java.util.zip.ZipEntry;
 import java.util.zip.ZipInputStream;
 
 import javax.annotation.Nonnull;
-import javax.annotation.Nullable;
 
 import org.objectweb.asm.ClassReader;
 import org.objectweb.asm.ClassVisitor;
