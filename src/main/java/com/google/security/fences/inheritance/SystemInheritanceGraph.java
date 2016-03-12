@@ -9,7 +9,6 @@ import java.io.OutputStream;
 import java.nio.ByteBuffer;
 import java.util.Arrays;
 import java.util.List;
-import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.zip.ZipEntry;
 import java.util.zip.ZipInputStream;
@@ -66,7 +65,7 @@ public class SystemInheritanceGraph {
 
   private static final class LazyLoader {
     static final LazyLoader INSTANCE = new LazyLoader();
-    private final Map<String, ClassNode> classNodes
+    private final ConcurrentHashMap<String, ClassNode> classNodes
         = new ConcurrentHashMap<String, ClassNode>();
     private final Environment env;
     private final Database supertypeDb;
