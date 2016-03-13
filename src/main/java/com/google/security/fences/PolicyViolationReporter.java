@@ -25,17 +25,24 @@ import com.google.common.collect.Lists;
 import com.google.common.collect.Maps;
 import com.google.common.collect.Sets;
 
+/**
+ * Groups a collection of violations so that we can provide succinct, clear
+ * error messages.
+ */
 final class PolicyViolationReporter {
   final Log log;
   final Interpolator interpolator;
-
 
   PolicyViolationReporter(Log log) {
     this.log = log;
     this.interpolator = new RegexBasedInterpolator();
   }
 
-
+  /**
+   * Reports the violations to the log.
+   *
+   * @return non-zero iff there was a violation.
+   */
   int report(ImmutableList<Violation> violations) {
     int errorCount = violations.size();
     // Probably overly paranoid given ints are always 32b.
@@ -62,6 +69,9 @@ final class PolicyViolationReporter {
     return errorCount;
   }
 
+  /**
+   * Expands plexus interpolator expressions in {@code <rationale>} messages.
+   */
   private Optional<String> formatRationale(Violation v) {
     if (!v.rationale.isPresent()) {
       return Optional.absent();
