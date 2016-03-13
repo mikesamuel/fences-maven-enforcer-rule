@@ -9,7 +9,7 @@ import com.google.common.base.Preconditions;
 /**
  * An element of a Java API that can be identified by a dotted name.
  */
-public class ApiElement {
+public class ApiElement implements Comparable<ApiElement> {
   /** The parent element if any. */
   public final Optional<ApiElement> parent;
   /** Unqualified name. */
@@ -106,6 +106,23 @@ public class ApiElement {
   @Override
   public int hashCode() {
     return hashCode;
+  }
+
+  public int compareTo(ApiElement that) {
+    int delta = (this.parent.isPresent() ? 1 : 0)
+        - (that.parent.isPresent() ? 1 : 0);
+    if (delta == 0) {
+      if (this.parent.isPresent()) {
+        delta = this.parent.get().compareTo(that.parent.get());
+      }
+      if (delta == 0) {
+        delta = this.name.compareTo(that.name);
+        if (delta == 0) {
+          delta = this.type.compareTo(that.type);
+        }
+      }
+    }
+    return delta;
   }
 
   @Override

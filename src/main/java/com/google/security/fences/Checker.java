@@ -4,17 +4,12 @@ import java.io.IOException;
 import java.util.ArrayDeque;
 import java.util.Collection;
 import java.util.Deque;
+import java.util.List;
 import java.util.Set;
 
 import org.apache.maven.artifact.Artifact;
 import org.apache.maven.enforcer.rule.api.EnforcerRuleException;
 import org.apache.maven.plugin.logging.Log;
-import org.codehaus.plexus.interpolation.InterpolationException;
-import org.codehaus.plexus.interpolation.Interpolator;
-import org.codehaus.plexus.interpolation.MapBasedValueSource;
-import org.codehaus.plexus.interpolation.ObjectBasedValueSource;
-import org.codehaus.plexus.interpolation.RegexBasedInterpolator;
-import org.codehaus.plexus.interpolation.ValueSource;
 import org.objectweb.asm.ClassReader;
 import org.objectweb.asm.ClassVisitor;
 import org.objectweb.asm.Handle;
@@ -23,7 +18,8 @@ import org.objectweb.asm.MethodVisitor;
 import org.objectweb.asm.Opcodes;
 
 import com.google.common.base.Optional;
-import com.google.common.collect.ImmutableMap;
+import com.google.common.collect.ImmutableList;
+import com.google.common.collect.Lists;
 import com.google.common.collect.Sets;
 import com.google.security.fences.inheritance.ClassNode;
 import com.google.security.fences.inheritance.InheritanceGraph;
@@ -41,26 +37,41 @@ import com.google.security.fences.util.Utils;
 final class Checker extends AbstractClassesVisitor {
   final Log log;
   final Policy policy;
-  final Interpolator interpolator;
   final InheritanceGraph inheritanceGraph;
-  private int errorCount;
+  private final List<Violation> violations =
+      Lists.newArrayList();
 
   Checker(Log log, InheritanceGraph inheritanceGraph, Policy policy) {
     this.log = log;
     this.inheritanceGraph = inheritanceGraph;
     this.policy = policy;
-    this.interpolator = new RegexBasedInterpolator();
   }
 
-  /** Greater than zero if there were one or more policy violations. */
-  int getErrorCount() {
-    return errorCount;
+  private synchronized void accessDeniedTo(
+      Artifact art,
+      Namespace useSiteContainer,
+      String classDebugString,
+      int latestLineNumber,
+      ApiElement el,
+      PolicyResult policyResult) {
+    assert policyResult.accessLevel != AccessLevel.ALLOWED;
+    this.violations.add(new Violation(
+        art,
+        useSiteContainer,
+        classDebugString,
+        latestLineNumber,
+        el,
+        policyResult.target,
+        policyResult.rationale
+        ));
   }
 
-  private synchronized void incrementErrorCount() {
-    if (errorCount != Integer.MAX_VALUE) {
-      ++errorCount;
-    }
+  /**
+   * @return the count of errors logged.
+   *     Greater than zero if there were one or more policy violations.
+   */
+  ImmutableList<Violation> getViolations() {
+    return ImmutableList.copyOf(violations);
   }
 
   @Override
@@ -197,48 +208,37 @@ final class Checker extends AbstractClassesVisitor {
       case ALLOWED:
         break;
       case DISALLOWED:
-        String source =
-            Utils.artToString(art)
-            + " : " + classDebugString
-            + (latestLineNumber < 0 ? "" : ":" + latestLineNumber);
-
-        log.error(source + ": access denied to " + el + " from " + ns);
-        incrementErrorCount();
-        Optional<String> rationale = policyResult.rationale;
-        if (rationale.isPresent()) {
-          String rationaleText = rationale.get();
-          ValueSource artifactValueSource = new ObjectBasedValueSource(art);
-          ValueSource failedAccessValueSource = new MapBasedValueSource(
-              ImmutableMap.of(
-                  "fences.api", el,
-                  "fences.distrusted", ns));
-          interpolator.addValueSource(artifactValueSource);
-          interpolator.addValueSource(failedAccessValueSource);
-          try {
-            rationaleText = interpolator.interpolate(rationaleText);
-          } catch (InterpolationException ex) {
-            log.warn(ex);
-          } finally {
-            interpolator.removeValuesSource(failedAccessValueSource);
-            interpolator.removeValuesSource(artifactValueSource);
-          }
-          log.error(rationaleText);
-        }
+        accessDeniedTo(
+            art, ns, classDebugString, latestLineNumber, el, policyResult);
         break;
     }
   }
 
   static final class PolicyResult {
+    /** The policy decision. */
     final AccessLevel accessLevel;
+    /** The rationale for the decision if any. */
     final Optional<String> rationale;
+    /**
+     * The API element based upon which the decision was made.
+     * This may be an API element defined on an ancestor of the
+     * element accessed in code defined in the trusted/distrusted namespace.
+     */
+    final ApiElement target;
 
-    static final PolicyResult DEFAULT = new PolicyResult(
+    static PolicyResult defaultResult(ApiElement target) {
+      return new PolicyResult(
         AccessLevel.ALLOWED,  // Default to plain old Java rules.
-        Optional.<String>absent());
+        Optional.<String>absent(),
+        target);
+    }
 
-    PolicyResult(AccessLevel accessLevel, Optional<String> rationale) {
+    PolicyResult(
+        AccessLevel accessLevel, Optional<String> rationale,
+        ApiElement target) {
       this.accessLevel = accessLevel;
       this.rationale = rationale;
+      this.target = target;
     }
   }
 
@@ -296,7 +296,8 @@ final class Checker extends AbstractClassesVisitor {
         return new PolicyResult(
             // Default to java rules.
             levelFromPolicy,
-            rationale);
+            rationale,
+            el);
       } else {
         Optional<ApiElement> elClass = el.containingClass();
         if (elClass.isPresent()) {
@@ -318,7 +319,7 @@ final class Checker extends AbstractClassesVisitor {
         }
       }
     }
-    return PolicyResult.DEFAULT;
+    return PolicyResult.defaultResult(to);
   }
 
   static ApiElement apiElementFromInternalClassName(String name) {

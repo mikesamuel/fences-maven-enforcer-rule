@@ -195,8 +195,6 @@ public final class FencesMavenEnforcerRule implements EnforcerRule {
     });
 
     Checker checker = new Checker(log, inheritanceGraph, p);
-    checker.interpolator.addValueSource(
-        new PropertiesBasedValueSource(project.getProperties()));
 
     for (ClassRoot classRoot : classRoots) {
       Artifact art = classRoot.art;
@@ -209,13 +207,16 @@ public final class FencesMavenEnforcerRule implements EnforcerRule {
       }
     }
 
-    int errorCount = checker.getErrorCount();
+    ImmutableList<Violation> violations =
+        checker.getViolations();
+    PolicyViolationReporter reporter = new PolicyViolationReporter(log);
+    reporter.interpolator.addValueSource(
+        new PropertiesBasedValueSource(project.getProperties()));
+    int errorCount = reporter.report(violations);
     if (errorCount != 0) {
       throw new EnforcerRuleException(
           errorCount + " access policy violation"
           + (errorCount == 1 ? "" : "s"));
-    } else {
-      log.info("No access policy violations");
     }
   }
 

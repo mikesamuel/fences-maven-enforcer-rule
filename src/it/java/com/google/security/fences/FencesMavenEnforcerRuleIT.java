@@ -68,9 +68,10 @@ public class FencesMavenEnforcerRuleIT extends TestCase {
 
         "BUILD FAILURE",
 
-        "test:test-method-call:1.0-SNAPSHOT"
-        + " : NotAllowedToCallExit.java:7: access denied to [METHOD"
-        + " : java.lang.System.exit] from foo.bar.NotAllowedToCallExit",
+        "[ERROR] test:test-method-call:jar:1.0-SNAPSHOT"
+        + " : NotAllowedToCallExit.java : L7 :"
+        + " [METHOD : java.lang.System.exit] cannot be accessed from"
+        + " foo.bar.NotAllowedToCallExit",
 
         "1 access policy violation");
   }
@@ -96,7 +97,8 @@ public class FencesMavenEnforcerRuleIT extends TestCase {
 
         "BUILD FAILURE",
 
-        "access denied to [CONSTRUCTOR : java.net.URL.<init>] from foo.bar.Baz",
+        "[CONSTRUCTOR : java.net.URL.<init>]"
+        + " cannot be accessed from foo.bar.Baz",
 
         "1 access policy violation",
 
@@ -111,16 +113,16 @@ public class FencesMavenEnforcerRuleIT extends TestCase {
 
         "BUILD FAILURE",
 
-        "access denied to [METHOD : java.lang.Runtime.getRuntime]"
-        + " from foo.dependee.Dependee",
+        "[METHOD : java.lang.Runtime.getRuntime]"
+        + " cannot be accessed from foo.dependee.Dependee",
 
-        "access denied to [METHOD : java.lang.Runtime.exec]"
-        + " from foo.dependee.Dependee",
+        "[METHOD : java.lang.Runtime.exec]"
+        + " cannot be accessed from foo.dependee.Dependee",
 
         "2 access policy violations",
 
         // <rationale> from the POM.
-        "[ERROR] Code that uses [METHOD : java.lang.Runtime.exec]",
+        "Code that uses [METHOD : java.lang.Runtime.exec]",
         "to execute shell scripts or check environment variables",
         "will probably break when we move to new hosting.");
   }
@@ -133,11 +135,11 @@ public class FencesMavenEnforcerRuleIT extends TestCase {
 
         "BUILD FAILURE",
 
-        "Baz.java:5: access denied to [FIELD : java.util.Locale.US]",
+        "Baz.java : L5",
+        "[FIELD : java.util.Locale.US] cannot be accessed from foo.bar.Baz",
+        "We have to support users from many countries, so please",
 
-        "1 access policy violation",
-
-        "We have to support users from many countries, so please");
+        "1 access policy violation");
   }
 
   public final void testImports() throws Exception {
@@ -148,13 +150,26 @@ public class FencesMavenEnforcerRuleIT extends TestCase {
 
         "BUILD FAILURE",
 
-        "Roulette.java:8: access denied to [CONSTRUCTOR : com.example.api.Unsafe.<init>]",
-        "Roulette.java:8: access denied to [METHOD : com.example.api.Unsafe.pushRedButton]",
-        "Roulette.java:10: access denied to [CONSTRUCTOR : com.example.api.Unsafe.<init>]",
-        // TODO: vet the other 3 that are a result of inheritance,
-        // improve error messages to show the inheritance chain by which they
-        // were arrived at, and check that error message here.
+        "[ERROR] test:partially-safe-client:jar:1.0-SNAPSHOT : Roulette.java",
+        ". L8",
+        // Banned direct ctor access.
+        ". . [CONSTRUCTOR : com.example.api.Unsafe.<init>] cannot be accessed from com.example.client.Roulette",
+        // Banned direct method access.
+        ". . [METHOD : com.example.api.Unsafe.pushRedButton] cannot be accessed from com.example.client.Roulette",
+        ". . Lorem ipsum dangerous.",
+        ". L10",
+        // Banned implicit call to super-class ctor.
+        ". . [CONSTRUCTOR : com.example.api.Unsafe.<init>] cannot be accessed from com.example.client.Roulette$1",
+        // TODO: This should not be banned.  It is not problematic to declare a
+        // constructor because they don't inherit.
+        ". . [CONSTRUCTOR : com.example.client.Roulette.1.<init>] cannot be accessed from com.example.client.Roulette because access to [CONSTRUCTOR : com.example.api.Unsafe.<init>] is restricted",
+        // Banned use of method defined on super-class.
+        ". . [METHOD : com.example.client.Roulette.1.pushRedButton] cannot be accessed from com.example.client.Roulette because access to [METHOD : com.example.api.Unsafe.pushRedButton] is restricted",
+        // TODO: This should not be banned.  It's a local field albeit a synthetic one.
+        ". . [FIELD : com.example.client.Roulette.1.this$0] cannot be accessed from com.example.client.Roulette$1 because access to [FIELD : com.example.api.Unsafe.this$0] is restricted",
+        ". . Lorem ipsum dangerous.",
 
+        // TODO: 4 legit ones.
         "6 access policy violations");
   }
 
