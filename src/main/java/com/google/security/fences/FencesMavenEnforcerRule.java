@@ -25,6 +25,7 @@ import com.google.security.fences.config.ApiFence;
 import com.google.security.fences.config.ClassFence;
 import com.google.security.fences.config.Fence;
 import com.google.security.fences.config.PackageFence;
+import com.google.security.fences.inheritance.InheritanceGraph;
 import com.google.security.fences.policy.Policy;
 import com.google.security.fences.util.LazyString;
 import com.google.security.fences.util.Utils;
@@ -166,6 +167,15 @@ public final class FencesMavenEnforcerRule implements EnforcerRule {
   protected void checkAllClasses(
       MavenProject project, Log log, Iterable<? extends ClassRoot> classRoots)
   throws EnforcerRuleException {
+    InheritanceGraph inheritanceGraph;
+    try {
+      inheritanceGraph = InheritanceGraphExtractor
+          .fromClassRoots(classRoots);
+    } catch (IOException ex) {
+      throw new EnforcerRuleException(
+          "Failed to read classes to find inheritance relationships",
+          ex);
+    }
     ImmutableList<Fence> allFences = ImmutableList.copyOf(fences);
 
     if (allFences.isEmpty()) {
@@ -184,7 +194,7 @@ public final class FencesMavenEnforcerRule implements EnforcerRule {
       }
     });
 
-    Checker checker = new Checker(log, p);
+    Checker checker = new Checker(log, inheritanceGraph, p);
     checker.interpolator.addValueSource(
         new PropertiesBasedValueSource(project.getProperties()));
 

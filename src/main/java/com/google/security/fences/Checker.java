@@ -1,6 +1,9 @@
 package com.google.security.fences;
 
 import java.io.IOException;
+import java.util.ArrayDeque;
+import java.util.Collection;
+import java.util.Deque;
 import java.util.Set;
 
 import org.apache.maven.artifact.Artifact;
@@ -22,6 +25,8 @@ import org.objectweb.asm.Opcodes;
 import com.google.common.base.Optional;
 import com.google.common.collect.ImmutableMap;
 import com.google.common.collect.Sets;
+import com.google.security.fences.inheritance.ClassNode;
+import com.google.security.fences.inheritance.InheritanceGraph;
 import com.google.security.fences.namespace.Namespace;
 import com.google.security.fences.policy.AccessLevel;
 import com.google.security.fences.policy.ApiElement;
@@ -37,10 +42,12 @@ final class Checker extends AbstractClassesVisitor {
   final Log log;
   final Policy policy;
   final Interpolator interpolator;
+  final InheritanceGraph inheritanceGraph;
   private int errorCount;
 
-  Checker(Log log, Policy policy) {
+  Checker(Log log, InheritanceGraph inheritanceGraph, Policy policy) {
     this.log = log;
+    this.inheritanceGraph = inheritanceGraph;
     this.policy = policy;
     this.interpolator = new RegexBasedInterpolator();
   }
@@ -184,16 +191,8 @@ final class Checker extends AbstractClassesVisitor {
               + " in " + Utils.artToString(art);
         }
     });
-    AccessLevel levelFromPolicy = AccessLevel.ALLOWED; // Default to java rules.
-    Iterable<Policy.NamespacePolicy> applicable = policy.forNamespace(ns);
-    for (Policy.NamespacePolicy nsp : applicable) {
-      Optional<Policy.AccessControlDecision> d =
-          nsp.accessPolicyForApiElement(el);
-      if (d.isPresent()) {
-        levelFromPolicy = d.get().accessLevel;
-        break;
-      }
-    }
+    PolicyResult policyResult = applyAccessPolicy(ns, el);
+    AccessLevel levelFromPolicy = policyResult.accessLevel;
     switch (levelFromPolicy) {
       case ALLOWED:
         break;
@@ -205,18 +204,7 @@ final class Checker extends AbstractClassesVisitor {
 
         log.error(source + ": access denied to " + el + " from " + ns);
         incrementErrorCount();
-        // Find the most-specific rationale.
-        Optional<String> rationale = Optional.absent();
-        for (Policy.NamespacePolicy nsp : applicable) {
-          Optional<Policy.AccessControlDecision> d =
-              nsp.accessPolicyForApiElement(el);
-          if (d.isPresent()) {
-            rationale = d.get().rationale;
-            if (rationale.isPresent()) {
-              break;
-            }
-          }
-        }
+        Optional<String> rationale = policyResult.rationale;
         if (rationale.isPresent()) {
           String rationaleText = rationale.get();
           ValueSource artifactValueSource = new ObjectBasedValueSource(art);
@@ -240,6 +228,99 @@ final class Checker extends AbstractClassesVisitor {
     }
   }
 
+  static final class PolicyResult {
+    final AccessLevel accessLevel;
+    final Optional<String> rationale;
+
+    static final PolicyResult DEFAULT = new PolicyResult(
+        AccessLevel.ALLOWED,  // Default to plain old Java rules.
+        Optional.<String>absent());
+
+    PolicyResult(AccessLevel accessLevel, Optional<String> rationale) {
+      this.accessLevel = accessLevel;
+      this.rationale = rationale;
+    }
+  }
+
+  PolicyResult applyAccessPolicy(Namespace from, ApiElement to) {
+    // Find the most-specific rationale.
+    Iterable<Policy.NamespacePolicy> applicable =
+        policy.forNamespace(from);
+
+    // We check all classes before the interfaces since method implementations
+    // specified in concrete and abstract classes override interface default
+    // methods and we want the order of application of policies to mimic the
+    // order in
+    Deque<ApiElement> typesToCheck = new ArrayDeque<ApiElement>();
+    Deque<ApiElement> interfaces = new ArrayDeque<ApiElement>();
+    typesToCheck.add(to);
+
+    Set<ApiElement> checked = Sets.newLinkedHashSet();
+
+    while (true) {
+      boolean isInterface = false;
+      ApiElement el;
+      el = typesToCheck.pollFirst();
+      if (el == null) {
+        el = interfaces.pollFirst();
+        if (el == null) {
+          break;
+        } else {
+          isInterface = true;
+        }
+      }
+      if (!checked.add(el)) {
+        continue;
+      }
+
+      AccessLevel levelFromPolicy = null;
+      Optional<String> rationale = Optional.absent();
+      for (Policy.NamespacePolicy nsp : applicable) {
+        Optional<Policy.AccessControlDecision> d =
+            nsp.accessPolicyForApiElement(el);
+        if (d.isPresent()) {
+          AccessLevel dLvl = d.get().accessLevel;
+          if (levelFromPolicy == null) {
+            levelFromPolicy = dLvl;
+          }
+          if (dLvl == levelFromPolicy) {
+            rationale = d.get().rationale;
+            if (rationale.isPresent()) {
+              break;
+            }
+          }
+        }
+      }
+
+      if (levelFromPolicy != null) {
+        return new PolicyResult(
+            // Default to java rules.
+            levelFromPolicy,
+            rationale);
+      } else {
+        Optional<ApiElement> elClass = el.containingClass();
+        if (elClass.isPresent()) {
+          String elInternalName = elClass.get().toInternalName();
+          Optional<ClassNode> nodeOpt = inheritanceGraph.named(elInternalName);
+          if (nodeOpt.isPresent()) {
+            ClassNode node = nodeOpt.get();
+            if (!isInterface && node.superType.isPresent()) {
+              addIfPresent(
+                  typesToCheck,
+                  apiElementFromSuper(el, node.superType.get()));
+            }
+            for (String interfaceNodeName : node.interfaces) {
+              addIfPresent(
+                  typesToCheck,
+                  apiElementFromSuper(el, interfaceNodeName));
+            }
+          }
+        }
+      }
+    }
+    return PolicyResult.DEFAULT;
+  }
+
   static ApiElement apiElementFromInternalClassName(String name) {
     ApiElement apiElement = ApiElement.DEFAULT_PACKAGE;
     String[] nameParts = name.split("/");
@@ -251,5 +332,29 @@ final class Checker extends AbstractClassesVisitor {
       apiElement = apiElement.child(classNamePart, ApiElementType.CLASS);
     }
     return apiElement;
+  }
+
+  static Optional<ApiElement> apiElementFromSuper(
+      ApiElement el, String superTypeName) {
+    switch (el.type) {
+      case CLASS:
+        return Optional.of(apiElementFromInternalClassName(superTypeName));
+      case CONSTRUCTOR:
+      case FIELD:
+      case METHOD:
+        return Optional.of(
+            apiElementFromSuper(el.parent.get(), superTypeName).get()
+            .child(el.name, el.type));
+      case PACKAGE:
+        return Optional.absent();
+    }
+    throw new AssertionError(el.type);
+  }
+
+  static <T> void addIfPresent(
+      Collection<? super T> c, Optional<? extends T> el) {
+    if (el.isPresent()) {
+      c.add(el.get());
+    }
   }
 }

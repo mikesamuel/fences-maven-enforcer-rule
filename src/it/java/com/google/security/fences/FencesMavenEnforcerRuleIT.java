@@ -151,8 +151,11 @@ public class FencesMavenEnforcerRuleIT extends TestCase {
         "Roulette.java:8: access denied to [CONSTRUCTOR : com.example.api.Unsafe.<init>]",
         "Roulette.java:8: access denied to [METHOD : com.example.api.Unsafe.pushRedButton]",
         "Roulette.java:10: access denied to [CONSTRUCTOR : com.example.api.Unsafe.<init>]",
+        // TODO: vet the other 3 that are a result of inheritance,
+        // improve error messages to show the inheritance chain by which they
+        // were arrived at, and check that error message here.
 
-        "3 access policy violations");
+        "6 access policy violations");
   }
 
 }

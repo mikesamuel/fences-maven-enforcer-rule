@@ -17,7 +17,6 @@ import javax.annotation.Nonnull;
 
 import org.objectweb.asm.ClassReader;
 import org.objectweb.asm.ClassVisitor;
-import org.objectweb.asm.Opcodes;
 
 import com.google.common.base.Charsets;
 import com.google.common.base.Function;
@@ -242,20 +241,8 @@ public class SystemInheritanceGraph {
               String entryName = zipEntry.getName();
               if (entryName.endsWith(".class")) {
                 ClassReader reader = new ClassReader(zipIn);
-                ClassVisitor visitor = new ClassVisitor(Opcodes.ASM5) {
-                  @Override
-                  public void visit(
-                      int version, int access, String name, String signature,
-                      String superName, String[] interfaces) {
-                    System.err.println(
-                        "Declaring " + name + " extends " + superName
-                        + " implements " + Arrays.toString(interfaces)
-                        + " signature " + signature);
-                    graphBuilder.declare(
-                        name, Optional.fromNullable(superName),
-                        Arrays.asList(interfaces));
-                  }
-                };
+                ClassVisitor visitor = new ClassNodeFromClassFileVisitor(
+                    graphBuilder);
                 reader.accept(visitor, 0 /* flags */);
               }
             }
