@@ -156,7 +156,7 @@ final class Checker extends AbstractClassesVisitor {
         int opcode, String owner, String name, String desc) {
       ApiElement classEl = apiElementFromInternalClassName(owner);
       ApiElement fieldApiElement = classEl.child(name, ApiElementType.FIELD);
-      checkAllowed(fieldApiElement);
+      checkAllowed(fieldApiElement, desc);
     }
 
     @Override
@@ -173,7 +173,7 @@ final class Checker extends AbstractClassesVisitor {
           name,
           ApiElement.CONSTRUCTOR_SPECIAL_METHOD_NAME.equals(name)
           ? ApiElementType.CONSTRUCTOR : ApiElementType.METHOD);
-      checkAllowed(methodApiElement);
+      checkAllowed(methodApiElement, desc);
     }
 
     @Override
@@ -184,17 +184,18 @@ final class Checker extends AbstractClassesVisitor {
     }
 
     @SuppressWarnings("synthetic-access")
-    void checkAllowed(ApiElement el) {
+    void checkAllowed(ApiElement el, String descriptor) {
       if (alreadyChecked.add(el)) {
         Checker.this.checkAllowed(
-            art, sourceFilePath.or(className), latestLineNumber, ns, el);
+            art, sourceFilePath.or(className), latestLineNumber,
+            ns, el, descriptor);
       }
     }
   }
 
   private void checkAllowed(
       final Artifact art, String classDebugString, int latestLineNumber,
-      final Namespace ns, final ApiElement el) {
+      final Namespace ns, final ApiElement el, String descriptor) {
     log.debug(new LazyString() {
         @Override
         protected String makeString() {
@@ -202,7 +203,7 @@ final class Checker extends AbstractClassesVisitor {
               + " in " + Utils.artToString(art);
         }
     });
-    PolicyResult policyResult = applyAccessPolicy(ns, el);
+    PolicyResult policyResult = applyAccessPolicy(ns, el, descriptor);
     AccessLevel levelFromPolicy = policyResult.accessLevel;
     switch (levelFromPolicy) {
       case ALLOWED:
@@ -242,7 +243,8 @@ final class Checker extends AbstractClassesVisitor {
     }
   }
 
-  PolicyResult applyAccessPolicy(Namespace from, ApiElement to) {
+  PolicyResult applyAccessPolicy(
+      Namespace from, ApiElement to, String descriptor) {
     // Find the most-specific rationale.
     Iterable<Policy.NamespacePolicy> applicable =
         policy.forNamespace(from);
@@ -298,28 +300,55 @@ final class Checker extends AbstractClassesVisitor {
             levelFromPolicy,
             rationale,
             el);
-      } else {
+      } else if (el.type == ApiElementType.FIELD
+                 || el.type == ApiElementType.METHOD) {
+        // Sub-types have direct access to fields and methods from their
+        // super-types but do not have access to constructors except via
+        // constructor chaining.  Chained constructor calls always explicitly
+        // appear in the bytecode.
         Optional<ApiElement> elClass = el.containingClass();
         if (elClass.isPresent()) {
           String elInternalName = elClass.get().toInternalName();
           Optional<ClassNode> nodeOpt = inheritanceGraph.named(elInternalName);
           if (nodeOpt.isPresent()) {
             ClassNode node = nodeOpt.get();
-            if (!isInterface && node.superType.isPresent()) {
-              addIfPresent(
-                  typesToCheck,
-                  apiElementFromSuper(el, node.superType.get()));
-            }
-            for (String interfaceNodeName : node.interfaces) {
-              addIfPresent(
-                  typesToCheck,
-                  apiElementFromSuper(el, interfaceNodeName));
+            // Don't apply the policy to super-types if the field or method
+            if (isDefinedInSuperTypes(node, to, el, descriptor)) {
+              if (!isInterface && node.superType.isPresent()) {
+                addIfPresent(
+                    typesToCheck,
+                    apiElementFromSuper(el, node.superType.get()));
+              }
+              for (String interfaceNodeName : node.interfaces) {
+                addIfPresent(
+                    typesToCheck,
+                    apiElementFromSuper(el, interfaceNodeName));
+              }
             }
           }
         }
       }
     }
     return PolicyResult.defaultResult(to);
+  }
+
+  private static boolean isDefinedInSuperTypes(
+      ClassNode cn, ApiElement subTypeElement,
+      ApiElement superTypeElement, String descriptor) {
+    String name = superTypeElement.name;
+    ApiElementType type = superTypeElement.type;
+    boolean includePrivates = subTypeElement == superTypeElement;
+    switch (type) {
+      case FIELD:
+        return includePrivates
+            ? !cn.getField(name).isPresent()
+            : cn.isFieldVisibleThrough(name);
+      case METHOD:
+        return includePrivates
+            ? !cn.getMethod(name, descriptor).isPresent()
+            : cn.isMethodVisibleThrough(name, descriptor);
+      default: return false;
+    }
   }
 
   static ApiElement apiElementFromInternalClassName(String name) {

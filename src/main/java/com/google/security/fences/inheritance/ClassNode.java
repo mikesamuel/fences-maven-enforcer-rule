@@ -53,6 +53,31 @@ public final class ClassNode implements Comparable<ClassNode> {
   }
 
   /**
+   * The method with the given name and descriptor if any.
+   */
+  public Optional<MethodDetails> getMethod(
+      String methodName, String descriptor) {
+    for (MethodDetails m : methods) {
+      if (m.name.equals(methodName) && m.desc.equals(descriptor)) {
+        return Optional.of(m);
+      }
+    }
+    return Optional.absent();
+  }
+
+  /**
+   * The field with the given name if any.
+   */
+  public Optional<FieldDetails> getField(String fieldName) {
+    for (FieldDetails f : fields) {
+      if (f.name.equals(fieldName)) {
+        return Optional.of(f);
+      }
+    }
+    return Optional.absent();
+  }
+
+  /**
    * True if a method with the given name and descriptor is visible from
    * a super-type through this type.
    * In other words, there is no compatible method declaration that would
@@ -62,7 +87,7 @@ public final class ClassNode implements Comparable<ClassNode> {
    * @param descriptor the Java internal descriptor consisting of the
    *     parameter types in order in parentheses followed by the return type.
    */
-  public boolean methodVisibleThrough(String methodName, String descriptor) {
+  public boolean isMethodVisibleThrough(String methodName, String descriptor) {
     for (MethodDetails m : methods) {
       // Method return-type specialization and generic parameter specialization
       // do not affect descriptors because javac creates two methods --
@@ -84,7 +109,7 @@ public final class ClassNode implements Comparable<ClassNode> {
    * In other words, there is no masking field declaration in this class visible
    * to sub-types.
    */
-  public boolean fieldVisibleThrough(String fieldName) {
+  public boolean isFieldVisibleThrough(String fieldName) {
     for (FieldDetails f : fields) {
       if (f.name.equals(fieldName)) {
         // Private fields do not mask fields in super-tpes.

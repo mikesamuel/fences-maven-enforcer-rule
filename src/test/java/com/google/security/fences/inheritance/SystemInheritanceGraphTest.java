@@ -2,6 +2,7 @@ package com.google.security.fences.inheritance;
 
 import com.google.common.base.Optional;
 import com.google.common.collect.ImmutableList;
+import com.sleepycat.asm.Opcodes;
 
 import junit.framework.TestCase;
 
@@ -73,5 +74,61 @@ public final class SystemInheritanceGraphTest extends TestCase {
         );
 
     assertFalse(g.named("java/lang/NoSuchClass").isPresent());
+  }
+
+  public static void testFieldsAndMethods() {
+    InheritanceGraph g = InheritanceGraph.builder()
+        .declare(
+            "com/example/MyReader",
+            Optional.of("java/io/Reader"),
+            ImmutableList.<String>of(),
+            ImmutableList.of(
+                new MethodDetails("close", "()V", Opcodes.ACC_PUBLIC),
+                new MethodDetails("read", "([CII)I", Opcodes.ACC_PUBLIC),
+                new MethodDetails("reset", "()V", Opcodes.ACC_PRIVATE)),
+            ImmutableList.of(
+                new FieldDetails("x", /*"I",*/ Opcodes.ACC_PRIVATE),
+                new FieldDetails(
+                    "DEFAULT_CAPACITY", /*"I",*/
+                    Opcodes.ACC_PUBLIC | Opcodes.ACC_FINAL
+                    | Opcodes.ACC_STATIC)))
+        .build();
+    {
+      Optional<ClassNode> pushbackReader = g.named("java/io/PushbackReader");
+      assertTrue(pushbackReader.isPresent());
+      Optional<MethodDetails> close = pushbackReader.get()
+          .getMethod("close", "()V");
+      assertEquals(Opcodes.ACC_PUBLIC, close.get().access);
+      assertEquals("close", close.get().name);
+      assertEquals("()V", close.get().desc);
+
+      assertFalse(
+          pushbackReader.get()
+          .getMethod("toString", "()Ljava/lang/String;")
+          .isPresent());
+
+      assertTrue(
+          pushbackReader.get()
+          .isMethodVisibleThrough("toString", "()Ljava/lang/String;"));
+      assertFalse(
+          pushbackReader.get()
+          .isMethodVisibleThrough("ready", "()Z"));
+
+      assertEquals(
+          "java/io/FilterReader",
+          pushbackReader.get().superType.get());
+    }
+
+    {
+      Optional<ClassNode> myReader = g.named("com/example/MyReader");
+      assertTrue(myReader.isPresent());
+
+      assertTrue(myReader.get().isFieldVisibleThrough("x"));
+      assertFalse(myReader.get().isFieldVisibleThrough("DEFAULT_CAPACITY"));
+
+      assertEquals(
+          "java/io/Reader",
+          myReader.get().superType.get());
+    }
   }
 }

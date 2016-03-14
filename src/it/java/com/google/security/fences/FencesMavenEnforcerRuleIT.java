@@ -160,17 +160,11 @@ public class FencesMavenEnforcerRuleIT extends TestCase {
         ". L10",
         // Banned implicit call to super-class ctor.
         ". . [CONSTRUCTOR : com.example.api.Unsafe.<init>] cannot be accessed from com.example.client.Roulette$1",
-        // TODO: This should not be banned.  It is not problematic to declare a
-        // constructor because they don't inherit.
-        ". . [CONSTRUCTOR : com.example.client.Roulette.1.<init>] cannot be accessed from com.example.client.Roulette because access to [CONSTRUCTOR : com.example.api.Unsafe.<init>] is restricted",
         // Banned use of method defined on super-class.
         ". . [METHOD : com.example.client.Roulette.1.pushRedButton] cannot be accessed from com.example.client.Roulette because access to [METHOD : com.example.api.Unsafe.pushRedButton] is restricted",
-        // TODO: This should not be banned.  It's a local field albeit a synthetic one.
-        ". . [FIELD : com.example.client.Roulette.1.this$0] cannot be accessed from com.example.client.Roulette$1 because access to [FIELD : com.example.api.Unsafe.this$0] is restricted",
         ". . Lorem ipsum dangerous.",
 
-        // TODO: 4 legit ones.
-        "6 access policy violations");
+        "4 access policy violations");
   }
 
 }
