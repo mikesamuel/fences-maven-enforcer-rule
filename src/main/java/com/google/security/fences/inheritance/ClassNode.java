@@ -1,8 +1,11 @@
 package com.google.security.fences.inheritance;
 
+import org.objectweb.asm.Opcodes;
+
 import com.google.common.base.Optional;
 import com.google.common.base.Preconditions;
 import com.google.common.collect.ImmutableList;
+import com.google.common.collect.ImmutableSet;
 
 /**
  * A node in the inheritance graph.
@@ -26,15 +29,71 @@ public final class ClassNode implements Comparable<ClassNode> {
    * for interfaces the interfaces it {@code extends}.
    */
   public final ImmutableList<String> interfaces;
+  /**
+   * Names and signatures of declared methods.
+   */
+  public final ImmutableSet<MethodDetails> methods;
+  /**
+   * Names of declared fields.
+   */
+  public final ImmutableSet<FieldDetails> fields;
 
   ClassNode(
       String name,
-      Optional<String> superType, Iterable<? extends String> interfaces) {
+      Optional<String> superType, Iterable<? extends String> interfaces,
+      Iterable<? extends MethodDetails> methods,
+      Iterable<? extends FieldDetails> fields) {
     // Names should be of form com/example/Name, not com.example.Name.
     Preconditions.checkArgument(!name.contains("."), name);
     this.name = name;
     this.superType = superType;
-    this.interfaces = ImmutableList.<String>copyOf(interfaces);
+    this.interfaces = ImmutableList.copyOf(interfaces);
+    this.methods = ImmutableSet.copyOf(methods);
+    this.fields = ImmutableSet.copyOf(fields);
+  }
+
+  /**
+   * True if a method with the given name and descriptor is visible from
+   * a super-type through this type.
+   * In other words, there is no compatible method declaration that would
+   * prevent a sub-type from inheriting the method from a super-type.
+   *
+   * @param methodName the name of a method available on this class.
+   * @param descriptor the Java internal descriptor consisting of the
+   *     parameter types in order in parentheses followed by the return type.
+   */
+  public boolean methodVisibleThrough(String methodName, String descriptor) {
+    for (MethodDetails m : methods) {
+      // Method return-type specialization and generic parameter specialization
+      // do not affect descriptors because javac creates two methods --
+      // the specialized version and an unspecialized version that calls the
+      // former.
+      if (m.name.equals(methodName) && m.desc.equals(descriptor)) {
+        // Methods do not inherit from private methods and private methods
+        // do not override methods declared in super-types.
+        if ((m.access & Opcodes.ACC_PRIVATE) == 0) {
+          return false;
+        }
+      }
+    }
+    return true;
+  }
+
+  /**
+   * True if the named field is visible from a super-type through this type.
+   * In other words, there is no masking field declaration in this class visible
+   * to sub-types.
+   */
+  public boolean fieldVisibleThrough(String fieldName) {
+    for (FieldDetails f : fields) {
+      if (f.name.equals(fieldName)) {
+        // Private fields do not mask fields in super-tpes.
+        if ((f.access & Opcodes.ACC_PRIVATE) == 0) {
+          return false;
+        }
+      }
+    }
+    return true;
   }
 
   public int compareTo(ClassNode x) {

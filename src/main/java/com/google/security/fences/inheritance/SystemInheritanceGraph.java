@@ -16,7 +16,6 @@ import java.util.zip.ZipInputStream;
 import javax.annotation.Nonnull;
 
 import org.objectweb.asm.ClassReader;
-import org.objectweb.asm.ClassVisitor;
 
 import com.google.common.base.Charsets;
 import com.google.common.base.Function;
@@ -26,6 +25,7 @@ import com.google.common.base.Preconditions;
 import com.google.common.base.Predicate;
 import com.google.common.collect.ImmutableList;
 import com.google.common.collect.Iterables;
+import com.google.common.collect.Lists;
 import com.google.common.io.ByteStreams;
 import com.sleepycat.je.Database;
 import com.sleepycat.je.DatabaseConfig;
@@ -66,7 +66,17 @@ public class SystemInheritanceGraph {
    * Name of a database that maps internal names to
    * comma separated interface names.
    */
-  private static final String INTERFACE_DB_NAME = "interface";
+  private static final String INTERFACE_DB_NAME = "interfaces";
+  /**
+   * Names of a database that maps internal class names to comma separated
+   * lists of the names and signatures of methods declared therein.
+   */
+  private static final String METHOD_DB_NAME = "methods";
+  /**
+   * Names of a database that maps internal class names to comma separated
+   * lists of the names of fields declared therein.
+   */
+  private static final String FIELD_DB_NAME = "fields";
 
   private static final class LazyLoader {
     static final LazyLoader INSTANCE = new LazyLoader();
@@ -75,6 +85,8 @@ public class SystemInheritanceGraph {
     private final Environment env;
     private final Database supertypeDb;
     private final Database interfaceDb;
+    private final Database methodDb;
+    private final Database fieldDb;
 
     private LazyLoader() {
       try {
@@ -91,6 +103,8 @@ public class SystemInheritanceGraph {
       dbConfig.setReadOnly(true);
       this.supertypeDb = env.openDatabase(null, SUPERTYPE_DB_NAME, dbConfig);
       this.interfaceDb = env.openDatabase(null, INTERFACE_DB_NAME, dbConfig);
+      this.methodDb = env.openDatabase(null, METHOD_DB_NAME, dbConfig);
+      this.fieldDb = env.openDatabase(null, FIELD_DB_NAME, dbConfig);
     }
 
     private Environment init() throws IOException {
@@ -101,18 +115,24 @@ public class SystemInheritanceGraph {
       home.mkdirs();
 
       // Copy databases to the home directory so we can point BDB at them.
-      String dbBaseName = "00000000.jdb";
-      InputStream in = getClass().getResourceAsStream(
-          "system-inheritance-graph/" + dbBaseName);
-      try {
-        OutputStream out = new FileOutputStream(new File(home, dbBaseName));
+      String[] dbBaseNames = {
+          "00000000.jdb",
+          "00000001.jdb",
+          "00000002.jdb",
+      };
+      for (String dbBaseName : dbBaseNames) {
+        InputStream in = getClass().getResourceAsStream(
+            "system-inheritance-graph/" + dbBaseName);
         try {
+          OutputStream out = new FileOutputStream(new File(home, dbBaseName));
+          try {
           ByteStreams.copy(in, out);
+          } finally {
+            out.close();
+          }
         } finally {
-          out.close();
+          in.close();
         }
-      } finally {
-        in.close();
       }
 
       EnvironmentConfig config = new EnvironmentConfig();
@@ -126,16 +146,18 @@ public class SystemInheritanceGraph {
       if (inMap != null) {
         return inMap;
       }
+      DatabaseEntry nameData = utf8(name);
+
       DatabaseEntry interfaces = new DatabaseEntry();
       OperationStatus ifaceStatus = interfaceDb.get(
-          null, utf8(name), interfaces, LockMode.DEFAULT);
+          null, nameData, interfaces, LockMode.DEFAULT);
       if (!OperationStatus.SUCCESS.equals(ifaceStatus)) {
         return null;
       }
       DatabaseEntry supertype = new DatabaseEntry();
 
       OperationStatus stypeStatus = supertypeDb.get(
-          null, utf8(name), supertype, LockMode.DEFAULT);
+          null, nameData, supertype, LockMode.DEFAULT);
 
       Optional<String> supertypeName = Optional.absent();
       if (OperationStatus.SUCCESS.equals(stypeStatus)) {
@@ -146,9 +168,38 @@ public class SystemInheritanceGraph {
       List<String> interfaceNames = ImmutableList.of();
       if (!interfaceNamesCsv.isEmpty()) {
         interfaceNames = Arrays.asList(interfaceNamesCsv.split(","));
-
       }
-      ClassNode node = new ClassNode(name, supertypeName, interfaceNames);
+
+      DatabaseEntry methodSigs = new DatabaseEntry();
+      OperationStatus methodStatus = methodDb.get(
+          null, nameData, methodSigs, LockMode.DEFAULT);
+      List<MethodDetails> methods = ImmutableList.of();
+      if (OperationStatus.SUCCESS.equals(methodStatus)) {
+        String methodCsv = utf8(methodSigs);
+        if (!methodCsv.isEmpty()) {
+          methods = Lists.newArrayList();
+          for (String compactString : methodCsv.split(",")) {
+            methods.add(MethodDetails.fromCompactString(compactString));
+          }
+        }
+      }
+
+      DatabaseEntry fieldSigs = new DatabaseEntry();
+      OperationStatus fieldStatus = fieldDb.get(
+          null, nameData, fieldSigs, LockMode.DEFAULT);
+      List<FieldDetails> fields = ImmutableList.of();
+      if (OperationStatus.SUCCESS.equals(fieldStatus)) {
+        String fieldCsv = utf8(fieldSigs);
+        if (!fieldCsv.isEmpty()) {
+          fields = Lists.newArrayList();
+          for (String compactString : fieldCsv.split(",")) {
+            fields.add(FieldDetails.fromCompactString(compactString));
+          }
+        }
+      }
+
+      ClassNode node = new ClassNode(
+          name, supertypeName, interfaceNames, methods, fields);
       inMap = this.classNodes.putIfAbsent(name, node);
       return inMap != null ? inMap : node;
     }
@@ -241,8 +292,9 @@ public class SystemInheritanceGraph {
               String entryName = zipEntry.getName();
               if (entryName.endsWith(".class")) {
                 ClassReader reader = new ClassReader(zipIn);
-                ClassVisitor visitor = new ClassNodeFromClassFileVisitor(
-                    graphBuilder);
+                ClassNodeFromClassFileVisitor visitor =
+                    new ClassNodeFromClassFileVisitor(graphBuilder);
+                visitor.setIncludePrivates(false);
                 reader.accept(visitor, 0 /* flags */);
               }
             }
@@ -267,16 +319,37 @@ public class SystemInheritanceGraph {
       dbConfig.setReadOnly(false);
       Database supertypeDb = env.openDatabase(txn, SUPERTYPE_DB_NAME, dbConfig);
       Database interfaceDb = env.openDatabase(txn, INTERFACE_DB_NAME, dbConfig);
+      Database methodDb = env.openDatabase(txn, METHOD_DB_NAME, dbConfig);
+      Database fieldDb = env.openDatabase(txn, FIELD_DB_NAME, dbConfig);
 
       for (ClassNode node : graph.allDeclaredNodes()) {
         String name = node.name;
+        DatabaseEntry nameData = utf8(name);
         if (node.superType.isPresent()) {
-          supertypeDb.put(txn, utf8(name), utf8(node.superType.get()));
+          supertypeDb.put(txn, nameData, utf8(node.superType.get()));
         }
         interfaceDb.put(
-            txn, utf8(name), utf8(Joiner.on(",").join(node.interfaces)));
+            txn, nameData, utf8(Joiner.on(",").join(node.interfaces)));
+        if (!node.fields.isEmpty()) {
+          StringBuilder sb = new StringBuilder();
+          for (FieldDetails f : node.fields) {
+            if (sb.length() != 0) { sb.append(','); }
+            sb.append(f.toCompactString());
+          }
+          fieldDb.put(txn, nameData, utf8(sb.toString()));
+        }
+        if (!node.methods.isEmpty()) {
+          StringBuilder sb = new StringBuilder();
+          for (MethodDetails m : node.methods) {
+            if (sb.length() != 0) { sb.append(','); }
+            sb.append(m.toCompactString());
+          }
+          methodDb.put(txn, nameData, utf8(sb.toString()));
+        }
       }
 
+      fieldDb.close();
+      methodDb.close();
       interfaceDb.close();
       supertypeDb.close();
       env.close();

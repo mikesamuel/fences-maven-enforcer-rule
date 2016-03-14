@@ -1,11 +1,18 @@
 package com.google.security.fences.inheritance;
 
 import java.util.Arrays;
+import java.util.List;
+
+import javax.annotation.Nullable;
 
 import org.objectweb.asm.ClassVisitor;
+import org.objectweb.asm.FieldVisitor;
+import org.objectweb.asm.MethodVisitor;
 import org.objectweb.asm.Opcodes;
 
 import com.google.common.base.Optional;
+import com.google.common.base.Preconditions;
+import com.google.common.collect.Lists;
 
 /**
  * A class visitor that visits an ASM class to declare
@@ -13,6 +20,13 @@ import com.google.common.base.Optional;
  */
 public final class ClassNodeFromClassFileVisitor extends ClassVisitor {
   private final InheritanceGraph.Builder graphBuilder;
+
+  private String name;
+  private Optional<String> superName;
+  private Iterable<String> interfaces;
+  private List<FieldDetails> fields;
+  private List<MethodDetails> methods;
+  private boolean includePrivates = true;
 
   /**
    * @param graphBuilder receives declarations for classes visited.
@@ -22,12 +36,44 @@ public final class ClassNodeFromClassFileVisitor extends ClassVisitor {
     this.graphBuilder = graphBuilder;
   }
 
+  void setIncludePrivates(boolean newIncludePrivates) {
+    this.includePrivates = newIncludePrivates;
+  }
+
   @Override
   public void visit(
-      int version, int access, String name, String signature,
-      String superName, String[] interfaces) {
+      int version, int access, String className, String signature,
+      @Nullable String superClassName, String[] interfaceNames) {
+    Preconditions.checkState(this.name == null);
+    this.name = className;
+    this.superName = Optional.fromNullable(superClassName);
+    this.interfaces = Arrays.asList(interfaceNames);
+    this.fields = Lists.newArrayList();
+    this.methods = Lists.newArrayList();
+  }
+
+  @Override
+  public void visitEnd() {
     graphBuilder.declare(
-        name, Optional.fromNullable(superName),
-        Arrays.asList(interfaces));
+        name, superName, interfaces, methods, fields);
+
+  }
+
+  @Override
+  public FieldVisitor visitField(int access, String fieldName, String desc,
+      String signature, Object value) {
+    if (includePrivates || (access & Opcodes.ACC_PRIVATE) == 0) {
+      this.fields.add(new FieldDetails(fieldName, access));
+    }
+    return null;
+  }
+
+  @Override
+  public MethodVisitor visitMethod(int access, String methodName, String desc,
+      String signature, String[] exceptions) {
+    if (includePrivates || (access & Opcodes.ACC_PRIVATE) == 0) {
+      this.methods.add(new MethodDetails(methodName, desc, access));
+    }
+    return null;
   }
 }

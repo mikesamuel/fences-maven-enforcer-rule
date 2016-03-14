@@ -57,13 +57,16 @@ public final class InheritanceGraph {
      */
     public Builder declare(
         String name, Optional<String> superClassName,
-        Iterable<? extends String> interfaceNames) {
+        Iterable<? extends String> interfaceNames,
+        Iterable<? extends MethodDetails> methods,
+        Iterable<? extends FieldDetails> fields) {
       ClassNode node = classNodes.get(name);
       if (node != null) {
         // Assume that subsequent declarations are from masked class-files on
         // the same class-path.
       } else {
-        node = new ClassNode(name, superClassName, interfaceNames);
+        node = new ClassNode(
+            name, superClassName, interfaceNames, methods, fields);
         classNodes.put(name, node);
       }
       return this;

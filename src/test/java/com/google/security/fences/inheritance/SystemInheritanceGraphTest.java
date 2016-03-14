@@ -36,7 +36,9 @@ public final class SystemInheritanceGraphTest extends TestCase {
         .declare(
             "com/example/SillyInputStream",
             Optional.of("java/io/InputStream"),
-            ImmutableList.of("java/io/Serializable"))
+            ImmutableList.of("java/io/Serializable"),
+            ImmutableList.<MethodDetails>of(),
+            ImmutableList.<FieldDetails>of())
         .build();
     assertClassNodeEquals(
         g,
