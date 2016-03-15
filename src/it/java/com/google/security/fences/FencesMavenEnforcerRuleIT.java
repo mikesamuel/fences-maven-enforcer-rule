@@ -153,18 +153,24 @@ public class FencesMavenEnforcerRuleIT extends TestCase {
         "[ERROR] test:partially-safe-client:jar:1.0-SNAPSHOT : Roulette.java",
         ". L8",
         // Banned direct ctor access.
-        ". . [CONSTRUCTOR : com.example.api.Unsafe.<init>] cannot be accessed from com.example.client.Roulette",
+        ". . [CONSTRUCTOR : com.example.api.Unsafe.<init>] cannot be accessed"
+        + " from com.example.client.Roulette",
         // Banned direct method access.
-        ". . [METHOD : com.example.api.Unsafe.pushRedButton] cannot be accessed from com.example.client.Roulette",
+        ". . [METHOD : com.example.api.Unsafe.pushRedButton] cannot be accessed"
+        + " from com.example.client.Roulette (2 times)",
         ". . Lorem ipsum dangerous.",
-        ". L10",
+        ". L11",
         // Banned implicit call to super-class ctor.
-        ". . [CONSTRUCTOR : com.example.api.Unsafe.<init>] cannot be accessed from com.example.client.Roulette$1",
+        // But the call to the local constructor itself is not banned.
+        ". . [CONSTRUCTOR : com.example.api.Unsafe.<init>] cannot be accessed"
+        + " from com.example.client.Roulette$1",
         // Banned use of method defined on super-class.
-        ". . [METHOD : com.example.client.Roulette.1.pushRedButton] cannot be accessed from com.example.client.Roulette because access to [METHOD : com.example.api.Unsafe.pushRedButton] is restricted",
+        ". . [METHOD : com.example.client.Roulette.1.pushRedButton] cannot be"
+        + " accessed from com.example.client.Roulette because"
+        + " [METHOD : com.example.api.Unsafe.pushRedButton] is restricted",
         ". . Lorem ipsum dangerous.",
 
-        "4 access policy violations");
+        "5 access policy violations");
   }
 
 }

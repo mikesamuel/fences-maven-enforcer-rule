@@ -5,6 +5,7 @@ import java.util.ArrayDeque;
 import java.util.Collection;
 import java.util.Deque;
 import java.util.List;
+import java.util.Map;
 import java.util.Set;
 
 import org.apache.maven.artifact.Artifact;
@@ -20,6 +21,7 @@ import org.objectweb.asm.Opcodes;
 import com.google.common.base.Optional;
 import com.google.common.collect.ImmutableList;
 import com.google.common.collect.Lists;
+import com.google.common.collect.Maps;
 import com.google.common.collect.Sets;
 import com.google.security.fences.inheritance.ClassNode;
 import com.google.security.fences.inheritance.InheritanceGraph;
@@ -45,25 +47,6 @@ final class Checker extends AbstractClassesVisitor {
     this.log = log;
     this.inheritanceGraph = inheritanceGraph;
     this.policy = policy;
-  }
-
-  private synchronized void accessDeniedTo(
-      Artifact art,
-      Namespace useSiteContainer,
-      String classDebugString,
-      int latestLineNumber,
-      ApiElement el,
-      PolicyResult policyResult) {
-    assert policyResult.accessLevel != AccessLevel.ALLOWED;
-    this.violations.add(new Violation(
-        art,
-        useSiteContainer,
-        classDebugString,
-        latestLineNumber,
-        el,
-        policyResult.target,
-        policyResult.rationale
-        ));
   }
 
   /**
@@ -132,7 +115,8 @@ final class Checker extends AbstractClassesVisitor {
     final String className;
     final Namespace ns;
     final String methodName;
-    private final Set<ApiElement> alreadyChecked = Sets.newHashSet();
+    private final Map<ApiElement, Map<String, PolicyResult>> memoTable =
+        Maps.newLinkedHashMap();
     private int latestLineNumber = -1;
 
     MethodChecker(
@@ -156,7 +140,7 @@ final class Checker extends AbstractClassesVisitor {
         int opcode, String owner, String name, String desc) {
       ApiElement classEl = apiElementFromInternalClassName(owner);
       ApiElement fieldApiElement = classEl.child(name, ApiElementType.FIELD);
-      checkAllowed(fieldApiElement, desc);
+      requireAccessAllowed(fieldApiElement, desc);
     }
 
     @Override
@@ -173,7 +157,7 @@ final class Checker extends AbstractClassesVisitor {
           name,
           ApiElement.CONSTRUCTOR_SPECIAL_METHOD_NAME.equals(name)
           ? ApiElementType.CONSTRUCTOR : ApiElementType.METHOD);
-      checkAllowed(methodApiElement, desc);
+      requireAccessAllowed(methodApiElement, desc);
     }
 
     @Override
@@ -183,35 +167,45 @@ final class Checker extends AbstractClassesVisitor {
       this.latestLineNumber = lineNumber;
     }
 
+    /**
+     * Applies the policy and makes any violation available to
+     * {@link Checker#getViolations()}.
+     */
     @SuppressWarnings("synthetic-access")
-    void checkAllowed(ApiElement el, String descriptor) {
-      if (alreadyChecked.add(el)) {
-        Checker.this.checkAllowed(
-            art, sourceFilePath.or(className), latestLineNumber,
-            ns, el, descriptor);
+    void requireAccessAllowed(final ApiElement el, String descriptor) {
+      Map<String, PolicyResult> descriptorMemoTable = memoTable.get(el);
+      if (descriptorMemoTable == null) {
+        descriptorMemoTable = Maps.newLinkedHashMap();
+        memoTable.put(el, descriptorMemoTable);
       }
-    }
-  }
-
-  private void checkAllowed(
-      final Artifact art, String classDebugString, int latestLineNumber,
-      final Namespace ns, final ApiElement el, String descriptor) {
-    log.debug(new LazyString() {
-        @Override
-        protected String makeString() {
-          return ". . . Checking whether " + el + " allowed from " + ns
-              + " in " + Utils.artToString(art);
-        }
-    });
-    PolicyResult policyResult = applyAccessPolicy(ns, el, descriptor);
-    AccessLevel levelFromPolicy = policyResult.accessLevel;
-    switch (levelFromPolicy) {
-      case ALLOWED:
-        break;
-      case DISALLOWED:
-        accessDeniedTo(
-            art, ns, classDebugString, latestLineNumber, el, policyResult);
-        break;
+      PolicyResult r = descriptorMemoTable.get(descriptor);
+      if (r == null) {
+        log.debug(new LazyString() {
+          @Override
+          protected String makeString() {
+            return ". . . Checking whether " + el + " allowed from " + ns
+                + " in " + Utils.artToString(art);
+          }
+        });
+        r = Checker.this.applyAccessPolicy(ns, el, descriptor);
+        descriptorMemoTable.put(descriptor, r);
+      }
+      switch (r.accessLevel) {
+        case ALLOWED:
+          return;
+        case DISALLOWED:
+          Violation v = new Violation(
+              art,
+              ns,
+              sourceFilePath.or(className),
+              latestLineNumber,
+              el,
+              r.target,
+              r.rationale);
+          Checker.this.violations.add(v);
+          return;
+      }
+      throw new AssertionError(r.accessLevel);
     }
   }
 
@@ -301,6 +295,8 @@ final class Checker extends AbstractClassesVisitor {
             rationale,
             el);
       } else if (el.type == ApiElementType.FIELD
+                 // TODO: Do we need to separate out "<clinit>" here
+                 // or in ApiElement?
                  || el.type == ApiElementType.METHOD) {
         // Sub-types have direct access to fields and methods from their
         // super-types but do not have access to constructors except via

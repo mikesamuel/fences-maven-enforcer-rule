@@ -5,9 +5,10 @@ import com.example.api.*;
 public class Roulette {
   public void pushAButton() {
     if (Math.random() < 0.02) {
-      new Unsafe().pushRedButton();
+      new Unsafe().pushRedButton().pushRedButton();
     } else if (Math.random() < 0.02) {
-      new Unsafe() {}.pushRedButton();  // An anonymous subclass.
+      // Two calls on an anonymous subclass, each banned.
+      new Unsafe() {}.pushRedButton();
     } else {
       new Safe().pushButton();
     }

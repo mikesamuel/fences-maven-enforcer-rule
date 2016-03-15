@@ -182,7 +182,7 @@ final class PolicyViolationReporter {
           v.useSiteApiElement + " cannot be accessed from "
           + v.useSiteContainer;
       if (!v.sensitiveApiElement.equals(v.useSiteApiElement)) {
-        message += " because access to " + v.sensitiveApiElement
+        message += " because " + v.sensitiveApiElement
             + " is restricted";
       }
       Optional<String> rationale = formatRationale(v);
