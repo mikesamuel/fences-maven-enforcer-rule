@@ -22,6 +22,7 @@ public final class ClassNodeFromClassFileVisitor extends ClassVisitor {
   private final InheritanceGraph.Builder graphBuilder;
 
   private String name;
+  private int access;
   private Optional<String> superName;
   private Iterable<String> interfaces;
   private List<FieldDetails> fields;
@@ -42,10 +43,11 @@ public final class ClassNodeFromClassFileVisitor extends ClassVisitor {
 
   @Override
   public void visit(
-      int version, int access, String className, String signature,
+      int version, int accessFlags, String className, String signature,
       @Nullable String superClassName, String[] interfaceNames) {
     Preconditions.checkState(this.name == null);
     this.name = className;
+    this.access = accessFlags;
     this.superName = Optional.fromNullable(superClassName);
     this.interfaces = Arrays.asList(interfaceNames);
     this.fields = Lists.newArrayList();
@@ -55,24 +57,26 @@ public final class ClassNodeFromClassFileVisitor extends ClassVisitor {
   @Override
   public void visitEnd() {
     graphBuilder.declare(
-        name, superName, interfaces, methods, fields);
+        name, access, superName, interfaces, methods, fields);
 
   }
 
   @Override
-  public FieldVisitor visitField(int access, String fieldName, String desc,
+  public FieldVisitor visitField(
+      int fieldAccess, String fieldName, String desc,
       String signature, Object value) {
     if (includePrivates || (access & Opcodes.ACC_PRIVATE) == 0) {
-      this.fields.add(new FieldDetails(fieldName, access));
+      this.fields.add(new FieldDetails(fieldName, fieldAccess));
     }
     return null;
   }
 
   @Override
-  public MethodVisitor visitMethod(int access, String methodName, String desc,
+  public MethodVisitor visitMethod(
+      int methodAccess, String methodName, String desc,
       String signature, String[] exceptions) {
     if (includePrivates || (access & Opcodes.ACC_PRIVATE) == 0) {
-      this.methods.add(new MethodDetails(methodName, desc, access));
+      this.methods.add(new MethodDetails(methodName, desc, methodAccess));
     }
     return null;
   }

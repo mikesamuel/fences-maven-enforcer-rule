@@ -13,7 +13,12 @@ public final class MethodDetails {
   /** Bitfield of {@code ACC_*} constants from {@link Opcodes}. */
   public final int access;
 
-  MethodDetails(String name, String desc, int access) {
+  /**
+   * @param name a java identifier, the name of the methods.
+   * @param desc a JVM method descriptor.
+   * @param access a bitfield of {@code ACC_*} constants from {@link Opcodes}.
+   */
+  public MethodDetails(String name, String desc, int access) {
     this.name = name;
     this.desc = desc;
     this.access = access;

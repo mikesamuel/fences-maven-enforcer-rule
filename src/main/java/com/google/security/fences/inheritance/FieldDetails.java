@@ -11,7 +11,11 @@ public final class FieldDetails {
   /** Bitfield of {@code ACC_*} constants from {@link Opcodes}. */
   public final int access;
 
-  FieldDetails(String name, int access) {
+  /**
+   * @param name a java identifier, the name of the methods.
+   * @param access a bitfield of {@code ACC_*} constants from {@link Opcodes}.
+   */
+  public FieldDetails(String name, int access) {
     this.name = name;
     this.access = access;
   }

@@ -19,6 +19,10 @@ public final class ClassNode implements Comparable<ClassNode> {
    */
   public final String name;
   /**
+   * A bitfield of {@link Opcodes}.ACC_* constants.
+   */
+  public final int access;
+  /**
    * The internal name of the super-type if any.  {@code java.lang.Object} does
    * not have a super-type.
    * ASM treats interfaces as having super-type {@code java.lang.Object}.
@@ -40,12 +44,14 @@ public final class ClassNode implements Comparable<ClassNode> {
 
   ClassNode(
       String name,
+      int access,
       Optional<String> superType, Iterable<? extends String> interfaces,
       Iterable<? extends MethodDetails> methods,
       Iterable<? extends FieldDetails> fields) {
     // Names should be of form com/example/Name, not com.example.Name.
     Preconditions.checkArgument(!name.contains("."), name);
     this.name = name;
+    this.access = access;
     this.superType = superType;
     this.interfaces = ImmutableList.copyOf(interfaces);
     this.methods = ImmutableSet.copyOf(methods);

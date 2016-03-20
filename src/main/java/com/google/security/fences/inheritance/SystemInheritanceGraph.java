@@ -59,6 +59,11 @@ public class SystemInheritanceGraph {
 
   /**
    * Name of a database that maps internal names to
+   * access flag bitsets.
+   */
+  private static final String ACCESS_DB_NAME = "access";
+  /**
+   * Name of a database that maps internal names to
    * internal names of super-types.
    */
   private static final String SUPERTYPE_DB_NAME = "supertype";
@@ -83,6 +88,7 @@ public class SystemInheritanceGraph {
     private final ConcurrentHashMap<String, ClassNode> classNodes
         = new ConcurrentHashMap<String, ClassNode>();
     private final Environment env;
+    private final Database accessDb;
     private final Database supertypeDb;
     private final Database interfaceDb;
     private final Database methodDb;
@@ -101,6 +107,7 @@ public class SystemInheritanceGraph {
       DatabaseConfig dbConfig = new DatabaseConfig();
       dbConfig.setAllowCreate(false);
       dbConfig.setReadOnly(true);
+      this.accessDb = env.openDatabase(null, ACCESS_DB_NAME, dbConfig);
       this.supertypeDb = env.openDatabase(null, SUPERTYPE_DB_NAME, dbConfig);
       this.interfaceDb = env.openDatabase(null, INTERFACE_DB_NAME, dbConfig);
       this.methodDb = env.openDatabase(null, METHOD_DB_NAME, dbConfig);
@@ -154,11 +161,18 @@ public class SystemInheritanceGraph {
       if (!OperationStatus.SUCCESS.equals(ifaceStatus)) {
         return null;
       }
-      DatabaseEntry supertype = new DatabaseEntry();
 
+      DatabaseEntry accessEntry = new DatabaseEntry();
+      int access = 0;
+      OperationStatus accessStates = accessDb.get(
+          null, nameData, accessEntry, LockMode.DEFAULT);
+      if (OperationStatus.SUCCESS.equals(accessStates)) {
+        access = int32(accessEntry);
+      }
+
+      DatabaseEntry supertype = new DatabaseEntry();
       OperationStatus stypeStatus = supertypeDb.get(
           null, nameData, supertype, LockMode.DEFAULT);
-
       Optional<String> supertypeName = Optional.absent();
       if (OperationStatus.SUCCESS.equals(stypeStatus)) {
         supertypeName = Optional.of(utf8(supertype));
@@ -199,7 +213,7 @@ public class SystemInheritanceGraph {
       }
 
       ClassNode node = new ClassNode(
-          name, supertypeName, interfaceNames, methods, fields);
+          name, access, supertypeName, interfaceNames, methods, fields);
       inMap = this.classNodes.putIfAbsent(name, node);
       return inMap != null ? inMap : node;
     }
@@ -207,6 +221,7 @@ public class SystemInheritanceGraph {
 
 
   static String utf8(DatabaseEntry e) {
+    if (e.getSize() == 0) { return ""; }
     return Charsets.UTF_8.decode(ByteBuffer.wrap(e.getData())).toString();
   }
 
@@ -215,6 +230,34 @@ public class SystemInheritanceGraph {
     byte[] bytes = new byte[bb.remaining()];
     bb.get(bytes);
     return new DatabaseEntry(bytes);
+  }
+
+  static int int32(DatabaseEntry e) {
+    int x = 0;
+    byte[] data = e.getData();
+    for (int i = 0, n = data.length; i < n; ++i) {
+      x = (x << 8) | (data[i] & 0xff);
+    }
+    return x;
+  }
+
+  static DatabaseEntry int32(int n) {
+    int nBytes =
+        n < 0x10000
+        ? n < 0x100 ? (n == 0 ? 0 : 1) : 2
+        : n < 0x1000000 ? 3 : 4;
+    byte[] bytes = new byte[nBytes];
+    int x = n;
+    for (int i = nBytes; --i >= 0; x = x >>> 8) {
+      bytes[i] = (byte) (x & 0xFF);
+    }
+    DatabaseEntry e = new DatabaseEntry(bytes);
+    if (int32(e) != n) {
+      throw new AssertionError(
+          "n=" + n + ", nBytes=" + nBytes
+          + ", bytes=" + Arrays.toString(bytes));
+    }
+    return e;
   }
 
 
@@ -317,6 +360,7 @@ public class SystemInheritanceGraph {
       dbConfig.setAllowCreate(false);
       dbConfig.setAllowCreateVoid(true);
       dbConfig.setReadOnly(false);
+      Database accessDb = env.openDatabase(txn, ACCESS_DB_NAME, dbConfig);
       Database supertypeDb = env.openDatabase(txn, SUPERTYPE_DB_NAME, dbConfig);
       Database interfaceDb = env.openDatabase(txn, INTERFACE_DB_NAME, dbConfig);
       Database methodDb = env.openDatabase(txn, METHOD_DB_NAME, dbConfig);
@@ -324,7 +368,11 @@ public class SystemInheritanceGraph {
 
       for (ClassNode node : graph.allDeclaredNodes()) {
         String name = node.name;
+        int access = node.access;
         DatabaseEntry nameData = utf8(name);
+        if (access != 0) {
+          accessDb.put(txn, nameData, int32(access));
+        }
         if (node.superType.isPresent()) {
           supertypeDb.put(txn, nameData, utf8(node.superType.get()));
         }
@@ -352,6 +400,7 @@ public class SystemInheritanceGraph {
       methodDb.close();
       interfaceDb.close();
       supertypeDb.close();
+      accessDb.close();
       env.close();
     }
   }

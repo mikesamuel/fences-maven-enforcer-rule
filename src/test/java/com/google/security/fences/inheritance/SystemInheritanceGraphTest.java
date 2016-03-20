@@ -1,8 +1,9 @@
 package com.google.security.fences.inheritance;
 
+import org.objectweb.asm.Opcodes;
+
 import com.google.common.base.Optional;
 import com.google.common.collect.ImmutableList;
-import com.sleepycat.asm.Opcodes;
 
 import junit.framework.TestCase;
 
@@ -36,6 +37,7 @@ public final class SystemInheritanceGraphTest extends TestCase {
     InheritanceGraph g = InheritanceGraph.builder()
         .declare(
             "com/example/SillyInputStream",
+            Opcodes.ACC_PUBLIC,
             Optional.of("java/io/InputStream"),
             ImmutableList.of("java/io/Serializable"),
             ImmutableList.<MethodDetails>of(),
@@ -80,6 +82,7 @@ public final class SystemInheritanceGraphTest extends TestCase {
     InheritanceGraph g = InheritanceGraph.builder()
         .declare(
             "com/example/MyReader",
+            Opcodes.ACC_PUBLIC,
             Optional.of("java/io/Reader"),
             ImmutableList.<String>of(),
             ImmutableList.of(
@@ -96,6 +99,7 @@ public final class SystemInheritanceGraphTest extends TestCase {
     {
       Optional<ClassNode> pushbackReader = g.named("java/io/PushbackReader");
       assertTrue(pushbackReader.isPresent());
+      assertTrue((pushbackReader.get().access & Opcodes.ACC_PUBLIC) != 0);
       Optional<MethodDetails> close = pushbackReader.get()
           .getMethod("close", "()V");
       assertEquals(Opcodes.ACC_PUBLIC, close.get().access);

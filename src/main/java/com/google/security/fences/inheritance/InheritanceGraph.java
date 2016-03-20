@@ -56,7 +56,7 @@ public final class InheritanceGraph {
      * Defines a relationship between name and its super-interfaces.
      */
     public Builder declare(
-        String name, Optional<String> superClassName,
+        String name, int access, Optional<String> superClassName,
         Iterable<? extends String> interfaceNames,
         Iterable<? extends MethodDetails> methods,
         Iterable<? extends FieldDetails> fields) {
@@ -66,7 +66,7 @@ public final class InheritanceGraph {
         // the same class-path.
       } else {
         node = new ClassNode(
-            name, superClassName, interfaceNames, methods, fields);
+            name, access, superClassName, interfaceNames, methods, fields);
         classNodes.put(name, node);
       }
       return this;
