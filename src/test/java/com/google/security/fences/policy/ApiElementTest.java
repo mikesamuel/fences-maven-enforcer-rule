@@ -30,8 +30,8 @@ public final class ApiElementTest extends TestCase {
     assertEquals("com/example/Foo", comExampleFoo.toInternalName());
     assertEquals("com/example/Foo$Bar", comExampleFooBar.toInternalName());
     assertEquals("com/example/Foo$Bar#x", comExampleFooBarX.toInternalName());
-    assertEquals("com/example/Foo$Bar#f", comExampleFooBarF.toInternalName());
-    assertEquals("com/example/Foo$Bar#<init>",
+    assertEquals("com/example/Foo$Bar#f()", comExampleFooBarF.toInternalName());
+    assertEquals("com/example/Foo$Bar#<init>()",
                  comExampleFooBarCtor.toInternalName());
   }
 }

@@ -70,7 +70,7 @@ public class FencesMavenEnforcerRuleIT extends TestCase {
 
         "[ERROR] test:test-method-call:jar:1.0-SNAPSHOT"
         + " : NotAllowedToCallExit.java : L7 :"
-        + " [METHOD : java.lang.System.exit] cannot be accessed from"
+        + " java.lang.System.exit() cannot be accessed from"
         + " foo.bar.NotAllowedToCallExit",
 
         "1 access policy violation");
@@ -97,7 +97,7 @@ public class FencesMavenEnforcerRuleIT extends TestCase {
 
         "BUILD FAILURE",
 
-        "[CONSTRUCTOR : java.net.URL.<init>]"
+        "java.net.URL.<init>()"
         + " cannot be accessed from foo.bar.Baz",
 
         "1 access policy violation",
@@ -113,16 +113,16 @@ public class FencesMavenEnforcerRuleIT extends TestCase {
 
         "BUILD FAILURE",
 
-        "[METHOD : java.lang.Runtime.getRuntime]"
+        "java.lang.Runtime.getRuntime()"
         + " cannot be accessed from foo.dependee.Dependee",
 
-        "[METHOD : java.lang.Runtime.exec]"
+        "java.lang.Runtime.exec()"
         + " cannot be accessed from foo.dependee.Dependee",
 
         "2 access policy violations",
 
         // <rationale> from the POM.
-        "Code that uses [METHOD : java.lang.Runtime.exec]",
+        "Code that uses java.lang.Runtime.exec()",
         "to execute shell scripts or check environment variables",
         "will probably break when we move to new hosting.");
   }
@@ -136,7 +136,7 @@ public class FencesMavenEnforcerRuleIT extends TestCase {
         "BUILD FAILURE",
 
         "Baz.java : L5",
-        "[FIELD : java.util.Locale.US] cannot be accessed from foo.bar.Baz",
+        "java.util.Locale.US cannot be accessed from foo.bar.Baz",
         "We have to support users from many countries, so please",
 
         "1 access policy violation");
@@ -153,21 +153,21 @@ public class FencesMavenEnforcerRuleIT extends TestCase {
         "[ERROR] test:partially-safe-client:jar:1.0-SNAPSHOT : Roulette.java",
         ". L8",
         // Banned direct ctor access.
-        ". . [CONSTRUCTOR : com.example.api.Unsafe.<init>] cannot be accessed"
+        ". . com.example.api.Unsafe.<init>() cannot be accessed"
         + " from com.example.client.Roulette",
         // Banned direct method access.
-        ". . [METHOD : com.example.api.Unsafe.pushRedButton] cannot be accessed"
+        ". . com.example.api.Unsafe.pushRedButton() cannot be accessed"
         + " from com.example.client.Roulette (2 times)",
         ". . Lorem ipsum dangerous.",
         ". L11",
         // Banned implicit call to super-class ctor.
         // But the call to the local constructor itself is not banned.
-        ". . [CONSTRUCTOR : com.example.api.Unsafe.<init>] cannot be accessed"
+        ". . com.example.api.Unsafe.<init>() cannot be accessed"
         + " from com.example.client.Roulette$1",
         // Banned use of method defined on super-class.
-        ". . [METHOD : com.example.client.Roulette.1.pushRedButton] cannot be"
+        ". . com.example.client.Roulette.1.pushRedButton() cannot be"
         + " accessed from com.example.client.Roulette because"
-        + " [METHOD : com.example.api.Unsafe.pushRedButton] is restricted",
+        + " com.example.api.Unsafe.pushRedButton() is restricted",
         ". . Lorem ipsum dangerous.",
 
         "5 access policy violations");

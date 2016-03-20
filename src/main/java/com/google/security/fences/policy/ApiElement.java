@@ -39,6 +39,7 @@ public class ApiElement implements Comparable<ApiElement> {
         name.length() != 0
         || (type == ApiElementType.PACKAGE && !parent.isPresent()));
     Preconditions.checkArgument(!name.contains("."), name);
+    Preconditions.checkArgument(parent.isPresent() || name.length() == 0);
     switch (type) {
       case CLASS:
         Preconditions.checkArgument(
@@ -66,13 +67,7 @@ public class ApiElement implements Comparable<ApiElement> {
 
   /** Constructs a child of this API element. */
   public ApiElement child(String childName, ApiElementType childType) {
-    Optional<ApiElement> parentOpt;
-    if (DEFAULT_PACKAGE.equals(this)) {
-      parentOpt = Optional.absent();
-    } else {
-      parentOpt = Optional.of(this);
-    }
-    return new ApiElement(parentOpt, childName, childType);
+    return new ApiElement(Optional.of(this), childName, childType);
   }
 
   /**
@@ -129,17 +124,17 @@ public class ApiElement implements Comparable<ApiElement> {
   public String toString() {
     StringBuilder sb = new StringBuilder();
     sb.append('[').append(type).append(" : ");
-    appendDottedName(sb);
+    toName(false, sb);
     sb.append(']');
     return sb.toString();
   }
 
-  private void appendDottedName(StringBuilder sb) {
-    if (parent.isPresent()) {
-      parent.get().appendDottedName(sb);
-      sb.append('.');
-    }
-    sb.append(name);
+  /**
+   * A string, like {@link #toInternalName()} but with dots, so more
+   * recognizable to Java devs familiar with fully qualified Java names.
+   */
+  public String toDottedName() {
+    return toName(false, null).toString();
   }
 
   /**
@@ -150,36 +145,60 @@ public class ApiElement implements Comparable<ApiElement> {
    * directory name for the package under a class root.
    */
   public String toInternalName() {
+    return toName(true, null).toString();
+  }
+
+  private CharSequence toName(boolean internal, @Nullable StringBuilder out) {
+    if (DEFAULT_PACKAGE.equals(this)) {
+      return "";
+    }
     // We build in reverse so that we don't have to recurse to parent.
-    StringBuilder sb = new StringBuilder();
-    // Treat package names as directories to disambiguate those namespaces.
-    if (type == ApiElementType.PACKAGE && !DEFAULT_PACKAGE.equals(this)) {
-      sb.append('/');
+    StringBuilder sb = out;
+    if (sb == null) {
+      sb = new StringBuilder();
+    }
+    int startPosition = sb.length();
+    switch (type) {
+      case PACKAGE:
+        // Treat package names as directories to disambiguate those namespaces.
+        if (internal) { sb.append('/'); }
+        break;
+      case METHOD: case CONSTRUCTOR:
+        // Disambiguate callables and fields.
+        // Constructors are disambiguated from methods by the presence of
+        // angle brackets in the name: <init> and <clinit>.
+        sb.append(")(");
+        break;
+      case FIELD: case CLASS:
+        break;
     }
     ApiElement el = this;
     while (true) {
-      @Nullable ApiElement parentEl = el.parent.isPresent()
-          ? el.parent.get() : null;
+      ApiElement parentEl = el.parent.get();
       appendInReverse(el.name, sb);
-      if (parentEl == null) {
+      if (DEFAULT_PACKAGE.equals(parentEl)) {
         break;
       }
       switch (el.type) {
         case CLASS:
-          sb.append(parentEl.type == ApiElementType.CLASS ? '$' : '/');
+          sb.append(
+              internal
+              ? (parentEl.type == ApiElementType.CLASS ? '$' : '/')
+              : '.');
           break;
         case PACKAGE:
-          sb.append('/');
+          sb.append(internal ? '/' : '.');
           break;
         case CONSTRUCTOR:
         case METHOD:
         case FIELD:
-          sb.append('#');
+          sb.append(internal ? '#' : '.');
           break;
       }
       el = parentEl;
     }
-    return sb.reverse().toString();
+    reverse(sb, startPosition, sb.length());
+    return sb;
   }
 
 
@@ -209,6 +228,14 @@ public class ApiElement implements Comparable<ApiElement> {
   private static void appendInReverse(String s, StringBuilder sb) {
     for (int i = s.length(); --i >= 0;) {
       sb.append(s.charAt(i));
+    }
+  }
+
+  private static void reverse(StringBuilder sb, int start, int end) {
+    for (int i = start, j = end; --j > i; ++i) {
+      char c = sb.charAt(i), d = sb.charAt(j);
+      sb.setCharAt(i, d);
+      sb.setCharAt(j, c);
     }
   }
 }

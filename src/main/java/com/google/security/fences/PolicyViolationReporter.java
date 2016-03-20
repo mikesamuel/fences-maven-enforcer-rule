@@ -79,7 +79,7 @@ final class PolicyViolationReporter {
     ValueSource artifactValueSource = new ObjectBasedValueSource(v.artifact);
     ValueSource failedAccessValueSource = new MapBasedValueSource(
         ImmutableMap.of(
-            "fences.api", v.useSiteApiElement,
+            "fences.api", v.useSiteApiElement.toDottedName(),
             "fences.distrusted", v.useSiteContainer));
     interpolator.addValueSource(artifactValueSource);
     interpolator.addValueSource(failedAccessValueSource);
@@ -179,10 +179,10 @@ final class PolicyViolationReporter {
     Set<String> rationales = Sets.newLinkedHashSet();
     for (Violation v : violations) {
       String message =
-          v.useSiteApiElement + " cannot be accessed from "
+          v.useSiteApiElement.toDottedName() + " cannot be accessed from "
           + v.useSiteContainer;
       if (!v.sensitiveApiElement.equals(v.useSiteApiElement)) {
-        message += " because " + v.sensitiveApiElement
+        message += " because " + v.sensitiveApiElement.toDottedName()
             + " is restricted";
       }
       Optional<String> rationale = formatRationale(v);
