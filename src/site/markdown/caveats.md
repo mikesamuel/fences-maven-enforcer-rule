@@ -33,6 +33,14 @@ Any artifact can introduce classes into
 and thereby escalate privileges to that package's privileges.
 Sealing is [easy in Maven](http://stackoverflow.com/questions/13527235/maven-how-do-i-mark-a-jar-as-sealed).
 
+Sealing the package `com.example` does not prevent any other JAR from defining
+`com.example.suffix` because the Java language attaches no special significance
+to sub-packages.  We do attach significance to package nesting relationships
+because package prefix is a good predictor of who authored code and so in whom
+trust is placed.
+We treat forging packages as unplausibly deniable but sealing is still a good
+idea.
+
 ----
 
 **Inner class** support is
