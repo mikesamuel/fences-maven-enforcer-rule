@@ -162,17 +162,17 @@ public final class PolicyApplicationOrder implements Iterable<ApiElement> {
       }
     };
 
-    private final SubList superTypes = new SubList(3) {
+    private final SubList classes = new SubList(3) {
       @Override
       void addLowerPrecedenceItems(QueueItem item) {
-        addSuperTypesAndPackages(item);
+        addOuterClassesAndPackages(item);
       }
     };
 
     private final SubList interfaces = new SubList(4) {
       @Override
       void addLowerPrecedenceItems(QueueItem item) {
-        addSuperTypesAndPackages(item);
+        addOuterClassesAndPackages(item);
       }
     };
 
@@ -194,14 +194,6 @@ public final class PolicyApplicationOrder implements Iterable<ApiElement> {
       // Initialize the lists.
       ApiElement el = PolicyApplicationOrder.this.used;
       useOnly.add(new QueueItem(el));
-      ApiElement classEl = el.containingClass().get();
-
-      Optional<ClassNode> cnOpt = classContaining(classEl);
-      if (cnOpt.isPresent()) {
-        ClassNode cn = cnOpt.get();
-        ((cn.access & Opcodes.ACC_INTERFACE) != 0 ? interfaces : superTypes)
-            .add(new QueueItem(classEl));
-      }
     }
 
     public boolean hasNext() {
@@ -254,6 +246,7 @@ public final class PolicyApplicationOrder implements Iterable<ApiElement> {
 
     private void addCorrespondingMembers(QueueItem item, boolean isExactUse) {
       ApiElement el = item.el;
+      addContainingClass(el);
 
       String name = el.name;
       Optional<ClassNode> cnOpt = classContaining(el);
@@ -280,7 +273,7 @@ public final class PolicyApplicationOrder implements Iterable<ApiElement> {
             if (lookOnSuperClass) {
               if (cn.superType.isPresent()) {
                 ApiElement correspondingApiElement =
-                    apiElementFromInternalClassName(cn.superType.get())
+                    ApiElement.fromInternalClassName(cn.superType.get())
                     .child(name, ApiElementType.METHOD);
 
                 boolean skip = false;
@@ -311,7 +304,7 @@ public final class PolicyApplicationOrder implements Iterable<ApiElement> {
               }
               for (String interfaceName : cn.interfaces) {
                 QueueItem correspondingMethod = new QueueItem(
-                    apiElementFromInternalClassName(interfaceName)
+                    ApiElement.fromInternalClassName(interfaceName)
                     .child(name, ApiElementType.METHOD));
                 interfaceMethods.add(correspondingMethod);
               }
@@ -335,7 +328,7 @@ public final class PolicyApplicationOrder implements Iterable<ApiElement> {
               }
               if (lookOnSuperClass) {
                 ApiElement correspondingApiElement =
-                    apiElementFromInternalClassName(cn.superType.get())
+                    ApiElement.fromInternalClassName(cn.superType.get())
                     .child(name, ApiElementType.FIELD);
 
                 // A private field of the same name does not mask a
@@ -373,22 +366,15 @@ public final class PolicyApplicationOrder implements Iterable<ApiElement> {
     }
 
 
-    private void addSuperTypesAndPackages(QueueItem item) {
-      Preconditions.checkArgument(item.el.type == ApiElementType.CLASS);
-      Optional<ClassNode> cnOpt = classContaining(item.el);
+    private void addContainingClass(ApiElement el) {
+      ApiElement classEl = el.containingClass().get();
+
+      Optional<ClassNode> cnOpt = classContaining(classEl);
       if (cnOpt.isPresent()) {
         ClassNode cn = cnOpt.get();
-        if (cn.superType.isPresent()) {
-          String typeName = cn.superType.get();
-          this.superTypes.add(new QueueItem(
-              apiElementFromInternalClassName(typeName)));
-        }
-        for (String typeName : cn.interfaces) {
-          this.interfaces.add(new QueueItem(
-              apiElementFromInternalClassName(typeName)));
-        }
+        ((cn.access & Opcodes.ACC_INTERFACE) != 0 ? interfaces : classes)
+            .add(new QueueItem(classEl));
       }
-      addOuterClassesAndPackages(item);
     }
 
     private void addOuterClassesAndPackages(QueueItem item) {
@@ -473,24 +459,11 @@ public final class PolicyApplicationOrder implements Iterable<ApiElement> {
     return cn;
   }
 
-  static ApiElement apiElementFromInternalClassName(String name) {
-    ApiElement apiElement = ApiElement.DEFAULT_PACKAGE;
-    String[] nameParts = name.split("/");
-    for (int i = 0, n = nameParts.length; i < n - 1; ++i) {
-      apiElement = apiElement.child(nameParts[i], ApiElementType.PACKAGE);
-    }
-    String className = nameParts[nameParts.length - 1];
-    for (String classNamePart : className.split("[$]")) {
-      apiElement = apiElement.child(classNamePart, ApiElementType.CLASS);
-    }
-    return apiElement;
-  }
-
   static Optional<ApiElement> apiElementFromSuper(
       ApiElement el, String superTypeName) {
     switch (el.type) {
       case CLASS:
-        return Optional.of(apiElementFromInternalClassName(superTypeName));
+        return Optional.of(ApiElement.fromInternalClassName(superTypeName));
       case CONSTRUCTOR:
       case FIELD:
       case METHOD:

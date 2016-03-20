@@ -84,12 +84,12 @@ The first of these API elements that corresponds to a `<trust>` or
 | ----- | ---- | ---------- | ----------- |
 | High  | High | /          | A `<constructor>`, `<method>` or `<field>` rule applies when the [receiver](#def_receiver) is the same as the `<class>` that directly contains the rule. |
 | High  | Med  | /          | A `<method>` or `<field>` rule applies on the sub-types of the `<class>` that directly contains it unless the sub-type overrides or masks it.
-| High  | Low  | /          | An abstract `<method>` rule applies to all sub-types of the `<class>`. |
-| /     | High | /          | A `<class>` rule applies to all [uses](#def_use) on a receiver whose static type is that class. |
-| /     | Low  | /          | A `<class>` rule applies to all uses on a receiver whose static type is a *subtype* of that class. |
-| /     | /    | High       | A `<class>` rule applies to all uses on a receiver that is an inner class (transitively) of that class. |
-| /     | /    | Med        | A `<package>` rule applies to all uses on a receiver whose static type is in that package. |
-| /     | /    | Low        | A `<package>` rule applies to all uses on a receiver whose static type is in a sub-package of that package. |
+| High  | Low  | /          | An abstract `<method>` rule applies to all uses of the method on sub-types of the containing `<class>` regardless of masking. |
+| /     | High | /          | A `<class>` rule applies to all [uses](#def_use) on a receiver whose static type is that class and which have the used member. |
+| /     | Low  | /          | A `<class>` rule applies to all uses on a receiver whose static type is a *subtype* of that class and which have the used member. |
+| /     | /    | High       | A `<class>` rule applies where one of its inner classes applies. |
+| /     | /    | Med        | A `<package>` rule applies where one of its classes applies. |
+| /     | /    | Low        | A `<package>` rule applies where one of its sub-packages applies. |
 | /     | /    | /          | An `<api>` rule applies to all uses. |
 
 ----

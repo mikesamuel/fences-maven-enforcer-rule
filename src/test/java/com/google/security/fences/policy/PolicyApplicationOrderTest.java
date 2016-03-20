@@ -69,7 +69,7 @@ public class PolicyApplicationOrderTest extends TestCase {
   }
 
   private static final Pattern API_ELEMENT_RE = Pattern.compile(
-      "^(?:(.*?)/)?([^#/()]+)?(?:#([^#/()]*))?(\\([^#/()]*\\)[^#/()]?)?$"
+      "^(?:(.*?)/)?([^#/()]+)?(?:#([^#/()]*))?(\\([^#()]*\\)[^#/()]?)?$"
       );
 
   /**
@@ -140,7 +140,41 @@ public class PolicyApplicationOrderTest extends TestCase {
             // On super-class
             //"java/lang/Object#bar()",  // No such method defined.
             // On interface
-            "java/lang/Comparable#bar()",
+            "java/lang/Comparable#bar()",  // TODO: Why?
+            // Exact class
+            "com/example/Foo",
+            // Super class
+            "java/lang/Object",  // TODO: Why?
+            // Interface
+            "java/lang/Comparable",
+            // Packages in descending specificity
+            "com/example/",
+            "java/lang/",
+            "com/",
+            "java/",
+            // The default package
+            ApiElement.DEFAULT_PACKAGE.toInternalName()
+            )
+        .test();
+  }
+
+  public static void testLangObjectMethod() {
+    new TestBuilder("com/example/Foo#equals(Ljava/lang/Object;)Z")
+        .declare(
+            "com/example/Foo",
+            Opcodes.ACC_PUBLIC,
+            Optional.of("java/lang/Object"),
+            ImmutableList.of("java/lang/Comparable"),
+            ImmutableList.<MethodDetails>of(),
+            ImmutableList.of(
+                new FieldDetails("x", Opcodes.ACC_PRIVATE)))
+        .expect(
+            // Exact
+            "com/example/Foo#equals()",
+            // On super-class
+            "java/lang/Object#equals()",
+            // On interface
+            "java/lang/Comparable#equals()",
             // Exact class
             "com/example/Foo",
             // Super class
@@ -180,14 +214,12 @@ public class PolicyApplicationOrderTest extends TestCase {
         // Exact class
         "com/example/Foo",
         // Super class
-        "java/lang/Object",
+        // "java/lang/Object",  // field not defined on Object.
         // Interface
-        "java/lang/Comparable",
+        // "java/lang/Comparable",   // field not defined on an interface.
         // Packages in descending specificity
         "com/example/",
-        "java/lang/",
         "com/",
-        "java/",
         // The default package
         ApiElement.DEFAULT_PACKAGE.toInternalName()
         )
@@ -391,16 +423,9 @@ public class PolicyApplicationOrderTest extends TestCase {
         "com/example/Sub#x",
         // Exact class
         "com/example/Sub",
-        // Super classes
-        "com/example/Base",
-        "java/lang/Object",
-        // Interface
-        "java/lang/Comparable",
         // Packages in descending specificity
         "com/example/",
-        "java/lang/",
         "com/",
-        "java/",
         // The default package
         ApiElement.DEFAULT_PACKAGE.toInternalName()
         )
@@ -435,14 +460,9 @@ public class PolicyApplicationOrderTest extends TestCase {
         "com/example/Sub",
         // Super classes
         "com/example/Base",
-        "java/lang/Object",
-        // Interface
-        "java/lang/Comparable",
         // Packages in descending specificity
         "com/example/",
-        "java/lang/",
         "com/",
-        "java/",
         // The default package
         ApiElement.DEFAULT_PACKAGE.toInternalName()
         )
@@ -473,16 +493,9 @@ public class PolicyApplicationOrderTest extends TestCase {
         "com/example/Sub#x",
         // Exact class
         "com/example/Sub",
-        // Super classes
-        "com/example/Base",
-        "java/lang/Object",
-        // Interface
-        "java/lang/Comparable",
         // Packages in descending specificity
         "com/example/",
-        "java/lang/",
         "com/",
-        "java/",
         // The default package
         ApiElement.DEFAULT_PACKAGE.toInternalName()
         )
@@ -522,15 +535,15 @@ public class PolicyApplicationOrderTest extends TestCase {
         "com/example/Baser#x",
         // Exact class
         "com/example/Sub",
-        // Super classes
+        // Super classes that have the field.
+        // Even though the name x does not refer to Baser.x inside Base,
+        // Base still has a field Baser.x because every instance of Baser
+        // has a Baser.x and every instance of Base is-a Baser.
         "com/example/Base",
         "com/example/Baser",
-        "java/lang/Object",
         // Packages in descending specificity
         "com/example/",
-        "java/lang/",
         "com/",
-        "java/",
         // The default package
         ApiElement.DEFAULT_PACKAGE.toInternalName()
         )
@@ -558,15 +571,9 @@ public class PolicyApplicationOrderTest extends TestCase {
         "com/example/Foo#<init>()",
         // Exact class
         "com/example/Foo",
-        // Super class
-        "java/lang/Object",
-        // Interface
-        "java/lang/Comparable",
         // Packages in descending specificity
         "com/example/",
-        "java/lang/",
         "com/",
-        "java/",
         // The default package
         ApiElement.DEFAULT_PACKAGE.toInternalName()
         )

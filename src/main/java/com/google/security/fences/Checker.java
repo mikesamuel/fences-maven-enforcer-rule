@@ -1,12 +1,8 @@
 package com.google.security.fences;
 
 import java.io.IOException;
-import java.util.ArrayDeque;
-import java.util.Collection;
-import java.util.Deque;
 import java.util.List;
 import java.util.Map;
-import java.util.Set;
 
 import org.apache.maven.artifact.Artifact;
 import org.apache.maven.enforcer.rule.api.EnforcerRuleException;
@@ -19,19 +15,16 @@ import org.objectweb.asm.MethodVisitor;
 import org.objectweb.asm.Opcodes;
 
 import com.google.common.base.Optional;
-import com.google.common.base.Preconditions;
 import com.google.common.collect.ImmutableList;
 import com.google.common.collect.Lists;
 import com.google.common.collect.Maps;
-import com.google.common.collect.Sets;
-import com.google.security.fences.inheritance.ClassNode;
 import com.google.security.fences.inheritance.InheritanceGraph;
-import com.google.security.fences.inheritance.MethodDetails;
 import com.google.security.fences.namespace.Namespace;
 import com.google.security.fences.policy.AccessLevel;
 import com.google.security.fences.policy.ApiElement;
 import com.google.security.fences.policy.ApiElementType;
 import com.google.security.fences.policy.Policy;
+import com.google.security.fences.policy.PolicyApplicationOrder;
 import com.google.security.fences.util.LazyString;
 import com.google.security.fences.util.Utils;
 
@@ -140,7 +133,7 @@ final class Checker extends AbstractClassesVisitor {
     @Override
     public void visitFieldInsn(
         int opcode, String owner, String name, String desc) {
-      ApiElement classEl = apiElementFromInternalClassName(owner);
+      ApiElement classEl = ApiElement.fromInternalClassName(owner);
       ApiElement fieldApiElement = classEl.child(name, ApiElementType.FIELD);
       requireAccessAllowed(fieldApiElement, desc);
     }
@@ -154,7 +147,7 @@ final class Checker extends AbstractClassesVisitor {
     @Override
     public void visitMethodInsn(
         int opcode, String owner, String name, String desc, boolean itf) {
-      ApiElement classEl = apiElementFromInternalClassName(owner);
+      ApiElement classEl = ApiElement.fromInternalClassName(owner);
       ApiElement methodApiElement = classEl.child(
           name,
           ApiElement.CONSTRUCTOR_SPECIAL_METHOD_NAME.equals(name)
@@ -244,46 +237,8 @@ final class Checker extends AbstractClassesVisitor {
     // Find the most-specific rationale.
     Iterable<Policy.NamespacePolicy> applicable = policy.forNamespace(from);
 
-    // We check all classes before the interfaces since method implementations
-    // specified in concrete and abstract classes override interface default
-    // methods and we want the order of application of policies to mimic the
-    // order in
-    Deque<SuperTypeContext> typesToCheck = new ArrayDeque<SuperTypeContext>();
-    Deque<SuperTypeContext> interfaces = new ArrayDeque<SuperTypeContext>();
-    typesToCheck.add(new SuperTypeContext(to, true));
-
-    Set<SuperTypeContext> checked = Sets.newHashSet();
-
-    while (true) {
-      boolean isInterface = false;
-      SuperTypeContext stc;
-      stc = typesToCheck.pollFirst();
-      if (stc == null) {
-        stc = interfaces.pollFirst();
-        if (stc == null) {
-          break;
-        } else {
-          isInterface = true;
-        }
-      }
-      if (!checked.add(stc)) {
-        continue;
-      }
-      Optional<ClassNode> nodeOpt = Optional.absent();
-      ApiElement el = stc.el;
-      if (!stc.includeConcrete && !isInterface) {
-        nodeOpt = classContaining(el);
-        if (nodeOpt.isPresent()) {
-          Preconditions.checkState(el.type == ApiElementType.METHOD);
-          Optional<MethodDetails> md =
-              nodeOpt.get().getMethod(el.name, descriptor);
-          int access = md.isPresent() ? md.get().access : 0;
-          if ((access & Opcodes.ACC_ABSTRACT) == 0) {
-            continue;
-          }
-        }
-      }
-
+    for (ApiElement el :
+         new PolicyApplicationOrder(to, descriptor, inheritanceGraph, log)) {
       AccessLevel levelFromPolicy = null;
       Optional<String> rationale = Optional.absent();
       for (Policy.NamespacePolicy nsp : applicable) {
@@ -309,117 +264,8 @@ final class Checker extends AbstractClassesVisitor {
             levelFromPolicy,
             rationale,
             el);
-      } else if (el.type == ApiElementType.FIELD
-                 // TODO: Do we need to separate out "<clinit>" here
-                 // or in ApiElement?
-                 || el.type == ApiElementType.METHOD) {
-        // Sub-types have direct access to fields and methods from their
-        // super-types but do not have access to constructors except via
-        // constructor chaining.  Chained constructor calls always explicitly
-        // appear in the bytecode.
-        if (!nodeOpt.isPresent()) {
-          nodeOpt = classContaining(el);
-        }
-        if (nodeOpt.isPresent()) {
-          ClassNode node = nodeOpt.get();
-          // Don't apply the policy to super-types if the field or method
-          boolean includeConcrete = stc.includeConcrete
-              && isDefinedInSuperTypes(node, to, el, descriptor);
-          if (el.type == ApiElementType.METHOD || includeConcrete) {
-            if (!isInterface && node.superType.isPresent()) {
-              Optional<ApiElement> superApiEl = apiElementFromSuper(
-                  el, node.superType.get());
-              if (superApiEl.isPresent()) {
-                typesToCheck.add(
-                    new SuperTypeContext(superApiEl.get(), includeConcrete));
-              }
-            }
-            for (String interfaceNodeName : node.interfaces) {
-              Optional<ApiElement> superApiEl = apiElementFromSuper(
-                  el, interfaceNodeName);
-              if (superApiEl.isPresent()) {
-                typesToCheck.add(
-                    new SuperTypeContext(superApiEl.get(), includeConcrete));
-              }
-            }
-          }
-        }
       }
     }
     return PolicyResult.defaultResult(to);
-  }
-
-  private Optional<ClassNode> classContaining(ApiElement el) {
-    Optional<ApiElement> elClass = el.containingClass();
-    Preconditions.checkState(elClass.isPresent());
-    String elInternalName = elClass.get().toInternalName();
-    return inheritanceGraph.named(elInternalName);
-  }
-
-  private static boolean isDefinedInSuperTypes(
-      ClassNode cn, ApiElement subTypeElement,
-      ApiElement superTypeElement, String descriptor) {
-    String name = superTypeElement.name;
-    ApiElementType type = superTypeElement.type;
-    boolean includePrivates = subTypeElement == superTypeElement;
-    switch (type) {
-      case FIELD:
-        return includePrivates
-            ? !cn.getField(name).isPresent()
-            : cn.isFieldVisibleThrough(name);
-      case METHOD:
-        return includePrivates
-            ? !cn.getMethod(name, descriptor).isPresent()
-            : cn.isMethodVisibleThrough(name, descriptor);
-      default: return false;
-    }
-  }
-
-  static ApiElement apiElementFromInternalClassName(String name) {
-    ApiElement apiElement = ApiElement.DEFAULT_PACKAGE;
-    String[] nameParts = name.split("/");
-    for (int i = 0, n = nameParts.length; i < n - 1; ++i) {
-      apiElement = apiElement.child(nameParts[i], ApiElementType.PACKAGE);
-    }
-    String className = nameParts[nameParts.length - 1];
-    for (String classNamePart : className.split("[$]")) {
-      apiElement = apiElement.child(classNamePart, ApiElementType.CLASS);
-    }
-    return apiElement;
-  }
-
-  static Optional<ApiElement> apiElementFromSuper(
-      ApiElement el, String superTypeName) {
-    switch (el.type) {
-      case CLASS:
-        return Optional.of(apiElementFromInternalClassName(superTypeName));
-      case CONSTRUCTOR:
-      case FIELD:
-      case METHOD:
-        return Optional.of(
-            apiElementFromSuper(el.parent.get(), superTypeName).get()
-            .child(el.name, el.type));
-      case PACKAGE:
-        return Optional.absent();
-    }
-    throw new AssertionError(el.type);
-  }
-
-  static <T> void addIfPresent(
-      Collection<? super T> c, Optional<? extends T> el) {
-    if (el.isPresent()) {
-      c.add(el.get());
-    }
-  }
-}
-
-
-class SuperTypeContext {
-  final ApiElement el;
-  final boolean includeConcrete;
-
-  SuperTypeContext(ApiElement el, boolean includeConcrete) {
-    this.el = el;
-    this.includeConcrete = includeConcrete;
   }
 }

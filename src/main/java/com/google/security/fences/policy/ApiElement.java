@@ -71,6 +71,23 @@ public class ApiElement implements Comparable<ApiElement> {
   }
 
   /**
+   * @param name a JVM internal class name.
+   * @return An API element such that name equals {@link #toInternalName}.
+   */
+  public static ApiElement fromInternalClassName(String name) {
+    ApiElement apiElement = ApiElement.DEFAULT_PACKAGE;
+    String[] nameParts = name.split("/");
+    for (int i = 0, n = nameParts.length; i < n - 1; ++i) {
+      apiElement = apiElement.child(nameParts[i], ApiElementType.PACKAGE);
+    }
+    String className = nameParts[nameParts.length - 1];
+    for (String classNamePart : className.split("[$]")) {
+      apiElement = apiElement.child(classNamePart, ApiElementType.CLASS);
+    }
+    return apiElement;
+  }
+
+  /**
    * The containing class if any.
    * {@code this} if {@link #type} is {@link ApiElementType#CLASS}.
    */
