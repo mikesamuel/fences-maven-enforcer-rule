@@ -19,12 +19,14 @@ import org.objectweb.asm.MethodVisitor;
 import org.objectweb.asm.Opcodes;
 
 import com.google.common.base.Optional;
+import com.google.common.base.Preconditions;
 import com.google.common.collect.ImmutableList;
 import com.google.common.collect.Lists;
 import com.google.common.collect.Maps;
 import com.google.common.collect.Sets;
 import com.google.security.fences.inheritance.ClassNode;
 import com.google.security.fences.inheritance.InheritanceGraph;
+import com.google.security.fences.inheritance.MethodDetails;
 import com.google.security.fences.namespace.Namespace;
 import com.google.security.fences.policy.AccessLevel;
 import com.google.security.fences.policy.ApiElement;
@@ -240,33 +242,46 @@ final class Checker extends AbstractClassesVisitor {
   PolicyResult applyAccessPolicy(
       Namespace from, ApiElement to, String descriptor) {
     // Find the most-specific rationale.
-    Iterable<Policy.NamespacePolicy> applicable =
-        policy.forNamespace(from);
+    Iterable<Policy.NamespacePolicy> applicable = policy.forNamespace(from);
 
     // We check all classes before the interfaces since method implementations
     // specified in concrete and abstract classes override interface default
     // methods and we want the order of application of policies to mimic the
     // order in
-    Deque<ApiElement> typesToCheck = new ArrayDeque<ApiElement>();
-    Deque<ApiElement> interfaces = new ArrayDeque<ApiElement>();
-    typesToCheck.add(to);
+    Deque<SuperTypeContext> typesToCheck = new ArrayDeque<SuperTypeContext>();
+    Deque<SuperTypeContext> interfaces = new ArrayDeque<SuperTypeContext>();
+    typesToCheck.add(new SuperTypeContext(to, true));
 
-    Set<ApiElement> checked = Sets.newLinkedHashSet();
+    Set<SuperTypeContext> checked = Sets.newHashSet();
 
     while (true) {
       boolean isInterface = false;
-      ApiElement el;
-      el = typesToCheck.pollFirst();
-      if (el == null) {
-        el = interfaces.pollFirst();
-        if (el == null) {
+      SuperTypeContext stc;
+      stc = typesToCheck.pollFirst();
+      if (stc == null) {
+        stc = interfaces.pollFirst();
+        if (stc == null) {
           break;
         } else {
           isInterface = true;
         }
       }
-      if (!checked.add(el)) {
+      if (!checked.add(stc)) {
         continue;
+      }
+      Optional<ClassNode> nodeOpt = Optional.absent();
+      ApiElement el = stc.el;
+      if (!stc.includeConcrete && !isInterface) {
+        nodeOpt = classContaining(el);
+        if (nodeOpt.isPresent()) {
+          Preconditions.checkState(el.type == ApiElementType.METHOD);
+          Optional<MethodDetails> md =
+              nodeOpt.get().getMethod(el.name, descriptor);
+          int access = md.isPresent() ? md.get().access : 0;
+          if ((access & Opcodes.ACC_ABSTRACT) == 0) {
+            continue;
+          }
+        }
       }
 
       AccessLevel levelFromPolicy = null;
@@ -302,23 +317,29 @@ final class Checker extends AbstractClassesVisitor {
         // super-types but do not have access to constructors except via
         // constructor chaining.  Chained constructor calls always explicitly
         // appear in the bytecode.
-        Optional<ApiElement> elClass = el.containingClass();
-        if (elClass.isPresent()) {
-          String elInternalName = elClass.get().toInternalName();
-          Optional<ClassNode> nodeOpt = inheritanceGraph.named(elInternalName);
-          if (nodeOpt.isPresent()) {
-            ClassNode node = nodeOpt.get();
-            // Don't apply the policy to super-types if the field or method
-            if (isDefinedInSuperTypes(node, to, el, descriptor)) {
-              if (!isInterface && node.superType.isPresent()) {
-                addIfPresent(
-                    typesToCheck,
-                    apiElementFromSuper(el, node.superType.get()));
+        if (!nodeOpt.isPresent()) {
+          nodeOpt = classContaining(el);
+        }
+        if (nodeOpt.isPresent()) {
+          ClassNode node = nodeOpt.get();
+          // Don't apply the policy to super-types if the field or method
+          boolean includeConcrete = stc.includeConcrete
+              && isDefinedInSuperTypes(node, to, el, descriptor);
+          if (el.type == ApiElementType.METHOD || includeConcrete) {
+            if (!isInterface && node.superType.isPresent()) {
+              Optional<ApiElement> superApiEl = apiElementFromSuper(
+                  el, node.superType.get());
+              if (superApiEl.isPresent()) {
+                typesToCheck.add(
+                    new SuperTypeContext(superApiEl.get(), includeConcrete));
               }
-              for (String interfaceNodeName : node.interfaces) {
-                addIfPresent(
-                    typesToCheck,
-                    apiElementFromSuper(el, interfaceNodeName));
+            }
+            for (String interfaceNodeName : node.interfaces) {
+              Optional<ApiElement> superApiEl = apiElementFromSuper(
+                  el, interfaceNodeName);
+              if (superApiEl.isPresent()) {
+                typesToCheck.add(
+                    new SuperTypeContext(superApiEl.get(), includeConcrete));
               }
             }
           }
@@ -326,6 +347,13 @@ final class Checker extends AbstractClassesVisitor {
       }
     }
     return PolicyResult.defaultResult(to);
+  }
+
+  private Optional<ClassNode> classContaining(ApiElement el) {
+    Optional<ApiElement> elClass = el.containingClass();
+    Preconditions.checkState(elClass.isPresent());
+    String elInternalName = elClass.get().toInternalName();
+    return inheritanceGraph.named(elInternalName);
   }
 
   private static boolean isDefinedInSuperTypes(
@@ -382,5 +410,16 @@ final class Checker extends AbstractClassesVisitor {
     if (el.isPresent()) {
       c.add(el.get());
     }
+  }
+}
+
+
+class SuperTypeContext {
+  final ApiElement el;
+  final boolean includeConcrete;
+
+  SuperTypeContext(ApiElement el, boolean includeConcrete) {
+    this.el = el;
+    this.includeConcrete = includeConcrete;
   }
 }
