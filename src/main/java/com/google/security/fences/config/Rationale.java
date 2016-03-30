@@ -231,6 +231,9 @@ public final class Rationale {
      * far.
      */
     public Rationale build() {
+      if (body.isEmpty() && addendum.isEmpty()) {
+        return Rationale.EMPTY;
+      }
       return new Rationale(body, addendum);
     }
   }
