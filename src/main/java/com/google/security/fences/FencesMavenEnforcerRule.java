@@ -83,6 +83,17 @@ public final class FencesMavenEnforcerRule implements EnforcerRule {
     imports.add(new ConfigurationImport(x));
   }
 
+  /**
+   * A setter called by reflection during configuration.  Actually adds
+   * an {@code <api>} with an {@code <addendum>} instead of blowing away prior
+   * value.
+   */
+  public void setAddendum(String x) throws EnforcerRuleException {
+    Fence api = new ApiFence();
+    api.setAddendum(x);
+    fences.add(api);
+  }
+
   public void execute(EnforcerRuleHelper helper) throws EnforcerRuleException {
     Log log = helper.getLog();
 
