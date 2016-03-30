@@ -14,6 +14,7 @@ import com.google.common.collect.Maps;
 import com.google.security.fences.config.Fence;
 import com.google.security.fences.config.FenceVisitor;
 import com.google.security.fences.config.Frenemies;
+import com.google.security.fences.config.Rationale;
 import com.google.security.fences.namespace.Namespace;
 import com.google.security.fences.namespace.NamespaceTrie;
 
@@ -77,11 +78,11 @@ public final class Policy {
     /**
      * The reason if any for controlling access.
      */
-    public final Optional<String> rationale;
+    public final Rationale rationale;
 
     AccessControlDecision(
         ApiElement apiElement, AccessLevel accessLevel,
-        Optional<String> rationale) {
+        Rationale rationale) {
       this.apiElement = apiElement;
       this.accessLevel = accessLevel;
       this.rationale = rationale;
@@ -110,39 +111,12 @@ public final class Policy {
 
     static AccessControlDecision mostRestrictive(
         AccessControlDecision a, AccessControlDecision b) {
+      Preconditions.checkArgument(a.apiElement.equals(b.apiElement));
       AccessLevel mostRestrictiveLevel = AccessLevel.mostRestrictive(
           a.accessLevel, b.accessLevel);
-      if (a.accessLevel == mostRestrictiveLevel) {
-        if (b.accessLevel == mostRestrictiveLevel) {
-          Preconditions.checkState(a.apiElement.equals(b.apiElement));
-          if (a.rationale.isPresent()) {
-            if (b.rationale.isPresent()) {
-              String aRationale = a.rationale.get();
-              String bRationale = b.rationale.get();
-              if (aRationale.contains(bRationale)) {
-                return a;
-              } else if (bRationale.contains(aRationale)) {
-                return b;
-              } else {
-                return new AccessControlDecision(
-                    a.apiElement,
-                    mostRestrictiveLevel,
-                    Optional.of(aRationale + "\n\n" + bRationale)
-                    );
-              }
-            } else {
-              return a;
-            }
-          } else {
-            return b;
-          }
-        } else {
-          return a;
-        }
-      } else {
-        Preconditions.checkState(b.accessLevel == mostRestrictiveLevel);
-        return b;
-      }
+      Rationale mergedRationale = Rationale.merge(a.rationale, b.rationale);
+      return new AccessControlDecision(
+          a.apiElement, mostRestrictiveLevel, mergedRationale);
     }
   }
 
@@ -210,7 +184,7 @@ public final class Policy {
       for (Map.Entry<ApiElement, AccessLevel> e : m.entrySet()) {
         ApiElement k = e.getKey();
         AccessLevel v = e.getValue();
-        b.put(k, new AccessControlDecision(k, v, Optional.<String>absent()));
+        b.put(k, new AccessControlDecision(k, v, Rationale.EMPTY));
       }
       return fromMap(b.build());
     }
@@ -247,7 +221,7 @@ public final class Policy {
         Frenemies frenemies = f.getFrenemies();
         addToPolicy(
             frenemies.friends, AccessLevel.ALLOWED, apiElement,
-            Optional.<String>absent());
+            Rationale.EMPTY);
         addToPolicy(
             frenemies.enemies, AccessLevel.DISALLOWED, apiElement,
             frenemies.rationale);
@@ -256,7 +230,7 @@ public final class Policy {
       @SuppressWarnings("synthetic-access")
       private void addToPolicy(
           Iterable<Namespace> nss, AccessLevel lvl, ApiElement el,
-          Optional<String> rationale) {
+          Rationale rationale) {
         for (Namespace ns : nss) {
           policy.trie.put(ns, new AccessControlDecision(el, lvl, rationale));
         }

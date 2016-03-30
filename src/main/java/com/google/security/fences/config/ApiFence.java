@@ -68,7 +68,7 @@ public final class ApiFence extends Fence {
         classes.add((ClassFence) splitChild);
       } else if (splitChild instanceof ApiFence) {
         ApiFence apiChild = (ApiFence) splitChild;
-        mergeTrustsFrom(apiChild);
+        mergeFrom(apiChild);
         packages.addAll(apiChild.packages);
         classes.addAll(apiChild.classes);
       } else {

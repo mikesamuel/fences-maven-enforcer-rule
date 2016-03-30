@@ -28,18 +28,21 @@ For example,
     <package>
       <name>example</name>
       <class>
-        <name>NameOfClass</name>
-        <trusts>org.trustworthy.Accessor</trusts>
+      <name>MisusableClass</name>
+        <!-- Distrust by default. -->
         <distrusts>*</distrusts>
+        <!-- White-list of approved exceptions to the rule. -->
+        <trusts>com.example.foo.TrustworthyAccessor</trusts>
         <rationale>
           NameOfClass exposes authority that must be used in
           accordance with strict guidelines (see ...).
 
           Try to use com.example.SimplerSaferAlternative instead.
 
-          If that doesn't suffice, email security@example.com and
-          they will work with you to find a way to use the simpler
-          APIs or approve your uses.
+          If that doesn't suffice, open a ticket at http://jira/
+          and security team will work with you to find a way to use
+          the simpler APIs or add your code to the white-list of
+          exceptions to the rule.  (http://shortlink/misusable-faq)
         </rationale>
       </class>
     </package>
@@ -63,26 +66,107 @@ Names can be dotted, so the configuration above can be simplified to
 
 ## Writing good `<rationale>`s. <a name="writing_good_rationales"></a>
 
-The `<rationale>...</rationale>` element may appear in any API element.
-When a user builds code that violates the policy, the rationale is shown.
+The error message shown when a policy is violated is composed from
+the `<rationale>`...`</rationale>` and `<addendum>`...`</addendum>`
+elements.
 
-It should
+Let's look at a policy in two parts:
 
-1. Explain or give short link to documents explaining how to work within
-   the policy.
-2. Include contact information (email, IRC) where help can be found.
-3. Include bug-tracker information if you track bugs in policies or
-   white-list requests there.
+1. An aggregating POM maintained by the project lead which `<import/>`s
+2. A third-party dependency that bundles an `META-INF/fences.xml` file.
 
-Rationales may include maven property expressions.
+These two files can be used as templates.  The `<!---`...`-->`
+comments are non-normative.
+
+### Project POM
+
+```xml
+<configuration>
+  <import>com.third_party:library</import>
+
+  <!--
+    A high-level addendum points developers to sources of
+    information within the organization possibly including
+
+    1. FAQs or documentation that they can read *and*
+    2. user groups, issue trackers, IRC channels that
+       can field questions.
+
+    Keep this short.
+    Users appreciate it the first time they see it but
+    boiler-plate in logs obscures important details.
+
+  -->
+  <addendum>
+    http://wiki/java-policy-FAQ | security-team@example.com
+  </addendum>
+  <!-- Use short URLs since URLs in logs are rarely clickable. -->
+
+  <package>
+    <name>com.third_party</name>
+    <class>
+      <name>Unsafe</name>
+      <method>
+        <name>foo</name>
+        <!-- A white-list of exceptions to the imported rules. -->
+        <trusts>com.example.aardvark.ConsistentTransactionr</trusts>
+
+        <!-- There may be alternatives within the organization that
+             are not available to all users of the third-party library.
+
+             An additional rationale can supplement those docs.
+        -->
+        <rationale>
+          Prefer com.example.SafeAlternative to ${fences.api}.
+          Ping alice@example.com if that doesn't suffice.
+        </rationale>
+      </method>
+    </class>
+  </package>
+</configuration>
+```
+
+### Third-party `META-INF/fences.xml`
+
+```xml
+<configuration>
+<package>
+  <name>com.third_party</name>
+  <class>
+    <name>Unsafe</name>
+    <trusts>com.third_party.builders</trusts>
+    <distrusts>*</distrusts>
+
+    <rationale>
+      Uses of Unsafe must be carefully reviewed by experts in XYZ.
+      Please use the safe builders in com.third_party.builders
+      before rolling your own.
+    </rationale>
+    <!--
+      Not all members of a public user support list have signed
+      NDAs with com.example, so mentioning that support lists
+      are public or non-confidential can help developers decide
+      what level of detail is appropriate.
+    -->
+    <rationale>
+      User support (non-confidential) : users@third_party.com
+      Public issue tracker : third_party.com/issues
+    </rationale>
+  </class>
+</package>
+```
+
+### Property Interpolation
+
+Rationales and addenda may include maven property expressions.
 
 In addition to the normal maven properties, these properties are available:
 
 | Property Name     | Meaning                                                  |
 | ----------------- | -------------------------------------------------------- |
 | fences.api        | The sensitive API.                                       |
-| fences.distrusted | The distrusted namespace which accessed `${fences.API}`. |
-| fences.trusts     | The namespaces which `${fences.API}` trusts.             |
+| fences.distrusted | The distrusted namespace which accessed `${fences.api}`. |
+| fences.trusts     | The namespaces which `${fences.api}` trusts.             |
 
 The documentation on plexus-interpolation (the module Maven uses to do
 property substitution) is pretty sparse, but

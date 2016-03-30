@@ -18,6 +18,7 @@ import com.google.common.base.Optional;
 import com.google.common.collect.ImmutableList;
 import com.google.common.collect.Lists;
 import com.google.common.collect.Maps;
+import com.google.security.fences.config.Rationale;
 import com.google.security.fences.inheritance.InheritanceGraph;
 import com.google.security.fences.namespace.Namespace;
 import com.google.security.fences.policy.AccessLevel;
@@ -207,8 +208,8 @@ final class Checker extends AbstractClassesVisitor {
   static final class PolicyResult {
     /** The policy decision. */
     final AccessLevel accessLevel;
-    /** The rationale for the decision if any. */
-    final Optional<String> rationale;
+    /** The rationale for the decision. */
+    final Rationale rationale;
     /**
      * The API element based upon which the decision was made.
      * This may be an API element defined on an ancestor of the
@@ -219,13 +220,12 @@ final class Checker extends AbstractClassesVisitor {
     static PolicyResult defaultResult(ApiElement target) {
       return new PolicyResult(
         AccessLevel.ALLOWED,  // Default to plain old Java rules.
-        Optional.<String>absent(),
+        Rationale.EMPTY,
         target);
     }
 
     PolicyResult(
-        AccessLevel accessLevel, Optional<String> rationale,
-        ApiElement target) {
+        AccessLevel accessLevel, Rationale rationale, ApiElement target) {
       this.accessLevel = accessLevel;
       this.rationale = rationale;
       this.target = target;
@@ -240,21 +240,21 @@ final class Checker extends AbstractClassesVisitor {
     for (ApiElement el :
          new PolicyApplicationOrder(to, descriptor, inheritanceGraph, log)) {
       AccessLevel levelFromPolicy = null;
-      Optional<String> rationale = Optional.absent();
+      Rationale.Builder rationaleBuilder = new Rationale.Builder();
       for (Policy.NamespacePolicy nsp : applicable) {
         Optional<Policy.AccessControlDecision> d =
             nsp.accessPolicyForApiElement(el);
         if (d.isPresent()) {
-          AccessLevel dLvl = d.get().accessLevel;
+          Policy.AccessControlDecision acd = d.get();
+          AccessLevel dLvl = acd.accessLevel;
+          Rationale rationale = acd.rationale;
           if (levelFromPolicy == null) {
             levelFromPolicy = dLvl;
           }
-          if (dLvl == levelFromPolicy) {
-            rationale = d.get().rationale;
-            if (rationale.isPresent()) {
-              break;
-            }
+          if (rationaleBuilder.getBody().isEmpty() && dLvl == levelFromPolicy) {
+            rationaleBuilder.addBodyFrom(rationale);
           }
+          rationaleBuilder.addAddendumFrom(rationale);
         }
       }
 
@@ -262,7 +262,7 @@ final class Checker extends AbstractClassesVisitor {
         return new PolicyResult(
             // Default to java rules.
             levelFromPolicy,
-            rationale,
+            rationaleBuilder.build(),
             el);
       }
     }

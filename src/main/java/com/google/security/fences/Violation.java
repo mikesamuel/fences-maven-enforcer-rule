@@ -2,7 +2,7 @@ package com.google.security.fences;
 
 import org.apache.maven.artifact.Artifact;
 
-import com.google.common.base.Optional;
+import com.google.security.fences.config.Rationale;
 import com.google.security.fences.namespace.Namespace;
 import com.google.security.fences.policy.ApiElement;
 
@@ -29,7 +29,7 @@ final class Violation implements Comparable<Violation> {
   /** The API element to which access was denied. */
   final ApiElement sensitiveApiElement;
   /** The reason for denying access. */
-  final Optional<String> rationale;
+  final Rationale rationale;
 
   Violation(
       Artifact artifact,
@@ -38,7 +38,7 @@ final class Violation implements Comparable<Violation> {
       int useSiteLineNumber,
       ApiElement useSiteApiElement,
       ApiElement sensitiveApiElement,
-      Optional<String> rationale) {
+      Rationale rationale) {
     this.artifact = artifact;
     this.useSiteContainer = useSiteContainer;
     this.useSiteSource = useSiteSource;

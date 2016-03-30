@@ -72,6 +72,7 @@ We use the following principles to figure out how rules apply to uses.
    Roughly: member > exact class > super type > super interface
    > exact package > super package.
 
+<a name="specificity"></a>
 The table below shows the level of specificity of various kinds in
 order from greatest to least.
 

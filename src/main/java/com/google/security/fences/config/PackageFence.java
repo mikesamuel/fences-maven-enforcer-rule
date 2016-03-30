@@ -62,7 +62,7 @@ public final class PackageFence extends NamedFence {
         classes.add((ClassFence) splitChild);
       } else if (splitChild instanceof ApiFence) {
         ApiFence apiChild = (ApiFence) splitChild;
-        mergeTrustsFrom(apiChild);
+        mergeFrom(apiChild);
         packages.addAll(apiChild.getPackages());
         classes.addAll(apiChild.getClasses());
       } else {
@@ -73,7 +73,7 @@ public final class PackageFence extends NamedFence {
     String name = getName();
     if (name.isEmpty()) {
       ApiFence apiFence = new ApiFence();
-      apiFence.mergeTrustsFrom(this);
+      apiFence.mergeFrom(this);
       for (PackageFence pkg : this.packages) {
         apiFence.setPackage(pkg);
       }

@@ -5,12 +5,8 @@ import java.util.List;
 import javax.annotation.Nullable;
 
 import org.apache.maven.enforcer.rule.api.EnforcerRuleException;
-import org.codehaus.plexus.interpolation.InterpolationException;
-import org.codehaus.plexus.interpolation.RegexBasedInterpolator;
-import org.codehaus.plexus.interpolation.ValueSource;
 
-import com.google.common.base.Joiner;
-import com.google.common.collect.ImmutableList;
+import com.google.common.base.Preconditions;
 import com.google.common.collect.Lists;
 import com.google.security.fences.namespace.Namespace;
 import com.google.security.fences.policy.ApiElement;
@@ -22,7 +18,14 @@ import com.google.security.fences.policy.ApiElement;
 public abstract class Fence {
   private final List<Namespace> trusts = Lists.newArrayList();
   private final List<Namespace> distrusts = Lists.newArrayList();
-  private String rationale;
+  private final Rationale.Builder rationale = new Rationale.Builder();
+  /**
+   * We keep track of the round in which this is imported, so that when
+   * combining configurations into policies, we can drop imported rationales
+   * in fovor of project-level ones that override them for a particular
+   * API element.
+   */
+  private int importOrder = -1;
 
   Fence() {
     // package private
@@ -51,35 +54,27 @@ public abstract class Fence {
    * The documentation at src/site/markdown/configuration.md explains how
    * to write a good one.
    *
-   * @param s May contain maven property expressions.
+   * @param s Human-readable text that may contain maven property expressions.
    */
   public void setRationale(@Nullable String s) throws EnforcerRuleException {
-    if (s == null) {
-      this.rationale = null;
-    } else {
-      String trimmed = trimMinimalWhitespaceFromAllLines(s);
-      // TODO: Can we pre-validate it as a valid plexus expression?
-      RegexBasedInterpolator interpolator = new RegexBasedInterpolator();
-      interpolator.addValueSource(new ValueSource() {
-        public void clearFeedback() {
-          // Nothing to do.
-        }
+    if (s != null) {
+      rationale.addBody(s);
+    }
+  }
 
-        @SuppressWarnings("rawtypes")
-        public List getFeedback() {
-          return ImmutableList.of();
-        }
-
-        public Object getValue(String key) {
-          return key;
-        }
-      });
-      try {
-        interpolator.interpolate(trimmed);
-      } catch (InterpolationException ex) {
-        throw new EnforcerRuleException("Malformed rationale: " + trimmed, ex);
-      }
-      this.rationale = trimmed;
+  /**
+   * A human readable string like a {@link #setRationale rationale} but which
+   * is appended at the end regardless of whether there is a more specific
+   * rationale.
+   * <p>
+   * The documentation at src/site/markdown/configuration.md explains how
+   * to use addenda.
+   *
+   * @param s Human-readable text that may contain maven property expressions.
+   */
+  public void setAddendum(@Nullable String s) throws EnforcerRuleException {
+    if (s != null) {
+      rationale.addAddendum(s);
     }
   }
 
@@ -106,9 +101,22 @@ public abstract class Fence {
       b.addEnemy(ns);
     }
     if (rationale != null) {
-      b.setRationale(rationale);
+      b.setRationale(rationale.build());
     }
     return b.build();
+  }
+
+  /**
+   * Called to specify the import order used when resolving duplicate
+   * rationales for a particular API element.
+   */
+  public final void assignImportOrder(int newImportOrder) {
+    Preconditions.checkState(this.importOrder == -1);
+    Preconditions.checkArgument(newImportOrder >= 0);
+    this.importOrder = newImportOrder;
+    for (Fence child : getChildFences()) {
+      child.assignImportOrder(newImportOrder);
+    }
   }
 
   /**
@@ -118,9 +126,17 @@ public abstract class Fence {
    */
   public abstract Fence splitDottedNames();
 
-  void mergeTrustsFrom(Fence that) {
+  void mergeFrom(Fence that) {
     this.trusts.addAll(that.trusts);
     this.distrusts.addAll(that.distrusts);
+    // Merge rationales, giving preference to bodies with a lower import order.
+    if (this.importOrder > that.importOrder
+        && !that.rationale.getBody().isEmpty()) {
+      this.rationale.setBodyFrom(that.rationale.build());
+    } else if (this.importOrder == that.importOrder) {
+      this.rationale.addBodyFrom(that.rationale.build());
+    }
+    this.rationale.addAddendumFrom(that.rationale.build());
   }
 
   abstract void visit(FenceVisitor v, ApiElement el);
@@ -128,50 +144,5 @@ public abstract class Fence {
   /** Start recursively walking the fence tree. */
   public final void visit(FenceVisitor v) {
     visit(v, ApiElement.DEFAULT_PACKAGE);
-  }
-
-
-  private static String trimMinimalWhitespaceFromAllLines(String s) {
-    // Strings that appear in XML often have a lot of leading whitespace
-    // on each line.  Trim off the white-space using the minimal amount of
-    // whitespace from the second-and subsequent lines as a guide.
-    String[] lines = s.split("\n|\r\n?");
-    int minWhitespace = Integer.MAX_VALUE;
-    int nLines = lines.length;
-    for (int j = 1; j < nLines; ++j) {
-      int leadingWhitespace = 0;
-      String line = lines[j];
-      if (line.trim().isEmpty()) { continue; }
-      int n = line.length();
-      for (int i = 0; i < n; ++i) {
-        int spaceWidth = spaceWidthOf(line.charAt(i));
-        if (spaceWidth == 0) { break; }
-        leadingWhitespace += spaceWidth;
-      }
-      minWhitespace = Math.min(minWhitespace, leadingWhitespace);
-    }
-    if (minWhitespace == 0) { return s; }
-    for (int j = nLines; --j >= 0;) {
-      int nToTrim = minWhitespace;
-      String line = lines[j];
-      int trimPt = 0;
-      int n = line.length();
-      while (trimPt < n && nToTrim > 0) {
-        int spaceWidth = spaceWidthOf(line.charAt(trimPt));
-        if (spaceWidth == 0 || spaceWidth > nToTrim) {
-          break;
-        }
-        nToTrim -= spaceWidth;
-        ++trimPt;
-      }
-      lines[j] = line.substring(trimPt);
-    }
-    return Joiner.on('\n').join(lines).replaceFirst("^[\r\n]+", "");
-  }
-
-  private static int spaceWidthOf(char ch) {
-    if (ch == ' ') { return 1; }
-    if (ch == '\t') { return 8; }
-    return 0;
   }
 }

@@ -24,6 +24,7 @@ import com.google.common.collect.ImmutableMap;
 import com.google.common.collect.Lists;
 import com.google.common.collect.Maps;
 import com.google.common.collect.Sets;
+import com.google.security.fences.config.HumanReadableText;
 
 /**
  * Groups a collection of violations so that we can provide succinct, clear
@@ -73,7 +74,8 @@ final class PolicyViolationReporter {
    * Expands plexus interpolator expressions in {@code <rationale>} messages.
    */
   private Optional<String> formatRationale(Violation v) {
-    if (!v.rationale.isPresent()) {
+    HumanReadableText wholeRationale = v.rationale.getWholeText();
+    if (wholeRationale.isEmpty()) {
       return Optional.absent();
     }
     ValueSource artifactValueSource = new ObjectBasedValueSource(v.artifact);
@@ -83,7 +85,7 @@ final class PolicyViolationReporter {
             "fences.distrusted", v.useSiteContainer));
     interpolator.addValueSource(artifactValueSource);
     interpolator.addValueSource(failedAccessValueSource);
-    String rationaleText = v.rationale.get();
+    String rationaleText = wholeRationale.text;
     try {
       rationaleText = interpolator.interpolate(rationaleText);
     } catch (InterpolationException ex) {

@@ -145,10 +145,14 @@ public final class FencesMavenEnforcerRule implements EnforcerRule {
 
     ImmutableList<ClassRoot> classRoots = finder.getClassRoots();
 
+    for (Fence f : fences) {
+      f.assignImportOrder(0);
+    }
     // Do the imports.
     // Since an import might load a configuration that adds more imports, we
     // just walk the list destructively.
-    while (!imports.isEmpty()) {
+    for (int importOrder = 1; !imports.isEmpty(); ++importOrder) {
+      int nFencesBeforeImport = this.fences.size();
       ConfigurationImport imp = imports.removeFirst();
       if (alreadyImported.add(imp.key)) {
         log.debug("Importing " + imp.key);
@@ -158,6 +162,9 @@ public final class FencesMavenEnforcerRule implements EnforcerRule {
             log);
       } else {
         log.info("Not importing " + imp.key + " a second time");
+      }
+      for (Fence f : fences.subList(nFencesBeforeImport, fences.size())) {
+        f.assignImportOrder(importOrder);
       }
     }
 
