@@ -100,9 +100,7 @@ public abstract class Fence {
     for (Namespace ns : distrusts) {
       b.addEnemy(ns);
     }
-    if (rationale != null) {
-      b.setRationale(rationale.build());
-    }
+    b.setRationale(rationale.build());
     return b.build();
   }
 
