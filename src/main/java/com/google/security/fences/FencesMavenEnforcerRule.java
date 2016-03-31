@@ -17,6 +17,7 @@ import org.codehaus.plexus.component.configurator.ComponentConfigurator;
 import org.codehaus.plexus.component.configurator.expression.ExpressionEvaluationException;
 import org.codehaus.plexus.component.repository.exception.ComponentLookupException;
 import org.codehaus.plexus.interpolation.PropertiesBasedValueSource;
+import org.w3c.dom.Element;
 
 import com.google.common.collect.ImmutableList;
 import com.google.common.collect.Lists;
@@ -31,9 +32,18 @@ import com.google.security.fences.util.LazyString;
 import com.google.security.fences.util.Utils;
 
 import java.io.IOException;
+import java.io.StringWriter;
 import java.util.LinkedList;
 import java.util.List;
 import java.util.Set;
+
+import javax.xml.parsers.ParserConfigurationException;
+import javax.xml.transform.OutputKeys;
+import javax.xml.transform.Transformer;
+import javax.xml.transform.TransformerException;
+import javax.xml.transform.TransformerFactory;
+import javax.xml.transform.dom.DOMSource;
+import javax.xml.transform.stream.StreamResult;
 
 /**
  * Augments Java access control by verifying that a project and its dependencies
@@ -95,7 +105,7 @@ public final class FencesMavenEnforcerRule implements EnforcerRule {
   }
 
   public void execute(EnforcerRuleHelper helper) throws EnforcerRuleException {
-    Log log = helper.getLog();
+    final Log log = helper.getLog();
 
     // TODO: maybe check MavenSession.getGoals() to see if this is being
     // run at phase "validate" instead of phase "verify" to warn of a
@@ -156,14 +166,14 @@ public final class FencesMavenEnforcerRule implements EnforcerRule {
 
     ImmutableList<ClassRoot> classRoots = finder.getClassRoots();
 
-    for (Fence f : fences) {
-      f.assignImportOrder(0);
-    }
+    int nAssignedImportOrder = 0;
+    int importOrder = 0;
     // Do the imports.
     // Since an import might load a configuration that adds more imports, we
     // just walk the list destructively.
-    for (int importOrder = 1; !imports.isEmpty(); ++importOrder) {
-      int nFencesBeforeImport = this.fences.size();
+    for (; !imports.isEmpty(); ++importOrder) {
+      nAssignedImportOrder = rerootAndAssignImportOrder(
+          nAssignedImportOrder, importOrder);
       ConfigurationImport imp = imports.removeFirst();
       if (alreadyImported.add(imp.key)) {
         log.debug("Importing " + imp.key);
@@ -174,26 +184,9 @@ public final class FencesMavenEnforcerRule implements EnforcerRule {
       } else {
         log.info("Not importing " + imp.key + " a second time");
       }
-      for (Fence f : fences.subList(nFencesBeforeImport, fences.size())) {
-        f.assignImportOrder(importOrder);
-      }
     }
+    rerootAndAssignImportOrder(nAssignedImportOrder, importOrder);
 
-    checkAllClasses(project, log, classRoots);
-  }
-
-  protected void checkAllClasses(
-      MavenProject project, Log log, Iterable<? extends ClassRoot> classRoots)
-  throws EnforcerRuleException {
-    InheritanceGraph inheritanceGraph;
-    try {
-      inheritanceGraph = InheritanceGraphExtractor
-          .fromClassRoots(classRoots);
-    } catch (IOException ex) {
-      throw new EnforcerRuleException(
-          "Failed to read classes to find inheritance relationships",
-          ex);
-    }
     ImmutableList<Fence> allFences = ImmutableList.copyOf(fences);
 
     if (allFences.isEmpty()) {
@@ -204,7 +197,73 @@ public final class FencesMavenEnforcerRule implements EnforcerRule {
           + " for details");
     }
 
-    final Policy p = Policy.fromFences(allFences);
+    // Merge all the fences into one master.
+    final ApiFence mergedFence = new ApiFence();
+    for (Fence f : allFences) {
+      mergedFence.mergeDeep(f);
+    }
+
+    // Log the effective configuration
+    boolean forceShowConfig = System.getProperty("fences.config.show") != null;
+    if (forceShowConfig || log.isDebugEnabled()) {
+      try {
+        Element config = mergedFence.buildEffectiveConfiguration();
+        TransformerFactory tf = TransformerFactory.newInstance();
+        Transformer transformer = tf.newTransformer();
+        transformer.setOutputProperty(OutputKeys.OMIT_XML_DECLARATION, "yes");
+        transformer.setOutputProperty(OutputKeys.METHOD, "xml");
+        transformer.setOutputProperty(OutputKeys.INDENT, "yes");
+        transformer.setOutputProperty(OutputKeys.ENCODING, "UTF-8");
+        transformer.setOutputProperty(
+            "{http://xml.apache.org/xslt}indent-amount", "2");
+
+        StringWriter xmlOut = new StringWriter();
+        xmlOut.write("Effective Fences Rule Configuration:\n");
+        transformer.transform(
+            new DOMSource(config),
+            new StreamResult(xmlOut));
+        String xml = xmlOut.toString();
+        if (forceShowConfig) {
+          log.info(xml);
+        } else {
+          log.debug(xml);
+        }
+      } catch (ParserConfigurationException ex) {
+        log.error(ex);
+      } catch (TransformerException ex) {
+        log.error(ex);
+      }
+    }
+
+    checkAllClasses(project, mergedFence, log, classRoots);
+  }
+
+  private int rerootAndAssignImportOrder(int start, int importOrder) {
+    int end = fences.size();
+    for (int i = start; i < end; ++i) {
+      Fence f = fences.get(i);
+      f = f.splitDottedNames().promoteToApi();
+      f.assignImportOrder(importOrder);
+      fences.set(i, f);
+    }
+    return end;
+  }
+
+  protected static void checkAllClasses(
+      MavenProject project, ApiFence mergedFence,
+      Log log, Iterable<? extends ClassRoot> classRoots)
+  throws EnforcerRuleException {
+    InheritanceGraph inheritanceGraph;
+    try {
+      inheritanceGraph = InheritanceGraphExtractor
+          .fromClassRoots(classRoots);
+    } catch (IOException ex) {
+      throw new EnforcerRuleException(
+          "Failed to read classes to find inheritance relationships",
+          ex);
+    }
+
+    final Policy p = Policy.fromFence(mergedFence);
     log.debug(new LazyString() {
       @Override
       protected String makeString() {

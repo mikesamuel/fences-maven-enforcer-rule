@@ -1,13 +1,18 @@
 package com.google.security.fences.config;
 
 import java.util.List;
+import java.util.Map;
 
 import javax.annotation.Nullable;
 
 import org.apache.maven.enforcer.rule.api.EnforcerRuleException;
+import org.w3c.dom.Document;
+import org.w3c.dom.Element;
 
 import com.google.common.base.Preconditions;
+import com.google.common.collect.ImmutableList;
 import com.google.common.collect.Lists;
+import com.google.common.collect.Maps;
 import com.google.security.fences.namespace.Namespace;
 import com.google.security.fences.policy.ApiElement;
 
@@ -30,6 +35,16 @@ public abstract class Fence {
   Fence() {
     // package private
   }
+
+  /**
+   * A key used to group children that refer to the same API element.
+   * When used, the key will be prefixed with the class name, which has the
+   * effect of segregating method/field/class namespaces.
+   * <p>
+   * This must be independent of children, trusts, distrusts, and rationale --
+   * all of the state that can be merged with another node.
+   */
+  abstract String getKey();
 
   /**
    * A setter called by reflection during rule configuration.  Actually adds
@@ -88,6 +103,9 @@ public abstract class Fence {
   /** Fences contained herein. */
   public abstract Iterable<Fence> getChildFences();
 
+  /** Updates the list from {@link #getChildFences}. */
+  abstract void replaceChildFences(Iterable<? extends Fence> newChildren);
+
   /**
    * The API elements trusted or distrusted by the API element specified by
    * this fence.
@@ -124,7 +142,14 @@ public abstract class Fence {
    */
   public abstract Fence splitDottedNames();
 
-  void mergeFrom(Fence that) {
+  /**
+   * Does minimal wrapping to produce a top-level API fence.
+   */
+  public ApiFence promoteToApi() {
+    throw new IllegalStateException("Cannot promote " + getClass());
+  }
+
+  final void mergeFrom(Fence that) {
     this.trusts.addAll(that.trusts);
     this.distrusts.addAll(that.distrusts);
     // Merge rationales, giving preference to bodies with a lower import order.
@@ -137,10 +162,77 @@ public abstract class Fence {
     this.rationale.addAddendumFrom(that.rationale.build());
   }
 
+  /**
+   * Merge the salient details of the given configuration into this one,
+   * guaranteeing that there is only one child with a given name.
+   */
+  public final void mergeDeep(Fence f) {
+    mergeFrom(f);
+
+    // Group children by key, merging recursively.
+    Map<String, Fence> childrenByKey = Maps.newLinkedHashMap();
+    ImmutableList<Fence> childrenToMerge = ImmutableList.<Fence>builder()
+        .addAll(getChildFences())
+        .addAll(f.getChildFences())
+        .build();
+    for (Fence childToMerge : childrenToMerge) {
+      String fullKey = childToMerge.getClass().getName()
+          + " : " + childToMerge.getKey();
+      Fence previousChild = childrenByKey.get(fullKey);
+      if (previousChild != null) {
+        previousChild.mergeDeep(childToMerge);
+      } else {
+        childrenByKey.put(fullKey, childToMerge);
+      }
+    }
+
+    replaceChildFences(childrenByKey.values());
+  }
+
   abstract void visit(FenceVisitor v, ApiElement el);
 
   /** Start recursively walking the fence tree. */
   public final void visit(FenceVisitor v) {
     visit(v, ApiElement.DEFAULT_PACKAGE);
+  }
+
+  abstract String getConfigurationElementName();
+
+  void fleshOutEffectiveConfiguration(Element el) {
+    Document doc = el.getOwnerDocument();
+    for (Namespace ns : trusts) {
+      Element trustElement = doc.createElement("trusts");
+      trustElement.appendChild(doc.createTextNode(toTextNode(ns)));
+      el.appendChild(trustElement);
+    }
+    for (Namespace ns : distrusts) {
+      Element trustElement = doc.createElement("distrusts");
+      trustElement.appendChild(doc.createTextNode(toTextNode(ns)));
+      el.appendChild(trustElement);
+    }
+    HumanReadableText rbody = rationale.getBody();
+    if (!rbody.isEmpty()) {
+      Element rationaleElement = doc.createElement("rationale");
+      rationaleElement.appendChild(doc.createTextNode(rbody.text));
+      el.appendChild(rationaleElement);
+    }
+    HumanReadableText addendum = rationale.getAddendum();
+    if (!addendum.isEmpty()) {
+      Element addendumElement = doc.createElement("addendum");
+      addendumElement.appendChild(doc.createTextNode(addendum.text));
+      el.appendChild(addendumElement);
+    }
+    for (Fence child : getChildFences()) {
+      Element childEl = doc.createElement(child.getConfigurationElementName());
+      el.appendChild(childEl);
+      child.fleshOutEffectiveConfiguration(childEl);
+    }
+  }
+
+  private static String toTextNode(Namespace ns) {
+    if (Namespace.DEFAULT_PACKAGE.equals(ns)) {
+      return "*";
+    }
+    return ns.toString();
   }
 }

@@ -1,5 +1,6 @@
 package com.google.security.fences.config;
 
+import com.google.common.base.Preconditions;
 import com.google.common.collect.ImmutableList;
 import com.google.security.fences.policy.ApiElement;
 import com.google.security.fences.policy.ApiElementType;
@@ -8,8 +9,8 @@ import com.google.security.fences.policy.ApiElementType;
 public final class ConstructorFence extends Fence {
 
   @Override
-  public Iterable<Fence> getChildFences() {
-    return ImmutableList.of();
+  String getKey() {
+    return ApiElement.CONSTRUCTOR_SPECIAL_METHOD_NAME;
   }
 
   @Override
@@ -22,5 +23,20 @@ public final class ConstructorFence extends Fence {
   @Override
   public Fence splitDottedNames() {
     return this;
+  }
+
+  @Override
+  public Iterable<Fence> getChildFences() {
+    return ImmutableList.of();
+  }
+
+  @Override
+  void replaceChildFences(Iterable<? extends Fence> newChildren) {
+    Preconditions.checkArgument(!newChildren.iterator().hasNext());
+  }
+
+  @Override
+  String getConfigurationElementName() {
+    return "constructor";
   }
 }

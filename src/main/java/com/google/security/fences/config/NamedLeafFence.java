@@ -1,11 +1,17 @@
 package com.google.security.fences.config;
 
+import com.google.common.base.Preconditions;
 import com.google.common.collect.ImmutableList;
 
 abstract class NamedLeafFence extends NamedFence {
   @Override
   public Iterable<Fence> getChildFences() {
     return ImmutableList.of();
+  }
+
+  @Override
+  void replaceChildFences(Iterable<? extends Fence> newChildren) {
+    Preconditions.checkArgument(!newChildren.iterator().hasNext());
   }
 
   protected abstract void addToClass(ClassFence container);
@@ -39,5 +45,4 @@ abstract class NamedLeafFence extends NamedFence {
     }
     return f;
   }
-
 }

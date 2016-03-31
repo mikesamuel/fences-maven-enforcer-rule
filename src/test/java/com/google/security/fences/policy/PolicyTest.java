@@ -43,7 +43,7 @@ public final class PolicyTest extends TestCase {
     comPkg.setName("com");
     comPkg.setPackage(examplePkg);
 
-    p = Policy.fromFences(ImmutableList.of(comPkg));
+    p = Policy.fromFence(comPkg);
   }
 
   @Override

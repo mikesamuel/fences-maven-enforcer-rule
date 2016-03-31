@@ -14,7 +14,7 @@ import com.google.common.collect.Maps;
 import com.google.security.fences.config.Fence;
 import com.google.security.fences.config.FenceVisitor;
 import com.google.security.fences.config.Frenemies;
-import com.google.security.fences.config.Rationale;
+import com.google.security.fences.config.HumanReadableText;
 import com.google.security.fences.namespace.Namespace;
 import com.google.security.fences.namespace.NamespaceTrie;
 
@@ -30,6 +30,11 @@ public final class Policy {
       = new NamespaceTrie<AccessControlDecision, NamespacePolicy>(
           NamespacePolicy.EMPTY_SUPPLIER,
           FOLD_POLICIES_TOGETHER);
+  /**
+   * Maps API elements to {@code <addendum />}s to show when a violation occurs
+   * accessing that API element.
+   */
+  private final Map<ApiElement, HumanReadableText> addenda = Maps.newHashMap();
 
   private static final
   Function<NamespacePolicy, Function<AccessControlDecision, NamespacePolicy>>
@@ -63,6 +68,21 @@ public final class Policy {
   }
 
   /**
+   * All the addenda for the given API element.
+   */
+  public HumanReadableText getAddenda(ApiElement el) {
+    HumanReadableText allAddenda = HumanReadableText.EMPTY;
+    for (Optional<ApiElement> ancestor = Optional.of(el);
+         ancestor.isPresent(); ancestor = ancestor.get().parent) {
+      HumanReadableText addendum = addenda.get(ancestor.get());
+      if (addendum != null) {
+        allAddenda = addendum.concat(allAddenda);
+      }
+    }
+    return allAddenda;
+  }
+
+  /**
    * An access control decision for a single API element.
    * This is a cell in the Namespace x ApiElement access control matrix.
    */
@@ -78,11 +98,11 @@ public final class Policy {
     /**
      * The reason if any for controlling access.
      */
-    public final Rationale rationale;
+    public final HumanReadableText rationale;
 
     AccessControlDecision(
         ApiElement apiElement, AccessLevel accessLevel,
-        Rationale rationale) {
+        HumanReadableText rationale) {
       this.apiElement = apiElement;
       this.accessLevel = accessLevel;
       this.rationale = rationale;
@@ -114,7 +134,7 @@ public final class Policy {
       Preconditions.checkArgument(a.apiElement.equals(b.apiElement));
       AccessLevel mostRestrictiveLevel = AccessLevel.mostRestrictive(
           a.accessLevel, b.accessLevel);
-      Rationale mergedRationale = Rationale.merge(a.rationale, b.rationale);
+      HumanReadableText mergedRationale = a.rationale.concatDedupe(b.rationale);
       return new AccessControlDecision(
           a.apiElement, mostRestrictiveLevel, mergedRationale);
     }
@@ -184,7 +204,7 @@ public final class Policy {
       for (Map.Entry<ApiElement, AccessLevel> e : m.entrySet()) {
         ApiElement k = e.getKey();
         AccessLevel v = e.getValue();
-        b.put(k, new AccessControlDecision(k, v, Rationale.EMPTY));
+        b.put(k, new AccessControlDecision(k, v, HumanReadableText.EMPTY));
       }
       return fromMap(b.build());
     }
@@ -214,31 +234,40 @@ public final class Policy {
    * Produces a policy from beans typically populated from a POM
    * {@code <configuration>} element.
    */
-  public static Policy fromFences(Iterable<? extends Fence> fences) {
+  public static Policy fromFence(Fence fence) {
     final Policy policy = new Policy();
     FenceVisitor buildFencesVisitor = new FenceVisitor() {
       public void visit(Fence f, ApiElement apiElement) {
         Frenemies frenemies = f.getFrenemies();
         addToPolicy(
             frenemies.friends, AccessLevel.ALLOWED, apiElement,
-            Rationale.EMPTY);
+            HumanReadableText.EMPTY);
         addToPolicy(
             frenemies.enemies, AccessLevel.DISALLOWED, apiElement,
-            frenemies.rationale);
+            frenemies.rationale.body);
+        if (!frenemies.rationale.addendum.isEmpty()) {
+          addAddenda(apiElement, frenemies.rationale.addendum);
+        }
       }
 
       @SuppressWarnings("synthetic-access")
       private void addToPolicy(
           Iterable<Namespace> nss, AccessLevel lvl, ApiElement el,
-          Rationale rationale) {
+          HumanReadableText rationale) {
+        AccessControlDecision d = new AccessControlDecision(el, lvl, rationale);
         for (Namespace ns : nss) {
-          policy.trie.put(ns, new AccessControlDecision(el, lvl, rationale));
+          policy.trie.put(ns, d);
         }
       }
+
+      @SuppressWarnings("synthetic-access")
+      private void addAddenda(ApiElement el, HumanReadableText addendum) {
+        HumanReadableText old = policy.addenda.get(el);
+        if (old == null) { old = HumanReadableText.EMPTY; }
+        policy.addenda.put(el, old.concat(addendum));
+      }
     };
-    for (Fence f : fences) {
-      f.visit(buildFencesVisitor);
-    }
+    fence.visit(buildFencesVisitor);
     return policy;
   }
 

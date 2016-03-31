@@ -1,6 +1,7 @@
 package com.google.security.fences;
 
 import java.io.File;
+import java.io.IOException;
 
 import com.google.common.collect.ImmutableList;
 
@@ -24,12 +25,12 @@ public class FencesMavenEnforcerRuleIT extends TestCase {
     VERBOSE,
   }
 
-  private void verifyTestProject(
+  private Verifier verifyTestProject(
       String testProjectName,
       Result expectedResult,
       Debug debug,
       String...expectedTexts)
-  throws Exception {
+  throws IOException, VerificationException {
 
     // Typically, the log file is in
     // target/test-classes/<test-project-name>/log.txt
@@ -58,6 +59,7 @@ public class FencesMavenEnforcerRuleIT extends TestCase {
     if (expectedResult == Result.PASS) {
       verifier.verifyErrorFreeLog();
     }
+    return verifier;
   }
 
   public final void testMethodCall() throws Exception {
@@ -173,4 +175,57 @@ public class FencesMavenEnforcerRuleIT extends TestCase {
         "5 access policy violations");
   }
 
+  public final void testAddenda() throws Exception {
+    Verifier v = verifyTestProject(
+        "test-addenda",
+        Result.FAIL,
+        Debug.QUIET,
+
+        "BUILD FAILURE",
+
+        ". java.lang.System.exit() cannot be accessed from com.example.Foo",
+        ". Our launch scripts depend upon the exit code",
+        ". Throw don't exit.",
+        ". For more info code-quality@example.com",
+
+        "1 access policy violation"
+        );
+    notInLog(v, "SHOULD NOT BE PRESENT IN LOG");
+  }
+
+  public final void testRationaleOverridden() throws Exception {
+    Verifier v = verifyTestProject(
+        "test-rationale-overridden",
+        Result.FAIL,
+        Debug.QUIET,
+
+        "BUILD FAILURE",
+
+        "test:internal-project:jar:1.0-SNAPSHOT : Main.java : L7",
+        ". com.third_party.Unsafe.unsafe() cannot be accessed from com.example.Main",
+        ". Prefer com.example.SaferThanUnsafe to com.third_party.Unsafe.unsafe().",
+        ". ",
+        ". security@example.com | http://wiki/security/guidelines",
+        ". ",
+        ". See http://wiki/com.third_party__tips_and_pitfalls",
+
+        "1 access policy violation"
+        );
+    notInLog(v,
+        "Unsafe is prone to misuse.",
+        "Use the safe builder APIs.");
+  }
+
+  private static void notInLog(Verifier v, String... shouldNotBePresent) {
+    boolean inLog;
+    for (String s : shouldNotBePresent) {
+      try {
+        v.verifyTextInLog(s);
+        inLog = true;
+      } catch (@SuppressWarnings("unused") VerificationException ex) {
+        inLog = false;
+      }
+      assertFalse(s, inLog);
+    }
+  }
 }

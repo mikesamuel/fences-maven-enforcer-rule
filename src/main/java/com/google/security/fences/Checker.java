@@ -247,15 +247,26 @@ final class Checker extends AbstractClassesVisitor {
         if (d.isPresent()) {
           Policy.AccessControlDecision acd = d.get();
           AccessLevel dLvl = acd.accessLevel;
-          Rationale rationale = acd.rationale;
           if (levelFromPolicy == null) {
             levelFromPolicy = dLvl;
           }
-          if (rationaleBuilder.getBody().isEmpty() && dLvl == levelFromPolicy) {
-            rationaleBuilder.addBodyFrom(rationale);
+          if (dLvl == levelFromPolicy && !acd.rationale.isEmpty()) {
+            try {
+              rationaleBuilder.addBody(acd.rationale);
+            } catch (EnforcerRuleException ex) {
+              // Should not happen since this came from a rationale.
+              throw new AssertionError(null, ex);
+            }
+            break;
           }
-          rationaleBuilder.addAddendumFrom(rationale);
         }
+      }
+
+      try {
+        rationaleBuilder.addAddendum(policy.getAddenda(to));
+      } catch (EnforcerRuleException ex) {
+        // Should not happen since this came from a rationale.
+        throw new AssertionError(null, ex);
       }
 
       if (levelFromPolicy != null) {

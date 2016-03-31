@@ -49,26 +49,11 @@ public final class PackageFence extends NamedFence {
 
   @Override
   public Fence splitDottedNames() {
-    ImmutableList<Fence> unsplitChildren = ImmutableList.copyOf(
-        getChildFences());
-    packages.clear();
-    classes.clear();
-
-    for (Fence unsplitChild : unsplitChildren) {
-      Fence splitChild = unsplitChild.splitDottedNames();
-      if (splitChild instanceof PackageFence) {
-        packages.add((PackageFence) splitChild);
-      } else if (splitChild instanceof ClassFence) {
-        classes.add((ClassFence) splitChild);
-      } else if (splitChild instanceof ApiFence) {
-        ApiFence apiChild = (ApiFence) splitChild;
-        mergeFrom(apiChild);
-        packages.addAll(apiChild.getPackages());
-        classes.addAll(apiChild.getClasses());
-      } else {
-        throw new AssertionError(splitChild.getClass());
-      }
+    ImmutableList.Builder<Fence> splitChildren = ImmutableList.builder();
+    for (Fence unsplitChild : getChildFences()) {
+      splitChildren.add(unsplitChild.splitDottedNames());
     }
+    replaceChildFences(splitChildren.build());
 
     String name = getName();
     if (name.isEmpty()) {
@@ -97,5 +82,38 @@ public final class PackageFence extends NamedFence {
       }
       return pkg;
     }
+  }
+
+  @Override
+  void replaceChildFences(Iterable<? extends Fence> newChildren) {
+    packages.clear();
+    classes.clear();
+    for (Fence unsplitChild : newChildren) {
+      Fence splitChild = unsplitChild.splitDottedNames();
+      if (splitChild instanceof PackageFence) {
+        packages.add((PackageFence) splitChild);
+      } else if (splitChild instanceof ClassFence) {
+        classes.add((ClassFence) splitChild);
+      } else if (splitChild instanceof ApiFence) {
+        ApiFence apiChild = (ApiFence) splitChild;
+        mergeFrom(apiChild);
+        packages.addAll(apiChild.getPackages());
+        classes.addAll(apiChild.getClasses());
+      } else {
+        throw new IllegalArgumentException(splitChild.getClass().getName());
+      }
+    }
+  }
+
+  @Override
+  String getConfigurationElementName() {
+    return "package";
+  }
+
+  @Override
+  public ApiFence promoteToApi() {
+    ApiFence api = new ApiFence();
+    api.setPackage(this);
+    return api;
   }
 }

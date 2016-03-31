@@ -2,6 +2,12 @@ package com.google.security.fences.config;
 
 import java.util.List;
 
+import javax.xml.parsers.DocumentBuilderFactory;
+import javax.xml.parsers.ParserConfigurationException;
+
+import org.w3c.dom.Document;
+import org.w3c.dom.Element;
+
 import com.google.common.base.Preconditions;
 import com.google.common.collect.ImmutableList;
 import com.google.common.collect.Lists;
@@ -56,25 +62,58 @@ public final class ApiFence extends Fence {
 
   @Override
   public ApiFence splitDottedNames() {
-    ImmutableList<Fence> unsplitChildren = ImmutableList.copyOf(
-        getChildFences());
+    ImmutableList.Builder<Fence> splitChildren = ImmutableList.builder();
+    for (Fence unsplitChild : getChildFences()) {
+      splitChildren.add(unsplitChild.splitDottedNames());
+    }
+    replaceChildFences(splitChildren.build());
+    return this;
+  }
+
+  @Override
+  void replaceChildFences(Iterable<? extends Fence> newChildren) {
     packages.clear();
     classes.clear();
-    for (Fence unsplitChild : unsplitChildren) {
-      Fence splitChild = unsplitChild.splitDottedNames();
-      if (splitChild instanceof PackageFence) {
-        packages.add((PackageFence) splitChild);
-      } else if (splitChild instanceof ClassFence) {
-        classes.add((ClassFence) splitChild);
-      } else if (splitChild instanceof ApiFence) {
-        ApiFence apiChild = (ApiFence) splitChild;
+    for (Fence newChild : newChildren) {
+      if (newChild instanceof PackageFence) {
+        packages.add((PackageFence) newChild);
+      } else if (newChild instanceof ClassFence) {
+        classes.add((ClassFence) newChild);
+      } else if (newChild instanceof ApiFence) {
+        ApiFence apiChild = (ApiFence) newChild;
         mergeFrom(apiChild);
         packages.addAll(apiChild.packages);
         classes.addAll(apiChild.classes);
       } else {
-        throw new AssertionError(splitChild.getClass());
+        throw new IllegalArgumentException(newChild.getClass().getName());
       }
     }
+  }
+
+  @Override
+  String getKey() {
+    return "";
+  }
+
+  /**
+   * Creates an XML tree that should plexus-configure to an equivalent Fence.
+   */
+  public final Element buildEffectiveConfiguration()
+  throws ParserConfigurationException {
+    DocumentBuilderFactory factory = DocumentBuilderFactory.newInstance();
+    Document doc = factory.newDocumentBuilder().newDocument();
+    Element el = doc.createElement(getConfigurationElementName());
+    fleshOutEffectiveConfiguration(el);
+    return el;
+  }
+
+  @Override
+  String getConfigurationElementName() {
+    return "api";
+  }
+
+  @Override
+  public ApiFence promoteToApi() {
     return this;
   }
 }

@@ -15,4 +15,9 @@ public final class FieldFence extends NamedLeafFence {
   protected void addToClass(ClassFence container) {
     container.setField(this);
   }
+
+  @Override
+  String getConfigurationElementName() {
+    return "field";
+  }
 }

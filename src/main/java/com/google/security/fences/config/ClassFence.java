@@ -68,16 +68,13 @@ public final class ClassFence extends NamedFence {
   }
 
   @Override
-  public Fence splitDottedNames() {
-    ImmutableList<Fence> unsplitChildren =
-        ImmutableList.copyOf(getChildFences());
+  void replaceChildFences(Iterable<? extends Fence> newChildren) {
     this.classes.clear();
     this.constructors.clear();
     this.methods.clear();
     this.fields.clear();
 
-    for (Fence unsplitChild : unsplitChildren) {
-      Fence splitChild = unsplitChild.splitDottedNames();
+    for (Fence splitChild : newChildren) {
       if (splitChild instanceof ClassFence) {
         classes.add((ClassFence) splitChild);
       } else if (splitChild instanceof ConstructorFence) {
@@ -87,9 +84,18 @@ public final class ClassFence extends NamedFence {
       } else if (splitChild instanceof FieldFence) {
         fields.add((FieldFence) splitChild);
       } else {
-        throw new AssertionError(splitChild.getClass());
+        throw new IllegalArgumentException(splitChild.getClass().getName());
       }
     }
+  }
+
+  @Override
+  public Fence splitDottedNames() {
+    ImmutableList.Builder<Fence> splitChildren = ImmutableList.builder();
+    for (Fence unsplitChild : getChildFences()) {
+      splitChildren.add(unsplitChild.splitDottedNames());
+    }
+    replaceChildFences(splitChildren.build());
 
     String[] nameParts = this.getName().split("[.]");
     if (nameParts.length == 1) {
@@ -111,5 +117,17 @@ public final class ClassFence extends NamedFence {
       }
       return f;
     }
+  }
+
+  @Override
+  String getConfigurationElementName() {
+    return "class";
+  }
+
+  @Override
+  public ApiFence promoteToApi() {
+    ApiFence api = new ApiFence();
+    api.setClass(this);
+    return api;
   }
 }

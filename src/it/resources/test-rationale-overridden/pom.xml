@@ -1,0 +1,72 @@
+<project xmlns="http://maven.apache.org/POM/4.0.0"
+  xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+  xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/xsd/maven-4.0.0.xsd">
+  <modelVersion>4.0.0</modelVersion>
+
+  <parent>
+    <groupId>test</groupId>
+    <artifactId>integration-test-parent</artifactId>
+    <relativePath>../pom.xml</relativePath>
+    <version>1.0-SNAPSHOT</version>
+  </parent>
+  <artifactId>test-rationale-overridden</artifactId>
+
+  <packaging>pom</packaging>
+  <name>Test Rationale Overridden</name>
+  <description>
+    Test that a rationale from the master config trumps that
+    from an imported META-INF/fences.xml for a specific API element.
+  </description>
+
+  <modules>
+    <module>third-party-lib</module>
+    <module>internal-project</module>
+  </modules>
+
+  <build>
+    <plugins>
+      <plugin>
+        <groupId>org.apache.maven.plugins</groupId>
+        <artifactId>maven-enforcer-plugin</artifactId>
+        <version>${maven-enforcer-plugin.version}</version>
+        <dependencies>
+          <dependency>
+            <groupId>com.google.security</groupId>
+            <artifactId>fences-maven-enforcer-rule</artifactId>
+            <version>${project-under-test.version}</version>
+          </dependency>
+        </dependencies>
+        <executions>
+          <execution>
+            <id>enforce</id>
+            <phase>verify</phase>
+            <configuration>
+              <rules>
+                <fences
+                 implementation="com.google.security.fences.FencesMavenEnforcerRule">
+                  <import>test:third-party-lib</import>
+                  <addendum>security@example.com | http://wiki/security/guidelines</addendum>
+                  <package>
+                    <name>com.third_party</name>
+                    <addendum>See http://wiki/com.third_party__tips_and_pitfalls</addendum>
+                    <class>
+                      <name>Unsafe</name>
+                      <!-- We have some homegrown alternatives to
+                           com.example.Unsafe -->
+                      <rationale>
+                        Prefer com.example.SaferThanUnsafe to ${fences.api}.
+                      </rationale>
+                    </class>
+                  </package>
+                </fences>
+              </rules>
+            </configuration>
+            <goals>
+              <goal>enforce</goal>
+            </goals>
+          </execution>
+        </executions>
+      </plugin>
+    </plugins>
+  </build>
+</project>

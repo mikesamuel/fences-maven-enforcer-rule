@@ -17,4 +17,9 @@ public final class MethodFence extends NamedLeafFence {
   protected void addToClass(ClassFence container) {
     container.setMethod(this);
   }
+
+  @Override
+  String getConfigurationElementName() {
+    return "method";
+  }
 }

@@ -1,0 +1,11 @@
+<configuration>
+  <class>
+    <name>com.third_party.Unsafe</name>
+    <trusts>com.third_party</trusts>
+    <distrusts>*</distrusts>
+    <rationale>
+      Unsafe is prone to misuse.
+      Use the safe builder APIs.
+    </rationale>
+  </class>
+</configuration>
