@@ -212,3 +212,13 @@ load the `META-INF/fences.xml` file, parse it, and incorporate its `<trusts>`
 and `<distrusts>`.
 
 The version may be omitted : `<import>group:artifact</import>`.
+
+## System Properties
+
+The following system properties affect the fences rule.  ([code](https://github.com/mikesamuel/fences-maven-enforcer-rule/blob/master/src/main/java/com/google/security/fences/RelevantSystemProperties.java))
+
+| System property name  | Value      | Effect      |
+| --------------------- | ---------- | ----------- |
+| `fences.experimental` | Irrelevant | If present, then errors are converted to warnings.
+| `fences.config.show`  | Irrelevant | If present, then the log will include a dump of the effective policy. |
+| `enforcer.skip`       | true|false | If `true`, then all the enforcer rules, including the fences rule, are skipped. |
