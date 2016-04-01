@@ -109,7 +109,7 @@ comments are non-normative.
       <method>
         <name>foo</name>
         <!-- A white-list of exceptions to the imported rules. -->
-        <trusts>com.example.aardvark.ConsistentTransactionr</trusts>
+        <trusts>com.example.aardvark.ConsistentTransaction</trusts>
 
         <!-- There may be alternatives within the organization that
              are not available to all users of the third-party library.
@@ -120,6 +120,8 @@ comments are non-normative.
           Prefer com.example.SafeAlternative to ${fences.api}.
           Ping alice@example.com if that doesn't suffice.
         </rationale>
+        <!-- Please wrap at 60 columns post-indentation since log files
+             are more readable in a console when lines don't wrap. -->
       </method>
     </class>
   </package>
@@ -139,7 +141,7 @@ comments are non-normative.
 
     <rationale>
       Uses of Unsafe must be carefully reviewed by experts in XYZ.
-      Please use the safe builders in com.third_party.builders
+      Please try the safe builders in com.third_party.builders
       before rolling your own.
     </rationale>
     <!--
@@ -175,8 +177,9 @@ provide some guidance.
 
 ## Importing configuration
 
-Sometimes a library author needs to use sensitive APIs.
-They can include, in their JAR a `META-INF/fences.xml` file with content like
+Sometimes a library author needs to use sensitive APIs, or thinks that
+parts of their APIs are not for casual use.
+They can include, in their JAR, a `META-INF/fences.xml` file with content like
 
 ```xml
 <configuration>

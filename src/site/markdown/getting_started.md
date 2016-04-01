@@ -48,3 +48,6 @@ Add the following to your POM.
   ...
 </project>
 ```
+
+[Configuration](configuration.md) explains the contents of the `<fences>`
+element.
