@@ -51,7 +51,7 @@
                       </method>
                       <rationale>
                         SHOULD NOT BE PRESENT IN LOG
-                      </rationale> 
+                      </rationale>
                     </class>
                   </package>
                 </fences>
