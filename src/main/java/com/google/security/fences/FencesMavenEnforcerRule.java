@@ -204,8 +204,8 @@ public final class FencesMavenEnforcerRule implements EnforcerRule {
     }
 
     // Log the effective configuration
-    boolean forceShowConfig = System.getProperty("fences.config.show") != null;
-    if (forceShowConfig || log.isDebugEnabled()) {
+    boolean showConfig = RelevantSystemProperties.shouldShowEffectiveConfig();
+    if (showConfig || log.isDebugEnabled()) {
       try {
         Element config = mergedFence.buildEffectiveConfiguration();
         TransformerFactory tf = TransformerFactory.newInstance();
@@ -223,7 +223,7 @@ public final class FencesMavenEnforcerRule implements EnforcerRule {
             new DOMSource(config),
             new StreamResult(xmlOut));
         String xml = xmlOut.toString();
-        if (forceShowConfig) {
+        if (showConfig) {
           log.info(xml);
         } else {
           log.debug(xml);
@@ -284,16 +284,19 @@ public final class FencesMavenEnforcerRule implements EnforcerRule {
       }
     }
 
-    ImmutableList<Violation> violations =
-        checker.getViolations();
+    ImmutableList<Violation> violations = checker.getViolations();
     PolicyViolationReporter reporter = new PolicyViolationReporter(log);
     reporter.interpolator.addValueSource(
         new PropertiesBasedValueSource(project.getProperties()));
     int errorCount = reporter.report(violations);
     if (errorCount != 0) {
-      throw new EnforcerRuleException(
-          errorCount + " access policy violation"
-          + (errorCount == 1 ? "" : "s"));
+      String message = errorCount + " access policy violation"
+          + (errorCount == 1 ? "" : "s");
+      if (RelevantSystemProperties.inExperimentalMode()) {
+        log.info(message + " ignored in experimental mode");
+      } else {
+        throw new EnforcerRuleException(message);
+      }
     }
   }
 

@@ -64,7 +64,12 @@ final class PolicyViolationReporter {
         violationsInOrder);
 
     ReportTree t = groupByArtifactAndReport(violationList);
-    log.error(t.toLogMessage());
+    String logMessage = t.toLogMessage();
+    if (RelevantSystemProperties.inExperimentalMode()) {
+      log.warn(logMessage);
+    } else {
+      log.error(logMessage);
+    }
 
     Preconditions.checkState(errorCount > 0);
     return errorCount;
