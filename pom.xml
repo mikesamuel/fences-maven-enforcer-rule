@@ -200,6 +200,10 @@
             <version>1.7</version>
           </dependency>
         </dependencies>
+        <configuration>
+          <!-- deploy handled by github site-maven-plugin -->
+          <skipDeploy>true</skipDeploy>
+        </configuration>
       </plugin>
       <plugin>
         <groupId>org.apache.maven.plugins</groupId>
@@ -353,6 +357,34 @@
             <goals>
               <goal>verify</goal>
             </goals>
+          </execution>
+        </executions>
+      </plugin>
+      <!-- Deploy target/site to github pages. -->
+      <plugin>
+        <!-- Deploy the web site -->
+        <groupId>com.github.github</groupId>
+        <artifactId>site-maven-plugin</artifactId>
+        <version>0.12</version>
+        <executions>
+          <execution>
+            <goals>
+              <goal>site</goal>
+            </goals>
+            <!-- select the Maven phase in which the plugin will be executed -->
+            <phase>site-deploy</phase>
+            <configuration>
+              <!-- Plugin configuration ges here -->
+
+              <server>github</server>
+
+              <!-- The commit message -->
+              <message>Publishing maven target/site to Github Pages</message>
+              <!-- The location where the site is uploaded -->
+              <path>${site.path}</path>
+              <!-- Use merge or override the content -->
+              <merge>true</merge>
+            </configuration>
           </execution>
         </executions>
       </plugin>
