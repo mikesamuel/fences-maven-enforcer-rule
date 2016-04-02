@@ -94,20 +94,21 @@ final class ConfigurationImport {
     PartialArtifactKey(String artifact)
     // TODO: more appropriate exception type
     throws EnforcerRuleException {
-      Optional<String> versionSoFar = Optional.absent();
       String[] parts = artifact.split(":");
       switch (parts.length) {
         case 3:
-          versionSoFar = Optional.of(parts[2]);
-          //$FALL-THROUGH$
+          groupId = parts[0];
+          artifactId = parts[1];
+          version = Optional.of(parts[2]);
+          break;
         case 2:
           groupId = parts[0];
           artifactId = parts[1];
+          version = Optional.absent();
           break;
         default:
           throw new EnforcerRuleException("Bad artifact key: " + artifact);
       }
-      this.version = versionSoFar;
     }
 
     PartialArtifactKey(String gid, String aid, Optional<String> ver) {

@@ -203,20 +203,7 @@ public final class Rationale {
     throws EnforcerRuleException {
       // Try to pre-validate it as a valid plexus expression?
       RegexBasedInterpolator interpolator = new RegexBasedInterpolator();
-      interpolator.addValueSource(new ValueSource() {
-        public void clearFeedback() {
-          // Nothing to do.
-        }
-
-        @SuppressWarnings("rawtypes")
-        public List getFeedback() {
-          return ImmutableList.of();
-        }
-
-        public Object getValue(String key) {
-          return key;
-        }
-      });
+      interpolator.addValueSource(IdentityValueSource.INSTANCE);
       try {
         interpolator.interpolate(t.text);
       } catch (InterpolationException ex) {
@@ -250,3 +237,23 @@ public final class Rationale {
   }
 }
 
+
+final class IdentityValueSource implements ValueSource {
+  static final IdentityValueSource INSTANCE = new IdentityValueSource();
+
+  private IdentityValueSource() {
+  }
+
+  public void clearFeedback() {
+    // Nothing to do.
+  }
+
+  @SuppressWarnings("rawtypes")
+  public List getFeedback() {
+    return ImmutableList.of();
+  }
+
+  public Object getValue(String key) {
+    return key;
+  }
+}

@@ -178,7 +178,7 @@
         <artifactId>findbugs-maven-plugin</artifactId>
         <version>3.0.0</version>
         <configuration>
-          <visitors>InconsistentAnnotations,NoteUnconditionalParamDerefs,FindNullDeref,FindNullDerefsInvolvingNonShortCircuitEvaluation</visitors>
+          <includeTests>true</includeTests>
         </configuration>
         <executions>
           <execution>

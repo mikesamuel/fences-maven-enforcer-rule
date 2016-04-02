@@ -2,6 +2,7 @@ package com.google.security.fences;
 
 import org.apache.maven.artifact.Artifact;
 
+import com.google.common.base.Objects;
 import com.google.security.fences.config.Rationale;
 import com.google.security.fences.namespace.Namespace;
 import com.google.security.fences.policy.ApiElement;
@@ -66,4 +67,21 @@ final class Violation implements Comparable<Violation> {
     }
     return delta;
   }
+
+  @Override
+  public boolean equals(Object o) {
+    if (!(o instanceof Violation)) {
+      return false;
+    }
+    Violation that = (Violation) o;
+    return 0 == compareTo(that);
+  }
+
+  @Override
+  public int hashCode() {
+    return Objects.hashCode(
+        artifact, useSiteSource, useSiteLineNumber,
+        useSiteApiElement, sensitiveApiElement);
+  }
+
 }

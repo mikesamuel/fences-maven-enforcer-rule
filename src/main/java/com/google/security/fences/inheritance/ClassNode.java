@@ -132,6 +132,20 @@ public final class ClassNode implements Comparable<ClassNode> {
   }
 
   @Override
+  public boolean equals(Object o) {
+    if (!(o instanceof ClassNode)) {
+      return false;
+    }
+    ClassNode that = (ClassNode) o;
+    return this.name.equals(that.name);  // Consistent with compare
+  }
+
+  @Override
+  public int hashCode() {
+    return name.hashCode();
+  }
+
+  @Override
   public String toString() {
     return name;
   }

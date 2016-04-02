@@ -50,7 +50,10 @@ public class ApiElement implements Comparable<ApiElement> {
       case CONSTRUCTOR:
         Preconditions.checkArgument(
             name.equals(CONSTRUCTOR_SPECIAL_METHOD_NAME));
-        // $FALL-THROUGH$
+        Preconditions.checkArgument(
+            parent.isPresent()
+            && parent.get().type == ApiElementType.CLASS);
+        return;
       case FIELD:
       case METHOD:
         Preconditions.checkArgument(
