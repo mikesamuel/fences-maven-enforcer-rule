@@ -55,7 +55,7 @@ etc.
 Alex is a master of git-'er-done style development -- using
 auto-complete to explore APIs instead of reading documentation.  He
 stumbles upon some of Sally's sensitive APIs and writes code that
-links directly into the internals.
+links directly with public-but-not-safe code.
 
 Next time he builds he gets an error message and he reads Sally's
 explanation:
