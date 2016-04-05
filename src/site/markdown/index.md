@@ -61,7 +61,7 @@ Next time he builds he gets an error message and he reads Sally's
 explanation:
 
 > Please use com.example.FooBuilder instead of
-> new com.example.foo.FooImpl().<br>
+> new com.example.foo.FooImpl().<br />
 > Ping sally@ for more details.
 
 He's not quite sure how to proceed, so he fires off a quick
