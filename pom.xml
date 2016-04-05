@@ -379,27 +379,15 @@
         <groupId>com.github.github</groupId>
         <artifactId>site-maven-plugin</artifactId>
         <version>0.12</version>
-        <executions>
-          <execution>
-            <goals>
-              <goal>site</goal>
-            </goals>
-            <!-- select the Maven phase in which the plugin will be executed -->
-            <phase>site-deploy</phase>
-            <configuration>
-              <!-- Plugin configuration ges here -->
+        <configuration>
+          <message>Publishing maven target/site to Github Pages</message>
+          <server>github</server>
 
-              <server>github</server>
-
-              <!-- The commit message -->
-              <message>Publishing maven target/site to Github Pages</message>
-              <!-- The location where the site is uploaded -->
-              <path>${site.path}</path>
-              <!-- Use merge or override the content -->
-              <merge>true</merge>
-            </configuration>
-          </execution>
-        </executions>
+          <!-- The location where the site is uploaded -->
+          <path>${site.path}</path>
+          <!-- Use merge or override the content -->
+          <merge>true</merge>
+        </configuration>
       </plugin>
       <!-- http://www.javaworld.com/article/2074515/core-java/
            unit-test-code-coverage-with-maven-and-jacoco.html -->
