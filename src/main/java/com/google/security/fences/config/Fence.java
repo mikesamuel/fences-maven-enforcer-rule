@@ -51,7 +51,7 @@ public abstract class Fence {
    * instead of blowing away prior value.
    */
   public void setTrusts(String s) throws EnforcerRuleException {
-    trusts.add(Namespace.fromDottedString(s));
+    trusts.add(parsePrinciple(s));
   }
 
   /**
@@ -59,7 +59,7 @@ public abstract class Fence {
    * instead of blowing away prior value.
    */
   public void setDistrusts(String s) throws EnforcerRuleException {
-    distrusts.add(Namespace.fromDottedString(s));
+    distrusts.add(parsePrinciple(s));
   }
 
   /**
@@ -234,5 +234,15 @@ public abstract class Fence {
       return "*";
     }
     return ns.toString();
+  }
+
+  private static Namespace parsePrinciple(String s)
+  throws EnforcerRuleException {
+    String trimmed = s.trim();
+    if (!"*".equals(trimmed) && trimmed.contains("*")) {
+      throw new EnforcerRuleException(
+          "Globs not allowed in namespace names: " + trimmed);
+    }
+    return Namespace.fromDottedString(trimmed);
   }
 }
