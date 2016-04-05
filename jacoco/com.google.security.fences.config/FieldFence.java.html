@@ -1,0 +1,24 @@
+<?xml version="1.0" encoding="UTF-8"?><!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd"><html xmlns="http://www.w3.org/1999/xhtml" lang="en"><head><meta http-equiv="Content-Type" content="text/html;charset=UTF-8"/><link rel="stylesheet" href="../.resources/report.css" type="text/css"/><link rel="shortcut icon" href="../.resources/report.gif" type="image/gif"/><title>FieldFence.java</title><link rel="stylesheet" href="../.resources/prettify.css" type="text/css"/><script type="text/javascript" src="../.resources/prettify.js"></script></head><body onload="window['PR_TAB_WIDTH']=4;prettyPrint()"><div class="breadcrumb" id="breadcrumb"><span class="info"><a href="../.sessions.html" class="el_session">Sessions</a></span><a href="../index.html" class="el_report">Fences Enforcer Rule</a> &gt; <a href="index.source.html" class="el_package">com.google.security.fences.config</a> &gt; <span class="el_source">FieldFence.java</span></div><h1>FieldFence.java</h1><pre class="source lang-java linenums">package com.google.security.fences.config;
+
+import com.google.security.fences.policy.ApiElement;
+import com.google.security.fences.policy.ApiElementType;
+
+/** A class for a field in a class. */
+<span class="fc" id="L7">public final class FieldFence extends NamedLeafFence {</span>
+
+  @Override
+  void visit(FenceVisitor v, ApiElement el) {
+<span class="fc" id="L11">    v.visit(this, el.child(getName(), ApiElementType.FIELD));</span>
+<span class="fc" id="L12">  }</span>
+
+  @Override
+  protected void addToClass(ClassFence container) {
+<span class="nc" id="L16">    container.setField(this);</span>
+<span class="nc" id="L17">  }</span>
+
+  @Override
+  String getConfigurationElementName() {
+<span class="nc" id="L21">    return &quot;field&quot;;</span>
+  }
+}
+</pre><div class="footer"><span class="right">Created with <a href="http://www.eclemma.org/jacoco">JaCoCo</a> 0.7.5.201505241946</span></div></body></html>

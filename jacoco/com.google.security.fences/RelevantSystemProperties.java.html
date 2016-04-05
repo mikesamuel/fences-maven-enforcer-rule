@@ -1,0 +1,40 @@
+<?xml version="1.0" encoding="UTF-8"?><!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd"><html xmlns="http://www.w3.org/1999/xhtml" lang="en"><head><meta http-equiv="Content-Type" content="text/html;charset=UTF-8"/><link rel="stylesheet" href="../.resources/report.css" type="text/css"/><link rel="shortcut icon" href="../.resources/report.gif" type="image/gif"/><title>RelevantSystemProperties.java</title><link rel="stylesheet" href="../.resources/prettify.css" type="text/css"/><script type="text/javascript" src="../.resources/prettify.js"></script></head><body onload="window['PR_TAB_WIDTH']=4;prettyPrint()"><div class="breadcrumb" id="breadcrumb"><span class="info"><a href="../.sessions.html" class="el_session">Sessions</a></span><a href="../index.html" class="el_report">Fences Enforcer Rule</a> &gt; <a href="index.source.html" class="el_package">com.google.security.fences</a> &gt; <span class="el_source">RelevantSystemProperties.java</span></div><h1>RelevantSystemProperties.java</h1><pre class="source lang-java linenums">package com.google.security.fences;
+
+/** Utilities relating to system properties relevant to this project. */
+<span class="nc" id="L4">public final class RelevantSystemProperties {</span>
+
+  /**
+   * When a property with this name is set, the rule will dump the
+   * effective policy configuration XML to the log file.
+   */
+  public static final String PROPERTY_SHOW_EFFECTIVE_CONFIG =
+      &quot;fences.config.show&quot;;
+
+  /**
+   * When a property with this name is set, the rule will warn instead of
+   * {@linkplain org.apache.maven.plugin.logging.Log#error erroring}
+   * when a relaxing of a policy would cause the rule to pass.
+   * &lt;p&gt;
+   * This does not prevent erroring due to a missing dependency, error
+   * in parsing the configuration, or exception during rule evaluation.
+   * Use {@code enforcer.skip} for that.
+   */
+  public static final String PROPERTY_EXPERIMENTAL_MODE = &quot;fences.experimental&quot;;
+
+  /**
+   * True to dump the effective policy configuration to the log.
+   */
+  public static boolean shouldShowEffectiveConfig() {
+<span class="nc bnc" id="L28" title="All 2 branches missed.">    return System.getProperty(PROPERTY_SHOW_EFFECTIVE_CONFIG) != null;</span>
+  }
+
+  /**
+   * True when we should warn instead of
+   * {@linkplain org.apache.maven.plugin.logging.Log#error erroring}
+   * when a relaxing of a policy would cause the rule to pass.
+   */
+  public static boolean inExperimentalMode() {
+<span class="nc bnc" id="L37" title="All 2 branches missed.">    return System.getProperty(PROPERTY_EXPERIMENTAL_MODE) != null;</span>
+  }
+}
+</pre><div class="footer"><span class="right">Created with <a href="http://www.eclemma.org/jacoco">JaCoCo</a> 0.7.5.201505241946</span></div></body></html>

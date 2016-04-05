@@ -1,0 +1,412 @@
+<?xml version="1.0" encoding="UTF-8"?><!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd"><html xmlns="http://www.w3.org/1999/xhtml" lang="en"><head><meta http-equiv="Content-Type" content="text/html;charset=UTF-8"/><link rel="stylesheet" href="../.resources/report.css" type="text/css"/><link rel="shortcut icon" href="../.resources/report.gif" type="image/gif"/><title>SystemInheritanceGraph.java</title><link rel="stylesheet" href="../.resources/prettify.css" type="text/css"/><script type="text/javascript" src="../.resources/prettify.js"></script></head><body onload="window['PR_TAB_WIDTH']=4;prettyPrint()"><div class="breadcrumb" id="breadcrumb"><span class="info"><a href="../.sessions.html" class="el_session">Sessions</a></span><a href="../index.html" class="el_report">Fences Enforcer Rule</a> &gt; <a href="index.source.html" class="el_package">com.google.security.fences.inheritance</a> &gt; <span class="el_source">SystemInheritanceGraph.java</span></div><h1>SystemInheritanceGraph.java</h1><pre class="source lang-java linenums">package com.google.security.fences.inheritance;
+
+import java.io.File;
+import java.io.FileInputStream;
+import java.io.FileOutputStream;
+import java.io.IOException;
+import java.io.InputStream;
+import java.io.OutputStream;
+import java.nio.ByteBuffer;
+import java.util.Arrays;
+import java.util.List;
+import java.util.concurrent.ConcurrentHashMap;
+import java.util.zip.ZipEntry;
+import java.util.zip.ZipInputStream;
+
+import javax.annotation.Nonnull;
+
+import org.objectweb.asm.ClassReader;
+
+import com.google.common.base.Charsets;
+import com.google.common.base.Function;
+import com.google.common.base.Joiner;
+import com.google.common.base.Optional;
+import com.google.common.base.Preconditions;
+import com.google.common.base.Predicate;
+import com.google.common.collect.ImmutableList;
+import com.google.common.collect.Iterables;
+import com.google.common.collect.Lists;
+import com.google.common.io.ByteStreams;
+import com.sleepycat.je.Database;
+import com.sleepycat.je.DatabaseConfig;
+import com.sleepycat.je.DatabaseEntry;
+import com.sleepycat.je.Environment;
+import com.sleepycat.je.EnvironmentConfig;
+import com.sleepycat.je.LockMode;
+import com.sleepycat.je.OperationStatus;
+import com.sleepycat.je.Transaction;
+
+/**
+ * Maps the names of system classes to ClassNodes.
+ */
+<span class="nc" id="L42">public class SystemInheritanceGraph {</span>
+  /**
+   * Maps class names to nodes by lazily loading them from a read-only
+   * DB extracted from the Java system libraries.
+   */
+<span class="fc" id="L47">  public static final Function&lt;String, ClassNode&gt; LAZY_LOADER</span>
+<span class="fc" id="L48">  = new Function&lt;String, ClassNode&gt;() {</span>
+    @Nonnull
+    public ClassNode apply(@Nonnull String name) {
+<span class="pc bpc" id="L51" title="1 of 2 branches missed.">      if (name == null) {</span>
+<span class="nc" id="L52">        throw new NullPointerException();</span>
+      }
+      // Java's late binding delays initializing the berkeley db until
+      // this is called.
+<span class="fc" id="L56">      return LazyLoader.INSTANCE.get(name);</span>
+    }
+  };
+
+  /**
+   * Name of a database that maps internal names to
+   * access flag bitsets.
+   */
+  private static final String ACCESS_DB_NAME = &quot;access&quot;;
+  /**
+   * Name of a database that maps internal names to
+   * internal names of super-types.
+   */
+  private static final String SUPERTYPE_DB_NAME = &quot;supertype&quot;;
+  /**
+   * Name of a database that maps internal names to
+   * comma separated interface names.
+   */
+  private static final String INTERFACE_DB_NAME = &quot;interfaces&quot;;
+  /**
+   * Names of a database that maps internal class names to comma separated
+   * lists of the names and signatures of methods declared therein.
+   */
+  private static final String METHOD_DB_NAME = &quot;methods&quot;;
+  /**
+   * Names of a database that maps internal class names to comma separated
+   * lists of the names of fields declared therein.
+   */
+  private static final String FIELD_DB_NAME = &quot;fields&quot;;
+
+  private static final class LazyLoader {
+<span class="fc" id="L87">    static final LazyLoader INSTANCE = new LazyLoader();</span>
+<span class="fc" id="L88">    private final ConcurrentHashMap&lt;String, ClassNode&gt; classNodes</span>
+        = new ConcurrentHashMap&lt;String, ClassNode&gt;();
+    private final Environment env;
+    private final Database accessDb;
+    private final Database supertypeDb;
+    private final Database interfaceDb;
+    private final Database methodDb;
+    private final Database fieldDb;
+
+<span class="fc" id="L97">    private LazyLoader() {</span>
+      try {
+<span class="fc" id="L99">        env = init();</span>
+<span class="nc" id="L100">      } catch (IOException ex) {</span>
+<span class="nc" id="L101">        ex.printStackTrace();</span>
+<span class="nc" id="L102">        AssertionError err = new AssertionError(</span>
+            &quot;Cannot unpack system class inheritance graph to a temp file&quot;);
+<span class="nc" id="L104">        err.initCause(ex);</span>
+<span class="nc" id="L105">        throw err;</span>
+<span class="fc" id="L106">      }</span>
+<span class="fc" id="L107">      DatabaseConfig dbConfig = new DatabaseConfig();</span>
+<span class="fc" id="L108">      dbConfig.setAllowCreate(false);</span>
+<span class="fc" id="L109">      dbConfig.setReadOnly(true);</span>
+<span class="fc" id="L110">      this.accessDb = env.openDatabase(null, ACCESS_DB_NAME, dbConfig);</span>
+<span class="fc" id="L111">      this.supertypeDb = env.openDatabase(null, SUPERTYPE_DB_NAME, dbConfig);</span>
+<span class="fc" id="L112">      this.interfaceDb = env.openDatabase(null, INTERFACE_DB_NAME, dbConfig);</span>
+<span class="fc" id="L113">      this.methodDb = env.openDatabase(null, METHOD_DB_NAME, dbConfig);</span>
+<span class="fc" id="L114">      this.fieldDb = env.openDatabase(null, FIELD_DB_NAME, dbConfig);</span>
+<span class="fc" id="L115">    }</span>
+
+    private Environment init() throws IOException {
+      // Berkeley DB requires a home directory.
+<span class="fc" id="L119">      File home = File.createTempFile(</span>
+          &quot;system-inheritance-graph-&quot;, &quot;-home&quot;);
+<span class="pc bpc" id="L121" title="2 of 4 branches missed.">      if (home.exists() &amp;&amp; !home.delete()) {</span>
+<span class="nc" id="L122">        throw new IOException(&quot;Could not delete temp file &quot; + home);</span>
+      }
+<span class="pc bpc" id="L124" title="1 of 2 branches missed.">      if (!home.mkdirs()) {</span>
+<span class="nc" id="L125">        throw new IOException(&quot;Could not make temp dir &quot; + home);</span>
+      }
+
+      // Copy databases to the home directory so we can point BDB at them.
+<span class="fc" id="L129">      String[] dbBaseNames = {</span>
+          &quot;00000000.jdb&quot;,
+          &quot;00000001.jdb&quot;,
+          &quot;00000002.jdb&quot;,
+      };
+<span class="fc bfc" id="L134" title="All 2 branches covered.">      for (String dbBaseName : dbBaseNames) {</span>
+<span class="fc" id="L135">        InputStream in = getClass().getResourceAsStream(</span>
+            &quot;system-inheritance-graph/&quot; + dbBaseName);
+        try {
+<span class="fc" id="L138">          OutputStream out = new FileOutputStream(new File(home, dbBaseName));</span>
+          try {
+<span class="fc" id="L140">          ByteStreams.copy(in, out);</span>
+          } finally {
+<span class="pc" id="L142">            out.close();</span>
+<span class="fc" id="L143">          }</span>
+        } finally {
+<span class="pc" id="L145">          in.close();</span>
+<span class="fc" id="L146">        }</span>
+      }
+
+<span class="fc" id="L149">      EnvironmentConfig config = new EnvironmentConfig();</span>
+<span class="fc" id="L150">      config.setAllowCreate(false);</span>
+<span class="fc" id="L151">      config.setReadOnly(true);</span>
+<span class="fc" id="L152">      return new Environment(home, config);</span>
+    }
+
+    ClassNode get(String name) {
+<span class="fc" id="L156">      ClassNode inMap = classNodes.get(name);</span>
+<span class="fc bfc" id="L157" title="All 2 branches covered.">      if (inMap != null) {</span>
+<span class="fc" id="L158">        return inMap;</span>
+      }
+<span class="fc" id="L160">      DatabaseEntry nameData = utf8(name);</span>
+
+<span class="fc" id="L162">      DatabaseEntry interfaces = new DatabaseEntry();</span>
+<span class="fc" id="L163">      OperationStatus ifaceStatus = interfaceDb.get(</span>
+          null, nameData, interfaces, LockMode.DEFAULT);
+<span class="fc bfc" id="L165" title="All 2 branches covered.">      if (!OperationStatus.SUCCESS.equals(ifaceStatus)) {</span>
+<span class="fc" id="L166">        return null;</span>
+      }
+
+<span class="fc" id="L169">      DatabaseEntry accessEntry = new DatabaseEntry();</span>
+<span class="fc" id="L170">      int access = 0;</span>
+<span class="fc" id="L171">      OperationStatus accessStates = accessDb.get(</span>
+          null, nameData, accessEntry, LockMode.DEFAULT);
+<span class="pc bpc" id="L173" title="1 of 2 branches missed.">      if (OperationStatus.SUCCESS.equals(accessStates)) {</span>
+<span class="fc" id="L174">        access = int32(accessEntry);</span>
+      }
+
+<span class="fc" id="L177">      DatabaseEntry supertype = new DatabaseEntry();</span>
+<span class="fc" id="L178">      OperationStatus stypeStatus = supertypeDb.get(</span>
+          null, nameData, supertype, LockMode.DEFAULT);
+<span class="fc" id="L180">      Optional&lt;String&gt; supertypeName = Optional.absent();</span>
+<span class="fc bfc" id="L181" title="All 2 branches covered.">      if (OperationStatus.SUCCESS.equals(stypeStatus)) {</span>
+<span class="fc" id="L182">        supertypeName = Optional.of(utf8(supertype));</span>
+      }
+
+<span class="fc" id="L185">      String interfaceNamesCsv = utf8(interfaces);</span>
+<span class="fc" id="L186">      List&lt;String&gt; interfaceNames = ImmutableList.of();</span>
+<span class="fc bfc" id="L187" title="All 2 branches covered.">      if (!interfaceNamesCsv.isEmpty()) {</span>
+<span class="fc" id="L188">        interfaceNames = Arrays.asList(interfaceNamesCsv.split(&quot;,&quot;));</span>
+      }
+
+<span class="fc" id="L191">      DatabaseEntry methodSigs = new DatabaseEntry();</span>
+<span class="fc" id="L192">      OperationStatus methodStatus = methodDb.get(</span>
+          null, nameData, methodSigs, LockMode.DEFAULT);
+<span class="fc" id="L194">      List&lt;MethodDetails&gt; methods = ImmutableList.of();</span>
+<span class="fc bfc" id="L195" title="All 2 branches covered.">      if (OperationStatus.SUCCESS.equals(methodStatus)) {</span>
+<span class="fc" id="L196">        String methodCsv = utf8(methodSigs);</span>
+<span class="pc bpc" id="L197" title="1 of 2 branches missed.">        if (!methodCsv.isEmpty()) {</span>
+<span class="fc" id="L198">          methods = Lists.newArrayList();</span>
+<span class="fc bfc" id="L199" title="All 2 branches covered.">          for (String compactString : methodCsv.split(&quot;,&quot;)) {</span>
+<span class="fc" id="L200">            methods.add(MethodDetails.fromCompactString(compactString));</span>
+          }
+        }
+      }
+
+<span class="fc" id="L205">      DatabaseEntry fieldSigs = new DatabaseEntry();</span>
+<span class="fc" id="L206">      OperationStatus fieldStatus = fieldDb.get(</span>
+          null, nameData, fieldSigs, LockMode.DEFAULT);
+<span class="fc" id="L208">      List&lt;FieldDetails&gt; fields = ImmutableList.of();</span>
+<span class="fc bfc" id="L209" title="All 2 branches covered.">      if (OperationStatus.SUCCESS.equals(fieldStatus)) {</span>
+<span class="fc" id="L210">        String fieldCsv = utf8(fieldSigs);</span>
+<span class="pc bpc" id="L211" title="1 of 2 branches missed.">        if (!fieldCsv.isEmpty()) {</span>
+<span class="fc" id="L212">          fields = Lists.newArrayList();</span>
+<span class="fc bfc" id="L213" title="All 2 branches covered.">          for (String compactString : fieldCsv.split(&quot;,&quot;)) {</span>
+<span class="fc" id="L214">            fields.add(FieldDetails.fromCompactString(compactString));</span>
+          }
+        }
+      }
+
+<span class="fc" id="L219">      ClassNode node = new ClassNode(</span>
+          name, access, supertypeName, interfaceNames, methods, fields);
+<span class="fc" id="L221">      inMap = this.classNodes.putIfAbsent(name, node);</span>
+<span class="pc bpc" id="L222" title="1 of 2 branches missed.">      return inMap != null ? inMap : node;</span>
+    }
+  }
+
+
+  static String utf8(DatabaseEntry e) {
+<span class="fc bfc" id="L228" title="All 2 branches covered.">    if (e.getSize() == 0) { return &quot;&quot;; }</span>
+<span class="fc" id="L229">    return Charsets.UTF_8.decode(ByteBuffer.wrap(e.getData())).toString();</span>
+  }
+
+  static DatabaseEntry utf8(String s) {
+<span class="fc" id="L233">    ByteBuffer bb = Charsets.UTF_8.encode(s);</span>
+<span class="fc" id="L234">    byte[] bytes = new byte[bb.remaining()];</span>
+<span class="fc" id="L235">    bb.get(bytes);</span>
+<span class="fc" id="L236">    return new DatabaseEntry(bytes);</span>
+  }
+
+  static int int32(DatabaseEntry e) {
+<span class="fc" id="L240">    int x = 0;</span>
+<span class="fc" id="L241">    byte[] data = e.getData();</span>
+<span class="fc bfc" id="L242" title="All 2 branches covered.">    for (int i = 0, n = data.length; i &lt; n; ++i) {</span>
+<span class="fc" id="L243">      x = (x &lt;&lt; 8) | (data[i] &amp; 0xff);</span>
+    }
+<span class="fc" id="L245">    return x;</span>
+  }
+
+  static DatabaseEntry int32(int n) {
+<span class="nc bnc" id="L249" title="All 8 branches missed.">    int nBytes =</span>
+        n &lt; 0x10000
+        ? n &lt; 0x100 ? (n == 0 ? 0 : 1) : 2
+        : n &lt; 0x1000000 ? 3 : 4;
+<span class="nc" id="L253">    byte[] bytes = new byte[nBytes];</span>
+<span class="nc" id="L254">    int x = n;</span>
+<span class="nc bnc" id="L255" title="All 2 branches missed.">    for (int i = nBytes; --i &gt;= 0; x = x &gt;&gt;&gt; 8) {</span>
+<span class="nc" id="L256">      bytes[i] = (byte) (x &amp; 0xFF);</span>
+    }
+<span class="nc" id="L258">    DatabaseEntry e = new DatabaseEntry(bytes);</span>
+<span class="nc bnc" id="L259" title="All 2 branches missed.">    if (int32(e) != n) {</span>
+<span class="nc" id="L260">      throw new AssertionError(</span>
+          &quot;n=&quot; + n + &quot;, nBytes=&quot; + nBytes
+<span class="nc" id="L262">          + &quot;, bytes=&quot; + Arrays.toString(bytes));</span>
+    }
+<span class="nc" id="L264">    return e;</span>
+  }
+
+
+  /* I generated the DB file in src/main/resources using the command line
+     below run from the project root.
+
+    mvn compile
+    rm -rf /tmp/bdb
+    mkdir /tmp/bdb
+    java -cp target/classes:$HOME/.m2/repository/com/google/guava/guava/19.0/guava-19.0.jar:$HOME/.m2/repository/org/ow2/asm/asm/5.0.4/asm-5.0.4.jar:$HOME/.m2/repository/com/sleepycat/je/5.0.73/je-5.0.73.jar com/google/security/fences/inheritance/SystemInheritanceGraph /tmp/bdb $JAVA_HOME/jre/lib/rt.jar
+    cp /tmp/bdb/00*.jdb src/main/resources/com/google/security/fences/inheritance/system-inheritance-graph/
+  */
+
+
+  /**
+   * Used to build the Berkeley DB resource file that holds the inheritance
+   * relationships for the system libraries.
+   */
+  public static void main(String... argv) throws IOException {
+<span class="nc bnc" id="L284" title="All 2 branches missed.">    boolean argsOk = argv.length &gt; 1;</span>
+
+<span class="nc" id="L286">    File bdbHome = null;</span>
+<span class="nc bnc" id="L287" title="All 2 branches missed.">    if (argsOk) {</span>
+<span class="nc" id="L288">      bdbHome = new File(argv[0]);</span>
+<span class="nc bnc" id="L289" title="All 2 branches missed.">      if (!bdbHome.isDirectory()) {</span>
+<span class="nc" id="L290">        System.err.println(&quot;Expected directory for BDB files, not &quot; + bdbHome);</span>
+<span class="nc" id="L291">        argsOk = false;</span>
+      }
+    }
+
+<span class="nc" id="L295">    List&lt;String&gt; jars = null;</span>
+<span class="nc bnc" id="L296" title="All 2 branches missed.">    if (argsOk) {</span>
+<span class="nc" id="L297">      jars = Arrays.asList(argv);</span>
+<span class="nc" id="L298">      jars = jars.subList(1, jars.size());</span>
+
+<span class="nc bnc" id="L300" title="All 2 branches missed.">      if (!Iterables.all(</span>
+              jars,
+<span class="nc" id="L302">              new Predicate&lt;String&gt;() {</span>
+                public boolean apply(@Nonnull String arg) {
+<span class="nc bnc" id="L304" title="All 2 branches missed.">                  if (arg == null) { throw new NullPointerException(); }</span>
+<span class="nc bnc" id="L305" title="All 4 branches missed.">                  return arg.endsWith(&quot;.jar&quot;) &amp;&amp; new File(arg).isFile();</span>
+                }
+              })) {
+<span class="nc" id="L308">        System.err.println(&quot;Not all are jars : &quot; + jars);</span>
+<span class="nc" id="L309">        argsOk = false;</span>
+      }
+    }
+<span class="nc bnc" id="L312" title="All 2 branches missed.">    if (!argsOk) {</span>
+<span class="nc" id="L313">      System.err.println(</span>
+<span class="nc" id="L314">          &quot;Usage: &quot; + SystemInheritanceGraph.class.getName()</span>
+          + &quot; path/to/bdb-home&quot;
+          + &quot; path/to/rt.jar path/to/other-system.jar ...&quot;);
+<span class="nc" id="L317">      return;</span>
+    }
+
+<span class="nc" id="L320">    final InheritanceGraph.Builder graphBuilder = InheritanceGraph.builder(</span>
+<span class="nc" id="L321">        new Function&lt;String, ClassNode&gt;() {</span>
+          public ClassNode apply(String name) {
+<span class="nc" id="L323">            return null;</span>
+          }
+        });
+<span class="nc bnc" id="L326" title="All 2 branches missed.">    for (String arg : Preconditions.checkNotNull(jars)) {</span>
+<span class="nc" id="L327">      File jarFile = new File(arg);</span>
+<span class="nc bnc" id="L328" title="All 2 branches missed.">      if (!jarFile.isFile()) {</span>
+<span class="nc" id="L329">        System.err.println(&quot;Not a valid jar file : &quot; + jarFile);</span>
+<span class="nc" id="L330">        return;</span>
+      }
+<span class="nc" id="L332">      InputStream in = new FileInputStream(jarFile);</span>
+      try {
+<span class="nc" id="L334">        ZipInputStream zipIn = new ZipInputStream(in);</span>
+        try {
+          for (ZipEntry zipEntry;
+<span class="nc bnc" id="L337" title="All 2 branches missed.">               (zipEntry = zipIn.getNextEntry()) != null;) {</span>
+<span class="nc bnc" id="L338" title="All 2 branches missed.">            if (!zipEntry.isDirectory()) {</span>
+<span class="nc" id="L339">              String entryName = zipEntry.getName();</span>
+<span class="nc bnc" id="L340" title="All 2 branches missed.">              if (entryName.endsWith(&quot;.class&quot;)) {</span>
+<span class="nc" id="L341">                ClassReader reader = new ClassReader(zipIn);</span>
+<span class="nc" id="L342">                ClassNodeFromClassFileVisitor visitor =</span>
+                    new ClassNodeFromClassFileVisitor(graphBuilder);
+<span class="nc" id="L344">                visitor.setIncludePrivates(false);</span>
+<span class="nc" id="L345">                reader.accept(visitor, 0 /* flags */);</span>
+              }
+            }
+<span class="nc" id="L348">            zipIn.closeEntry();</span>
+          }
+        } finally {
+<span class="nc" id="L351">          zipIn.close();</span>
+<span class="nc" id="L352">        }</span>
+      } finally {
+<span class="nc" id="L354">        in.close();</span>
+<span class="nc" id="L355">      }</span>
+<span class="nc" id="L356">      InheritanceGraph graph = graphBuilder.build();</span>
+
+<span class="nc" id="L358">      EnvironmentConfig envConfig = new EnvironmentConfig();</span>
+<span class="nc" id="L359">      envConfig.setAllowCreate(true);</span>
+<span class="nc" id="L360">      Environment env = new Environment(bdbHome, envConfig);</span>
+<span class="nc" id="L361">      Transaction txn = null;</span>
+
+<span class="nc" id="L363">      DatabaseConfig dbConfig = new DatabaseConfig();</span>
+<span class="nc" id="L364">      dbConfig.setAllowCreate(false);</span>
+<span class="nc" id="L365">      dbConfig.setAllowCreateVoid(true);</span>
+<span class="nc" id="L366">      dbConfig.setReadOnly(false);</span>
+<span class="nc" id="L367">      Database accessDb = env.openDatabase(txn, ACCESS_DB_NAME, dbConfig);</span>
+<span class="nc" id="L368">      Database supertypeDb = env.openDatabase(txn, SUPERTYPE_DB_NAME, dbConfig);</span>
+<span class="nc" id="L369">      Database interfaceDb = env.openDatabase(txn, INTERFACE_DB_NAME, dbConfig);</span>
+<span class="nc" id="L370">      Database methodDb = env.openDatabase(txn, METHOD_DB_NAME, dbConfig);</span>
+<span class="nc" id="L371">      Database fieldDb = env.openDatabase(txn, FIELD_DB_NAME, dbConfig);</span>
+
+<span class="nc bnc" id="L373" title="All 2 branches missed.">      for (ClassNode node : graph.allDeclaredNodes()) {</span>
+<span class="nc" id="L374">        String name = node.name;</span>
+<span class="nc" id="L375">        int access = node.access;</span>
+<span class="nc" id="L376">        DatabaseEntry nameData = utf8(name);</span>
+<span class="nc bnc" id="L377" title="All 2 branches missed.">        if (access != 0) {</span>
+<span class="nc" id="L378">          accessDb.put(txn, nameData, int32(access));</span>
+        }
+<span class="nc bnc" id="L380" title="All 2 branches missed.">        if (node.superType.isPresent()) {</span>
+<span class="nc" id="L381">          supertypeDb.put(txn, nameData, utf8(node.superType.get()));</span>
+        }
+<span class="nc" id="L383">        interfaceDb.put(</span>
+<span class="nc" id="L384">            txn, nameData, utf8(Joiner.on(&quot;,&quot;).join(node.interfaces)));</span>
+<span class="nc bnc" id="L385" title="All 2 branches missed.">        if (!node.fields.isEmpty()) {</span>
+<span class="nc" id="L386">          StringBuilder sb = new StringBuilder();</span>
+<span class="nc bnc" id="L387" title="All 2 branches missed.">          for (FieldDetails f : node.fields) {</span>
+<span class="nc bnc" id="L388" title="All 2 branches missed.">            if (sb.length() != 0) { sb.append(','); }</span>
+<span class="nc" id="L389">            sb.append(f.toCompactString());</span>
+<span class="nc" id="L390">          }</span>
+<span class="nc" id="L391">          fieldDb.put(txn, nameData, utf8(sb.toString()));</span>
+        }
+<span class="nc bnc" id="L393" title="All 2 branches missed.">        if (!node.methods.isEmpty()) {</span>
+<span class="nc" id="L394">          StringBuilder sb = new StringBuilder();</span>
+<span class="nc bnc" id="L395" title="All 2 branches missed.">          for (MethodDetails m : node.methods) {</span>
+<span class="nc bnc" id="L396" title="All 2 branches missed.">            if (sb.length() != 0) { sb.append(','); }</span>
+<span class="nc" id="L397">            sb.append(m.toCompactString());</span>
+<span class="nc" id="L398">          }</span>
+<span class="nc" id="L399">          methodDb.put(txn, nameData, utf8(sb.toString()));</span>
+        }
+<span class="nc" id="L401">      }</span>
+
+<span class="nc" id="L403">      fieldDb.close();</span>
+<span class="nc" id="L404">      methodDb.close();</span>
+<span class="nc" id="L405">      interfaceDb.close();</span>
+<span class="nc" id="L406">      supertypeDb.close();</span>
+<span class="nc" id="L407">      accessDb.close();</span>
+<span class="nc" id="L408">      env.close();</span>
+<span class="nc" id="L409">    }</span>
+<span class="nc" id="L410">  }</span>
+}
+</pre><div class="footer"><span class="right">Created with <a href="http://www.eclemma.org/jacoco">JaCoCo</a> 0.7.5.201505241946</span></div></body></html>

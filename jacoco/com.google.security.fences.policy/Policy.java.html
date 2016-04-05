@@ -1,0 +1,279 @@
+<?xml version="1.0" encoding="UTF-8"?><!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd"><html xmlns="http://www.w3.org/1999/xhtml" lang="en"><head><meta http-equiv="Content-Type" content="text/html;charset=UTF-8"/><link rel="stylesheet" href="../.resources/report.css" type="text/css"/><link rel="shortcut icon" href="../.resources/report.gif" type="image/gif"/><title>Policy.java</title><link rel="stylesheet" href="../.resources/prettify.css" type="text/css"/><script type="text/javascript" src="../.resources/prettify.js"></script></head><body onload="window['PR_TAB_WIDTH']=4;prettyPrint()"><div class="breadcrumb" id="breadcrumb"><span class="info"><a href="../.sessions.html" class="el_session">Sessions</a></span><a href="../index.html" class="el_report">Fences Enforcer Rule</a> &gt; <a href="index.source.html" class="el_package">com.google.security.fences.policy</a> &gt; <span class="el_source">Policy.java</span></div><h1>Policy.java</h1><pre class="source lang-java linenums">package com.google.security.fences.policy;
+
+import java.util.Map;
+
+import com.google.common.annotations.VisibleForTesting;
+import com.google.common.base.Function;
+import com.google.common.base.Objects;
+import com.google.common.base.Optional;
+import com.google.common.base.Preconditions;
+import com.google.common.base.Supplier;
+import com.google.common.collect.ImmutableList;
+import com.google.common.collect.ImmutableMap;
+import com.google.common.collect.Maps;
+import com.google.security.fences.config.Fence;
+import com.google.security.fences.config.FenceVisitor;
+import com.google.security.fences.config.Frenemies;
+import com.google.security.fences.config.HumanReadableText;
+import com.google.security.fences.namespace.Namespace;
+import com.google.security.fences.namespace.NamespaceTrie;
+
+/**
+ * Makes access decisions based on a configuration.
+ */
+<span class="fc" id="L24">public final class Policy {</span>
+  /**
+   * Maps packages and classes that might access an API element to
+   * API elements and the access level they have.
+   */
+<span class="fc" id="L29">  private final NamespaceTrie&lt;AccessControlDecision, NamespacePolicy&gt; trie</span>
+      = new NamespaceTrie&lt;AccessControlDecision, NamespacePolicy&gt;(
+          NamespacePolicy.EMPTY_SUPPLIER,
+          FOLD_POLICIES_TOGETHER);
+  /**
+   * Maps API elements to {@code &lt;addendum /&gt;}s to show when a violation occurs
+   * accessing that API element.
+   */
+<span class="fc" id="L37">  private final Map&lt;ApiElement, HumanReadableText&gt; addenda = Maps.newHashMap();</span>
+
+  private static final
+  Function&lt;NamespacePolicy, Function&lt;AccessControlDecision, NamespacePolicy&gt;&gt;
+<span class="fc" id="L41">    FOLD_POLICIES_TOGETHER</span>
+  = new Function&lt;NamespacePolicy,
+<span class="fc" id="L43">               Function&lt;AccessControlDecision, NamespacePolicy&gt;&gt;() {</span>
+    public Function&lt;AccessControlDecision, NamespacePolicy&gt; apply(
+        final NamespacePolicy policies) {
+<span class="fc" id="L46">      return new Function&lt;AccessControlDecision, NamespacePolicy&gt;() {</span>
+        public NamespacePolicy apply(AccessControlDecision onePolicy) {
+<span class="fc" id="L48">          policies.restrictAccess(onePolicy);</span>
+<span class="fc" id="L49">          return policies;</span>
+        }
+      };
+    }
+  };
+
+  /** The access policies for ns from most-specific to least. */
+  public ImmutableList&lt;NamespacePolicy&gt; forNamespace(Namespace ns) {
+<span class="fc" id="L57">    ImmutableList.Builder&lt;NamespacePolicy&gt; b = ImmutableList.builder();</span>
+<span class="fc" id="L58">    NamespaceTrie.Entry&lt;NamespacePolicy&gt; d = trie.getDeepest(ns);</span>
+<span class="fc" id="L59">    for (Optional&lt;NamespaceTrie.Entry&lt;NamespacePolicy&gt;&gt; e = Optional.of(d);</span>
+<span class="fc bfc" id="L60" title="All 2 branches covered.">         e.isPresent();</span>
+<span class="fc" id="L61">         e = e.get().getParent()) {</span>
+<span class="fc" id="L62">      Optional&lt;NamespacePolicy&gt; accessLevels = e.get().getValue();</span>
+<span class="fc bfc" id="L63" title="All 2 branches covered.">      if (accessLevels.isPresent()) {</span>
+<span class="fc" id="L64">        b.add(accessLevels.get());</span>
+      }
+    }
+<span class="fc" id="L67">    return b.build();</span>
+  }
+
+  /**
+   * All the addenda for the given API element.
+   */
+  public HumanReadableText getAddenda(ApiElement el) {
+<span class="nc" id="L74">    HumanReadableText allAddenda = HumanReadableText.EMPTY;</span>
+<span class="nc" id="L75">    for (Optional&lt;ApiElement&gt; ancestor = Optional.of(el);</span>
+<span class="nc bnc" id="L76" title="All 2 branches missed.">         ancestor.isPresent(); ancestor = ancestor.get().parent) {</span>
+<span class="nc" id="L77">      HumanReadableText addendum = addenda.get(ancestor.get());</span>
+<span class="nc bnc" id="L78" title="All 2 branches missed.">      if (addendum != null) {</span>
+<span class="nc" id="L79">        allAddenda = addendum.concat(allAddenda);</span>
+      }
+    }
+<span class="nc" id="L82">    return allAddenda;</span>
+  }
+
+  /**
+   * An access control decision for a single API element.
+   * This is a cell in the Namespace x ApiElement access control matrix.
+   */
+  public static final class AccessControlDecision {
+    /**
+     * The API element to which access is controlled.
+     */
+    public final ApiElement apiElement;
+    /**
+     * The access level granted to {@link #apiElement}.
+     */
+    public final AccessLevel accessLevel;
+    /**
+     * The reason if any for controlling access.
+     */
+    public final HumanReadableText rationale;
+
+    AccessControlDecision(
+        ApiElement apiElement, AccessLevel accessLevel,
+<span class="fc" id="L105">        HumanReadableText rationale) {</span>
+<span class="fc" id="L106">      this.apiElement = apiElement;</span>
+<span class="fc" id="L107">      this.accessLevel = accessLevel;</span>
+<span class="fc" id="L108">      this.rationale = rationale;</span>
+<span class="fc" id="L109">    }</span>
+
+    @Override
+    public String toString() {
+<span class="nc" id="L113">      return &quot;{&quot; + apiElement + &quot; &quot; + accessLevel + &quot;}&quot;;</span>
+    }
+
+    @Override
+    public boolean equals(Object o) {
+<span class="pc bpc" id="L118" title="1 of 2 branches missed.">      if (!(o instanceof AccessControlDecision)) {</span>
+<span class="nc" id="L119">        return false;</span>
+      }
+<span class="fc" id="L121">      AccessControlDecision that = (AccessControlDecision) o;</span>
+<span class="pc bpc" id="L122" title="1 of 2 branches missed.">      return this.accessLevel == that.accessLevel</span>
+<span class="pc bpc" id="L123" title="1 of 2 branches missed.">          &amp;&amp; this.apiElement.equals(that.apiElement)</span>
+<span class="pc bpc" id="L124" title="1 of 2 branches missed.">          &amp;&amp; this.rationale.equals(that.rationale);</span>
+    }
+
+    @Override
+    public int hashCode() {
+<span class="nc" id="L129">      return Objects.hashCode(accessLevel, apiElement, rationale);</span>
+    }
+
+    static AccessControlDecision mostRestrictive(
+        AccessControlDecision a, AccessControlDecision b) {
+<span class="nc" id="L134">      Preconditions.checkArgument(a.apiElement.equals(b.apiElement));</span>
+<span class="nc" id="L135">      AccessLevel mostRestrictiveLevel = AccessLevel.mostRestrictive(</span>
+          a.accessLevel, b.accessLevel);
+<span class="nc" id="L137">      HumanReadableText mergedRationale = a.rationale.concatDedupe(b.rationale);</span>
+<span class="nc" id="L138">      return new AccessControlDecision(</span>
+          a.apiElement, mostRestrictiveLevel, mergedRationale);
+    }
+  }
+
+  /**
+   * {@link com.google.security.fences.policy.Policy.AccessControlDecision}s
+   * relevant to a particular namespace.
+   * This is a row in the Namespace x ApiElement access control matrix.
+   */
+<span class="fc" id="L148">  public static final class NamespacePolicy {</span>
+    /** Supplies new instances for Trie nodes. */
+<span class="fc" id="L150">    public static final Supplier&lt;NamespacePolicy&gt; EMPTY_SUPPLIER =</span>
+<span class="fc" id="L151">        new Supplier&lt;NamespacePolicy&gt;() {</span>
+      public NamespacePolicy get() {
+<span class="fc" id="L153">        return new NamespacePolicy();</span>
+      }
+    };
+
+<span class="fc" id="L157">    private final Map&lt;ApiElement, AccessControlDecision&gt; apiElementToPolicy =</span>
+<span class="fc" id="L158">        Maps.newLinkedHashMap();</span>
+
+    /**
+     * The access level for the given element if any.
+     * This is based on looking for the most specific rule that applies to that
+     * element or any containing api element.
+     */
+    public Optional&lt;AccessControlDecision&gt; accessPolicyForApiElement(
+        ApiElement element) {
+<span class="nc" id="L167">      for (Optional&lt;ApiElement&gt; e = Optional.of(element);</span>
+<span class="nc bnc" id="L168" title="All 2 branches missed.">           e.isPresent();</span>
+<span class="nc" id="L169">           e = e.get().parent) {</span>
+<span class="nc" id="L170">        ApiElement el = e.get();</span>
+<span class="nc" id="L171">        AccessControlDecision p = apiElementToPolicy.get(el);</span>
+<span class="nc bnc" id="L172" title="All 2 branches missed.">        if (p != null) {</span>
+<span class="nc" id="L173">          return Optional.of(p);</span>
+        }
+      }
+<span class="nc" id="L176">      return Optional.absent();</span>
+    }
+
+    AccessControlDecision getAccessPolicy(ApiElement el) {
+<span class="nc" id="L180">      return apiElementToPolicy.get(el);</span>
+    }
+
+    void restrictAccess(AccessControlDecision p) {
+<span class="fc" id="L184">      AccessControlDecision newPolicy = Preconditions.checkNotNull(p);</span>
+<span class="fc" id="L185">      ApiElement el = newPolicy.apiElement;</span>
+<span class="fc" id="L186">      AccessControlDecision oldPolicy = apiElementToPolicy.get(el);</span>
+<span class="pc bpc" id="L187" title="1 of 2 branches missed.">      if (oldPolicy != null) {</span>
+<span class="nc" id="L188">        newPolicy = AccessControlDecision.mostRestrictive(oldPolicy, newPolicy);</span>
+      }
+<span class="fc" id="L190">      apiElementToPolicy.put(el, newPolicy);</span>
+<span class="fc" id="L191">    }</span>
+
+    @VisibleForTesting
+    static NamespacePolicy fromMap(Map&lt;ApiElement, AccessControlDecision&gt; m) {
+<span class="fc" id="L195">      NamespacePolicy al = new NamespacePolicy();</span>
+<span class="fc" id="L196">      al.apiElementToPolicy.putAll(m);</span>
+<span class="fc" id="L197">      return al;</span>
+    }
+
+    @VisibleForTesting
+    static NamespacePolicy fromAccessLevelMap(Map&lt;ApiElement, AccessLevel&gt; m) {
+      ImmutableMap.Builder&lt;ApiElement, AccessControlDecision&gt; b =
+<span class="fc" id="L203">          ImmutableMap.builder();</span>
+<span class="fc bfc" id="L204" title="All 2 branches covered.">      for (Map.Entry&lt;ApiElement, AccessLevel&gt; e : m.entrySet()) {</span>
+<span class="fc" id="L205">        ApiElement k = e.getKey();</span>
+<span class="fc" id="L206">        AccessLevel v = e.getValue();</span>
+<span class="fc" id="L207">        b.put(k, new AccessControlDecision(k, v, HumanReadableText.EMPTY));</span>
+<span class="fc" id="L208">      }</span>
+<span class="fc" id="L209">      return fromMap(b.build());</span>
+    }
+
+
+    @Override
+    public String toString() {
+<span class="nc" id="L215">      return apiElementToPolicy.toString();</span>
+    }
+
+    @Override
+    public boolean equals(Object o) {
+<span class="pc bpc" id="L220" title="1 of 2 branches missed.">      if (!(o instanceof NamespacePolicy)) {</span>
+<span class="nc" id="L221">        return false;</span>
+      }
+<span class="fc" id="L223">      NamespacePolicy that = (NamespacePolicy) o;</span>
+<span class="fc" id="L224">      return this.apiElementToPolicy.equals(that.apiElementToPolicy);</span>
+    }
+
+    @Override
+    public int hashCode() {
+<span class="nc" id="L229">      return this.apiElementToPolicy.hashCode();</span>
+    }
+  }
+
+  /**
+   * Produces a policy from beans typically populated from a POM
+   * {@code &lt;configuration&gt;} element.
+   */
+  public static Policy fromFence(Fence fence) {
+<span class="fc" id="L238">    final Policy policy = new Policy();</span>
+<span class="fc" id="L239">    FenceVisitor buildFencesVisitor = new FenceVisitor() {</span>
+      public void visit(Fence f, ApiElement apiElement) {
+<span class="fc" id="L241">        Frenemies frenemies = f.getFrenemies();</span>
+<span class="fc" id="L242">        addToPolicy(</span>
+            frenemies.friends, AccessLevel.ALLOWED, apiElement,
+            HumanReadableText.EMPTY);
+<span class="fc" id="L245">        addToPolicy(</span>
+            frenemies.enemies, AccessLevel.DISALLOWED, apiElement,
+            frenemies.rationale.body);
+<span class="pc bpc" id="L248" title="1 of 2 branches missed.">        if (!frenemies.rationale.addendum.isEmpty()) {</span>
+<span class="nc" id="L249">          addAddenda(apiElement, frenemies.rationale.addendum);</span>
+        }
+<span class="fc" id="L251">      }</span>
+
+      @SuppressWarnings(&quot;synthetic-access&quot;)
+      private void addToPolicy(
+          Iterable&lt;Namespace&gt; nss, AccessLevel lvl, ApiElement el,
+          HumanReadableText rationale) {
+<span class="fc" id="L257">        AccessControlDecision d = new AccessControlDecision(el, lvl, rationale);</span>
+<span class="fc bfc" id="L258" title="All 2 branches covered.">        for (Namespace ns : nss) {</span>
+<span class="fc" id="L259">          policy.trie.put(ns, d);</span>
+<span class="fc" id="L260">        }</span>
+<span class="fc" id="L261">      }</span>
+
+      @SuppressWarnings(&quot;synthetic-access&quot;)
+      private void addAddenda(ApiElement el, HumanReadableText addendum) {
+<span class="nc" id="L265">        HumanReadableText old = policy.addenda.get(el);</span>
+<span class="nc bnc" id="L266" title="All 2 branches missed.">        if (old == null) { old = HumanReadableText.EMPTY; }</span>
+<span class="nc" id="L267">        policy.addenda.put(el, old.concat(addendum));</span>
+<span class="nc" id="L268">      }</span>
+    };
+<span class="fc" id="L270">    fence.visit(buildFencesVisitor);</span>
+<span class="fc" id="L271">    return policy;</span>
+  }
+
+  @Override
+  public String toString() {
+<span class="nc" id="L276">    return trie.toTree();</span>
+  }
+}
+</pre><div class="footer"><span class="right">Created with <a href="http://www.eclemma.org/jacoco">JaCoCo</a> 0.7.5.201505241946</span></div></body></html>

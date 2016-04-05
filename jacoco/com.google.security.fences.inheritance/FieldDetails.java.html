@@ -1,0 +1,54 @@
+<?xml version="1.0" encoding="UTF-8"?><!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd"><html xmlns="http://www.w3.org/1999/xhtml" lang="en"><head><meta http-equiv="Content-Type" content="text/html;charset=UTF-8"/><link rel="stylesheet" href="../.resources/report.css" type="text/css"/><link rel="shortcut icon" href="../.resources/report.gif" type="image/gif"/><title>FieldDetails.java</title><link rel="stylesheet" href="../.resources/prettify.css" type="text/css"/><script type="text/javascript" src="../.resources/prettify.js"></script></head><body onload="window['PR_TAB_WIDTH']=4;prettyPrint()"><div class="breadcrumb" id="breadcrumb"><span class="info"><a href="../.sessions.html" class="el_session">Sessions</a></span><a href="../index.html" class="el_report">Fences Enforcer Rule</a> &gt; <a href="index.source.html" class="el_package">com.google.security.fences.inheritance</a> &gt; <span class="el_source">FieldDetails.java</span></div><h1>FieldDetails.java</h1><pre class="source lang-java linenums">package com.google.security.fences.inheritance;
+
+import org.objectweb.asm.Opcodes;
+
+/**
+ * Details about a Java field.
+ */
+public final class FieldDetails {
+  /** A java identifier, the name of the methods. */
+  public final String name;
+  /** Bitfield of {@code ACC_*} constants from {@link Opcodes}. */
+  public final int access;
+
+  /**
+   * @param name a java identifier, the name of the methods.
+   * @param access a bitfield of {@code ACC_*} constants from {@link Opcodes}.
+   */
+<span class="fc" id="L18">  public FieldDetails(String name, int access) {</span>
+<span class="fc" id="L19">    this.name = name;</span>
+<span class="fc" id="L20">    this.access = access;</span>
+<span class="fc" id="L21">  }</span>
+
+  /**
+   * True if the field is private.
+   * A private field does not mask fields from its super-class.
+   */
+  public boolean isPrivate() {
+<span class="nc bnc" id="L28" title="All 2 branches missed.">    return (access &amp; Opcodes.ACC_PRIVATE) != 0;</span>
+  }
+
+  /**
+   * A form that contains only Java internal identifier characters and '/'
+   * suitable for storage in the Berkeley DB.
+   */
+  public String toCompactString() {
+<span class="nc" id="L36">    return name + &quot;/&quot; + Integer.toString(access, 16);</span>
+  }
+
+  /**
+   * Reverse of {@link #toCompactString()}.
+   */
+  public static FieldDetails fromCompactString(String compactString) {
+<span class="fc" id="L43">    int slash = compactString.indexOf('/');</span>
+<span class="fc" id="L44">    return new FieldDetails(</span>
+<span class="fc" id="L45">        compactString.substring(0, slash),</span>
+<span class="fc" id="L46">        Integer.valueOf(compactString.substring(slash + 1), 16));</span>
+  }
+
+  @Override
+  public String toString() {
+<span class="nc" id="L51">    return name;</span>
+  }
+}
+</pre><div class="footer"><span class="right">Created with <a href="http://www.eclemma.org/jacoco">JaCoCo</a> 0.7.5.201505241946</span></div></body></html>

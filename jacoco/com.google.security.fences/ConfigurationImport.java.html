@@ -1,0 +1,218 @@
+<?xml version="1.0" encoding="UTF-8"?><!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd"><html xmlns="http://www.w3.org/1999/xhtml" lang="en"><head><meta http-equiv="Content-Type" content="text/html;charset=UTF-8"/><link rel="stylesheet" href="../.resources/report.css" type="text/css"/><link rel="shortcut icon" href="../.resources/report.gif" type="image/gif"/><title>ConfigurationImport.java</title><link rel="stylesheet" href="../.resources/prettify.css" type="text/css"/><script type="text/javascript" src="../.resources/prettify.js"></script></head><body onload="window['PR_TAB_WIDTH']=4;prettyPrint()"><div class="breadcrumb" id="breadcrumb"><span class="info"><a href="../.sessions.html" class="el_session">Sessions</a></span><a href="../index.html" class="el_report">Fences Enforcer Rule</a> &gt; <a href="index.source.html" class="el_package">com.google.security.fences</a> &gt; <span class="el_source">ConfigurationImport.java</span></div><h1>ConfigurationImport.java</h1><pre class="source lang-java linenums">package com.google.security.fences;
+
+import java.io.File;
+import java.io.IOException;
+import java.io.InputStream;
+import java.util.Iterator;
+import java.util.Map;
+
+import org.apache.maven.artifact.Artifact;
+import org.apache.maven.enforcer.rule.api.EnforcerRuleException;
+import org.apache.maven.plugin.logging.Log;
+import org.codehaus.plexus.classworlds.realm.ClassRealm;
+import org.codehaus.plexus.component.configurator.ComponentConfigurationException;
+import org.codehaus.plexus.component.configurator.ComponentConfigurator;
+import org.codehaus.plexus.configuration.PlexusConfiguration;
+import org.codehaus.plexus.configuration.xml.XmlPlexusConfiguration;
+import org.codehaus.plexus.util.xml.Xpp3Dom;
+import org.codehaus.plexus.util.xml.Xpp3DomBuilder;
+import org.codehaus.plexus.util.xml.pull.XmlPullParserException;
+
+import com.google.common.base.Objects;
+import com.google.common.base.Optional;
+import com.google.common.base.Preconditions;
+import com.google.common.collect.Maps;
+import com.google.security.fences.util.Utils;
+
+
+/**
+ * Created from {@code &lt;import&gt;group:artifact:version&lt;/import&gt;} to load extra
+ * configuration from that artifacts META-INF/fences.xml file.
+ */
+final class ConfigurationImport {
+
+  final PartialArtifactKey key;
+
+<span class="nc" id="L36">  ConfigurationImport(String s) throws EnforcerRuleException {</span>
+<span class="nc" id="L37">    this.key = new PartialArtifactKey(s.trim());</span>
+<span class="nc" id="L38">  }</span>
+
+  static final String FENCES_CONFIGURATION_XML_RELATIVE_PATH
+      = &quot;META-INF/fences.xml&quot;;
+
+  @SuppressWarnings(&quot;resource&quot;)  // Realm not owned by this method
+  void configure(
+      Object configurable, ComponentConfigurator configurator,
+      ClassRoots classRoots, Log log)
+  throws EnforcerRuleException {
+<span class="nc" id="L48">    Optional&lt;ClassRoot&gt; cr = classRoots.lookup(key);</span>
+<span class="nc bnc" id="L49" title="All 2 branches missed.">    if (cr.isPresent()) {</span>
+      PlexusConfiguration configuration;
+      try {
+<span class="nc" id="L52">        configuration = loadConfiguration(</span>
+<span class="nc" id="L53">            log, cr.get(), FENCES_CONFIGURATION_XML_RELATIVE_PATH);</span>
+<span class="nc" id="L54">      } catch (IOException ex) {</span>
+<span class="nc" id="L55">        throw new EnforcerRuleException(</span>
+            &quot;Failed to load &quot; + FENCES_CONFIGURATION_XML_RELATIVE_PATH
+            + &quot; from &quot; + key, ex);
+<span class="nc" id="L58">      }</span>
+
+      // TODO: Is this right?
+      // Newer versions have a MavenProject.getClassRealm() says
+      // &quot;&quot;&quot;
+      // Warning: This is an internal utility method that is only public for
+      // technical reasons, it is not part of the public API. In particular,
+      // this method can be changed or deleted without prior notice and must
+      // not be used by plugins.
+      // &quot;&quot;&quot;
+      // so trying to get it directly seems dodgy.
+<span class="nc" id="L69">      ClassRealm realm = null;</span>
+<span class="nc" id="L70">      ClassLoader cl = configurable.getClass().getClassLoader();</span>
+<span class="nc bnc" id="L71" title="All 2 branches missed.">      if (cl instanceof ClassRealm) {</span>
+<span class="nc" id="L72">        realm = (ClassRealm) cl;</span>
+      }
+
+      try {
+<span class="nc" id="L76">        configurator.configureComponent(configurable, configuration, realm);</span>
+<span class="nc" id="L77">      } catch (ComponentConfigurationException ex) {</span>
+<span class="nc" id="L78">        throw new EnforcerRuleException(</span>
+            &quot;Failed to process configuration &quot;
+            + FENCES_CONFIGURATION_XML_RELATIVE_PATH + &quot; from &quot; + key,
+            ex);
+<span class="nc" id="L82">      }</span>
+<span class="nc" id="L83">    } else {</span>
+<span class="nc" id="L84">      log.error(&quot;Cannot import &quot; + key + &quot;, no such artifact depended upon&quot;);</span>
+    }
+<span class="nc" id="L86">  }</span>
+
+
+  static final class PartialArtifactKey {
+    final String groupId;
+    final String artifactId;
+    final Optional&lt;String&gt; version;
+
+    PartialArtifactKey(String artifact)
+    // TODO: more appropriate exception type
+<span class="nc" id="L96">    throws EnforcerRuleException {</span>
+<span class="nc" id="L97">      String[] parts = artifact.split(&quot;:&quot;);</span>
+<span class="nc bnc" id="L98" title="All 3 branches missed.">      switch (parts.length) {</span>
+        case 3:
+<span class="nc" id="L100">          groupId = parts[0];</span>
+<span class="nc" id="L101">          artifactId = parts[1];</span>
+<span class="nc" id="L102">          version = Optional.of(parts[2]);</span>
+<span class="nc" id="L103">          break;</span>
+        case 2:
+<span class="nc" id="L105">          groupId = parts[0];</span>
+<span class="nc" id="L106">          artifactId = parts[1];</span>
+<span class="nc" id="L107">          version = Optional.absent();</span>
+<span class="nc" id="L108">          break;</span>
+        default:
+<span class="nc" id="L110">          throw new EnforcerRuleException(&quot;Bad artifact key: &quot; + artifact);</span>
+      }
+<span class="nc" id="L112">    }</span>
+
+<span class="nc" id="L114">    PartialArtifactKey(String gid, String aid, Optional&lt;String&gt; ver) {</span>
+<span class="nc" id="L115">      this.groupId = Preconditions.checkNotNull(gid);</span>
+<span class="nc" id="L116">      this.artifactId = Preconditions.checkNotNull(aid);</span>
+<span class="nc" id="L117">      this.version = Preconditions.checkNotNull(ver);</span>
+<span class="nc" id="L118">    }</span>
+
+    PartialArtifactKey(String gid, String aid) {
+<span class="nc" id="L121">      this(gid, aid, Optional.&lt;String&gt;absent());</span>
+<span class="nc" id="L122">    }</span>
+
+    @Override
+    public boolean equals(Object o) {
+<span class="nc bnc" id="L126" title="All 2 branches missed.">      if (!(o instanceof PartialArtifactKey)) {</span>
+<span class="nc" id="L127">        return false;</span>
+      }
+<span class="nc" id="L129">      PartialArtifactKey that = (PartialArtifactKey) o;</span>
+<span class="nc bnc" id="L130" title="All 2 branches missed.">      return groupId.equals(that.groupId)</span>
+<span class="nc bnc" id="L131" title="All 2 branches missed.">          &amp;&amp; artifactId.equals(that.artifactId)</span>
+<span class="nc bnc" id="L132" title="All 2 branches missed.">          &amp;&amp; version.equals(that.version);</span>
+    }
+
+    @Override
+    public int hashCode() {
+<span class="nc" id="L137">      return Objects.hashCode(groupId, artifactId, version);</span>
+    }
+
+    @Override
+    public String toString() {
+<span class="nc" id="L142">      return groupId + &quot;:&quot; + artifactId</span>
+<span class="nc bnc" id="L143" title="All 2 branches missed.">          + (version.isPresent() ? &quot;:&quot; + version.get() : &quot;&quot;);</span>
+    }
+  }
+
+  /** Lazy map of artifact keys to artifacts. */
+  static final class ClassRoots {
+<span class="nc" id="L149">    private final Map&lt;PartialArtifactKey, ClassRoot&gt; map =</span>
+<span class="nc" id="L150">        Maps.newLinkedHashMap();</span>
+    private final Iterator&lt;ClassRoot&gt; classRoots;
+
+<span class="nc" id="L153">    ClassRoots(Iterator&lt;ClassRoot&gt; classRoots) {</span>
+<span class="nc" id="L154">      this.classRoots = classRoots;</span>
+<span class="nc" id="L155">    }</span>
+
+    Optional&lt;ClassRoot&gt; lookup(PartialArtifactKey k) {
+<span class="nc" id="L158">      ClassRoot result = map.get(k);</span>
+<span class="nc bnc" id="L159" title="All 2 branches missed.">      if (result == null) {</span>
+<span class="nc bnc" id="L160" title="All 2 branches missed.">        while (classRoots.hasNext()) {</span>
+<span class="nc" id="L161">          ClassRoot cr = classRoots.next();</span>
+<span class="nc" id="L162">          Artifact art = cr.art;</span>
+<span class="nc" id="L163">          PartialArtifactKey full = new PartialArtifactKey(</span>
+<span class="nc" id="L164">              art.getGroupId(), art.getArtifactId(),</span>
+<span class="nc" id="L165">              Optional.of(art.getVersion()));</span>
+<span class="nc" id="L166">          PartialArtifactKey partial = new PartialArtifactKey(</span>
+              full.groupId, full.artifactId);
+<span class="nc" id="L168">          putIfAbsent(map, full, cr);</span>
+<span class="nc" id="L169">          putIfAbsent(map, partial, cr);</span>
+<span class="nc bnc" id="L170" title="All 4 branches missed.">          if (k.equals(full) || k.equals(partial)) {</span>
+<span class="nc" id="L171">            result = cr;</span>
+<span class="nc" id="L172">            break;</span>
+          }
+<span class="nc" id="L174">        }</span>
+      }
+<span class="nc" id="L176">      return Optional.fromNullable(result);</span>
+    }
+  }
+
+  static XmlPlexusConfiguration loadConfiguration(
+      Log log,
+      ClassRoot cr,
+      String path)
+  throws EnforcerRuleException, IOException {
+<span class="nc" id="L185">    log.debug(&quot;Loading &quot; + path + &quot; from &quot; + Utils.artToString(cr.art));</span>
+<span class="nc" id="L186">    File classRootFile = cr.classRoot;</span>
+<span class="nc bnc" id="L187" title="All 2 branches missed.">    if (classRootFile == null) {</span>
+<span class="nc" id="L188">      throw new EnforcerRuleException(</span>
+          &quot;Cannot import configuration from unresolved artifact &quot;
+<span class="nc" id="L190">          + Utils.artToString(cr.art));</span>
+    }
+<span class="nc" id="L192">    Xpp3Dom dom = cr.readRelativePath(</span>
+        path,
+<span class="nc" id="L194">        new ClassRoot.IOConsumer&lt;InputStream, Xpp3Dom&gt;() {</span>
+          public Xpp3Dom consume(
+              ClassRoot root, String relPath, InputStream is)
+          throws IOException {
+            try {
+<span class="nc" id="L199">              return Xpp3DomBuilder.build(is, &quot;UTF-8&quot;, true);</span>
+<span class="nc" id="L200">            } catch (XmlPullParserException ex) {</span>
+<span class="nc" id="L201">              throw new IOException(&quot;Malformed XML &quot; + relPath + &quot; in &quot; + root.art.getId(), ex);</span>
+            } finally {
+<span class="nc" id="L203">              is.close();</span>
+            }
+          }
+        });
+<span class="nc" id="L207">    return new XmlPlexusConfiguration(dom);</span>
+  }
+
+
+  /** Map.putIfAbsent is @since Java 8. */
+  static &lt;K, V&gt; void putIfAbsent(Map&lt;K, V&gt; m, K k, V v) {
+<span class="nc bnc" id="L213" title="All 2 branches missed.">    if (!m.containsKey(k)) {</span>
+<span class="nc" id="L214">      m.put(k, v);</span>
+    }
+<span class="nc" id="L216">  }</span>
+}
+</pre><div class="footer"><span class="right">Created with <a href="http://www.eclemma.org/jacoco">JaCoCo</a> 0.7.5.201505241946</span></div></body></html>

@@ -1,0 +1,153 @@
+<?xml version="1.0" encoding="UTF-8"?><!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd"><html xmlns="http://www.w3.org/1999/xhtml" lang="en"><head><meta http-equiv="Content-Type" content="text/html;charset=UTF-8"/><link rel="stylesheet" href="../.resources/report.css" type="text/css"/><link rel="shortcut icon" href="../.resources/report.gif" type="image/gif"/><title>HumanReadableText.java</title><link rel="stylesheet" href="../.resources/prettify.css" type="text/css"/><script type="text/javascript" src="../.resources/prettify.js"></script></head><body onload="window['PR_TAB_WIDTH']=4;prettyPrint()"><div class="breadcrumb" id="breadcrumb"><span class="info"><a href="../.sessions.html" class="el_session">Sessions</a></span><a href="../index.html" class="el_report">Fences Enforcer Rule</a> &gt; <a href="index.source.html" class="el_package">com.google.security.fences.config</a> &gt; <span class="el_source">HumanReadableText.java</span></div><h1>HumanReadableText.java</h1><pre class="source lang-java linenums">package com.google.security.fences.config;
+
+import java.util.Arrays;
+import java.util.List;
+import java.util.Set;
+
+import com.google.common.base.Joiner;
+import com.google.common.base.Preconditions;
+import com.google.common.collect.ImmutableList;
+import com.google.common.collect.Sets;
+
+/**
+ * A chunk of human readable text broken up into paragraphs.
+ */
+public final class HumanReadableText {
+  /** The text. */
+  public final String text;
+
+  /** A value with text &quot;&quot;. */
+<span class="fc" id="L20">  public static final HumanReadableText EMPTY = new HumanReadableText(&quot;&quot;);</span>
+
+<span class="fc" id="L22">  HumanReadableText(String text) {</span>
+<span class="fc" id="L23">    this.text = Preconditions.checkNotNull(text);</span>
+<span class="fc" id="L24">  }</span>
+
+  /** True if the text is empty. */
+  public boolean isEmpty() {
+<span class="fc" id="L28">    return text.isEmpty();</span>
+  }
+
+  @Override
+  public boolean equals(Object o) {
+<span class="pc bpc" id="L33" title="1 of 2 branches missed.">    if (!(o instanceof HumanReadableText)) { return false; }</span>
+<span class="fc" id="L34">    return this.text.equals(((HumanReadableText) o).text);</span>
+  }
+
+  @Override
+  public int hashCode() {
+<span class="nc" id="L39">    return text.hashCode();</span>
+  }
+
+  @Override
+  public String toString() {
+<span class="nc" id="L44">    return text;</span>
+  }
+
+  private static final String PARAGRAPH_SEPARATOR = &quot;\n\n&quot;;
+
+  /**
+   * Strips leading white-space for a string that is indented within a larger
+   * XML document.
+   *
+   * @param s the content of an XML text node.
+   */
+  public static HumanReadableText fromXmlTextNode(String s) {
+<span class="nc" id="L56">    List&lt;String&gt; lines = linesFromXmlTextNode(s);</span>
+<span class="nc bnc" id="L57" title="All 2 branches missed.">    if (lines.isEmpty()) { return EMPTY; }</span>
+<span class="nc" id="L58">    return new HumanReadableText(Joiner.on('\n').join(lines));</span>
+  }
+
+
+  /**
+   * Split lines and trim off the white-space using the minimal amount of
+   * whitespace from the second-and subsequent lines as a guide.
+   * &lt;p&gt;
+   * Strings that appear in XML often have a lot of leading whitespace
+   * on each line.
+   */
+  static List&lt;String&gt; linesFromXmlTextNode(String s) {
+<span class="fc" id="L70">    String[] lines = s.replaceAll(&quot;\u2029&quot;, PARAGRAPH_SEPARATOR)</span>
+<span class="fc" id="L71">        .split(&quot;[\n\u2028]|\r\n?&quot;);</span>
+<span class="fc" id="L72">    int minWhitespace = Integer.MAX_VALUE;</span>
+<span class="fc" id="L73">    int nLines = lines.length;</span>
+<span class="fc bfc" id="L74" title="All 2 branches covered.">    for (int j = 1; j &lt; nLines; ++j) {</span>
+<span class="fc" id="L75">      int leadingWhitespace = 0;</span>
+<span class="fc" id="L76">      String line = lines[j];</span>
+<span class="fc bfc" id="L77" title="All 2 branches covered.">      if (line.trim().isEmpty()) { continue; }</span>
+<span class="fc" id="L78">      int n = line.length();</span>
+<span class="pc bpc" id="L79" title="1 of 2 branches missed.">      for (int i = 0; i &lt; n; ++i) {</span>
+<span class="fc" id="L80">        int spaceWidth = spaceWidthOf(line.charAt(i));</span>
+<span class="fc bfc" id="L81" title="All 2 branches covered.">        if (spaceWidth == 0) { break; }</span>
+<span class="fc" id="L82">        leadingWhitespace += spaceWidth;</span>
+      }
+<span class="fc" id="L84">      minWhitespace = Math.min(minWhitespace, leadingWhitespace);</span>
+    }
+<span class="pc bpc" id="L86" title="1 of 2 branches missed.">    if (minWhitespace == 0) { return ImmutableList.of(lines); }</span>
+<span class="fc bfc" id="L87" title="All 2 branches covered.">    for (int j = nLines; --j &gt;= 0;) {</span>
+<span class="fc" id="L88">      int nToTrim = minWhitespace;</span>
+<span class="fc" id="L89">      String line = lines[j];</span>
+<span class="fc" id="L90">      int trimPt = 0;</span>
+<span class="fc" id="L91">      int n = line.length();</span>
+<span class="fc bfc" id="L92" title="All 4 branches covered.">      while (trimPt &lt; n &amp;&amp; nToTrim &gt; 0) {</span>
+<span class="fc" id="L93">        int spaceWidth = spaceWidthOf(line.charAt(trimPt));</span>
+<span class="pc bpc" id="L94" title="1 of 4 branches missed.">        if (spaceWidth == 0 || spaceWidth &gt; nToTrim) {</span>
+<span class="nc" id="L95">          break;</span>
+        }
+<span class="fc" id="L97">        nToTrim -= spaceWidth;</span>
+<span class="fc" id="L98">        ++trimPt;</span>
+<span class="fc" id="L99">      }</span>
+<span class="fc" id="L100">      lines[j] = line.substring(trimPt);</span>
+<span class="fc" id="L101">    }</span>
+<span class="fc" id="L102">    ImmutableList.Builder&lt;String&gt; trimmedLines = ImmutableList.builder();</span>
+<span class="fc" id="L103">    boolean hasOne = false;</span>
+<span class="fc bfc" id="L104" title="All 2 branches covered.">    for (String line : lines) {</span>
+<span class="fc bfc" id="L105" title="All 4 branches covered.">      if (!hasOne &amp;&amp; &quot;&quot;.equals(line)) { continue; }</span>
+<span class="fc" id="L106">      trimmedLines.add(line);</span>
+<span class="fc" id="L107">      hasOne = true;</span>
+    }
+<span class="fc" id="L109">    return trimmedLines.build();</span>
+  }
+
+
+  private static int spaceWidthOf(char ch) {
+<span class="fc bfc" id="L114" title="All 2 branches covered.">    if (ch == ' ') { return 1; }</span>
+<span class="fc bfc" id="L115" title="All 2 branches covered.">    if (ch == '\t') { return 8; }</span>
+<span class="fc" id="L116">    return 0;</span>
+  }
+
+  /**
+   * The concatenation of this and that with a paragraph separator in between.
+   */
+  public HumanReadableText concat(HumanReadableText that) {
+<span class="nc bnc" id="L123" title="All 2 branches missed.">    if (that.isEmpty()) { return this; }</span>
+<span class="nc bnc" id="L124" title="All 2 branches missed.">    if (this.isEmpty()) { return that; }</span>
+<span class="nc" id="L125">    return new HumanReadableText(this.text + PARAGRAPH_SEPARATOR + that.text);</span>
+  }
+
+  /**
+   * Concatenates making a best effort to be associative so that
+   * &lt;blockquote&gt;
+   *   concatDedupe(concatDedupe(&quot;Paragraph1&quot;, &quot;Paragraph1&quot;), &quot;Paragraph2&quot;)
+   * &lt;/blockquote&gt;
+   * is equivalent to
+   * &lt;blockquote&gt;
+   *   concatDedupe(&quot;Paragraph1&quot;, concatDedupe(&quot;Paragraph1&quot;, &quot;Paragraph2&quot;))
+   * &lt;/blockquote&gt;
+   * and does not contain unnecessary duplication.
+   */
+  public HumanReadableText concatDedupe(HumanReadableText that) {
+    // Handle split edge cases first since split never produces the empty array.
+<span class="nc bnc" id="L141" title="All 4 branches missed.">    if (that.isEmpty() || this.equals(that)) { return this; }</span>
+<span class="nc bnc" id="L142" title="All 2 branches missed.">    if (this.isEmpty()) { return that; }</span>
+
+<span class="nc" id="L144">    Set&lt;String&gt; paragraphs = Sets.newLinkedHashSet();</span>
+<span class="nc" id="L145">    paragraphs.addAll(Arrays.asList(this.text.split(PARAGRAPH_SEPARATOR)));</span>
+<span class="nc" id="L146">    paragraphs.addAll(Arrays.asList(that.text.split(PARAGRAPH_SEPARATOR)));</span>
+
+<span class="nc" id="L148">    return new HumanReadableText(</span>
+<span class="nc" id="L149">        Joiner.on(PARAGRAPH_SEPARATOR).join(paragraphs));</span>
+  }
+
+}
+</pre><div class="footer"><span class="right">Created with <a href="http://www.eclemma.org/jacoco">JaCoCo</a> 0.7.5.201505241946</span></div></body></html>

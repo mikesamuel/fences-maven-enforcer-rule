@@ -1,0 +1,208 @@
+<?xml version="1.0" encoding="UTF-8"?><!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd"><html xmlns="http://www.w3.org/1999/xhtml" lang="en"><head><meta http-equiv="Content-Type" content="text/html;charset=UTF-8"/><link rel="stylesheet" href="../.resources/report.css" type="text/css"/><link rel="shortcut icon" href="../.resources/report.gif" type="image/gif"/><title>ArtifactFinder.java</title><link rel="stylesheet" href="../.resources/prettify.css" type="text/css"/><script type="text/javascript" src="../.resources/prettify.js"></script></head><body onload="window['PR_TAB_WIDTH']=4;prettyPrint()"><div class="breadcrumb" id="breadcrumb"><span class="info"><a href="../.sessions.html" class="el_session">Sessions</a></span><a href="../index.html" class="el_report">Fences Enforcer Rule</a> &gt; <a href="index.source.html" class="el_package">com.google.security.fences</a> &gt; <span class="el_source">ArtifactFinder.java</span></div><h1>ArtifactFinder.java</h1><pre class="source lang-java linenums">package com.google.security.fences;
+
+import java.io.File;
+import java.util.List;
+import java.util.Set;
+
+import org.apache.maven.artifact.Artifact;
+import org.apache.maven.artifact.repository.ArtifactRepository;
+import org.apache.maven.artifact.resolver.ArtifactNotFoundException;
+import org.apache.maven.artifact.resolver.ArtifactResolutionException;
+import org.apache.maven.artifact.resolver.ArtifactResolver;
+import org.apache.maven.enforcer.rule.api.EnforcerRuleException;
+import org.apache.maven.model.Build;
+import org.apache.maven.plugin.logging.Log;
+import org.apache.maven.project.MavenProject;
+import org.apache.maven.shared.dependency.tree.DependencyNode;
+import org.apache.maven.shared.dependency.tree.DependencyTreeBuilder;
+import org.apache.maven.shared.dependency.tree.DependencyTreeBuilderException;
+
+import com.google.common.base.Preconditions;
+import com.google.common.collect.ImmutableList;
+import com.google.common.collect.Sets;
+import com.google.security.fences.util.LazyString;
+import com.google.security.fences.util.Utils;
+
+/**
+ * Recursively finds artifacts.
+ * Largely adapted from https://github.com/mojohaus/extra-enforcer-rules
+ * but that does not resolve modules or the project itself.
+ */
+final class ArtifactFinder {
+  private final ArtifactResolver resolver;
+  private final DependencyTreeBuilder treeBuilder;
+  private final ArtifactRepository localRepository;
+  private final List&lt;ArtifactRepository&gt; remoteRepositories;
+  private final Log log;
+  /** IDs of projects seen. */
+<span class="nc" id="L38">  private final Set&lt;String&gt; seen = Sets.newLinkedHashSet();</span>
+  /**
+   * IDs of projects available as MavenProject instances,
+   * not just artifacts.
+   */
+<span class="nc" id="L43">  private final Set&lt;String&gt; availableAsProject = Sets.newLinkedHashSet();</span>
+<span class="nc" id="L44">  private final ImmutableList.Builder&lt;ClassRoot&gt; classRoots</span>
+<span class="nc" id="L45">      = ImmutableList.builder();</span>
+
+
+  ArtifactFinder(
+      ArtifactResolver resolver,
+      DependencyTreeBuilder treeBuilder,
+      ArtifactRepository localRepository,
+      List&lt;ArtifactRepository&gt; remoteRepositories,
+<span class="nc" id="L53">      Log log) {</span>
+<span class="nc" id="L54">    this.resolver = Preconditions.checkNotNull(resolver);</span>
+<span class="nc" id="L55">    this.treeBuilder = Preconditions.checkNotNull(treeBuilder);</span>
+<span class="nc" id="L56">    this.localRepository = Preconditions.checkNotNull(localRepository);</span>
+<span class="nc" id="L57">    this.remoteRepositories = ImmutableList.copyOf(remoteRepositories);</span>
+<span class="nc" id="L58">    this.log = log;</span>
+<span class="nc" id="L59">  }</span>
+
+  ImmutableList&lt;ClassRoot&gt; getClassRoots() {
+<span class="nc" id="L62">    return classRoots.build();</span>
+  }
+
+  private void markAvailableAsProject(MavenProject project) {
+<span class="nc bnc" id="L66" title="All 2 branches missed.">    if (this.availableAsProject.add(project.getId())) {</span>
+      @SuppressWarnings(&quot;unchecked&quot;)
+<span class="nc" id="L68">      List&lt;MavenProject&gt; collectedProjects = project.getCollectedProjects();</span>
+<span class="nc bnc" id="L69" title="All 2 branches missed.">      if (collectedProjects != null) {</span>
+<span class="nc bnc" id="L70" title="All 2 branches missed.">        for (MavenProject collectedProject : collectedProjects) {</span>
+<span class="nc" id="L71">          markAvailableAsProject(collectedProject);</span>
+<span class="nc" id="L72">        }</span>
+      }
+    }
+<span class="nc" id="L75">  }</span>
+
+  /**
+   * Explores all dependencies and modules transitively.
+   */
+  void findClassRoots(MavenProject project)
+  throws ArtifactNotFoundException, ArtifactResolutionException,
+         DependencyTreeBuilderException, EnforcerRuleException {
+<span class="nc" id="L83">    markAvailableAsProject(project);</span>
+<span class="nc" id="L84">    String id = project.getId();</span>
+<span class="nc bnc" id="L85" title="All 2 branches missed.">    if (!seen.add(id)) {</span>
+<span class="nc" id="L86">      return;</span>
+    }
+
+    // Build the dependency tree.
+    // We do this before trying to create a ZIP since resolving
+    // these dependencies makes the location of the ZIP file
+    // available to us.
+    // TODO: Do we need to check the scope of the dependency
+    // fo filter out test dependencies.
+<span class="nc" id="L95">    DependencyNode node = treeBuilder.buildDependencyTree(</span>
+        project, localRepository, null);
+<span class="nc" id="L97">    Artifact art = node.getArtifact();</span>
+
+    // We need to find a JAR or a directory with the classes
+    // if its not a &lt;packaging&gt;pom&lt;/packaging&gt;
+<span class="nc bnc" id="L101" title="All 2 branches missed.">    boolean hasClassRoot = !&quot;pom&quot;.equals(project.getPackaging());</span>
+<span class="nc" id="L102">    File buildOutputDirectory = null;</span>
+
+    // TODO: Do we need to descend into WARs and other packaging types?
+<span class="nc bnc" id="L105" title="All 2 branches missed.">    if (hasClassRoot) {</span>
+      // First, figure out whether to get the classes from an output
+      // directory or from a packaged ZIP file like a JAR.
+<span class="nc" id="L108">      Build build = project.getBuild();</span>
+<span class="nc bnc" id="L109" title="All 2 branches missed.">      if (build != null) {</span>
+<span class="nc" id="L110">        String buildOutputDirectoryPath = build.getOutputDirectory();</span>
+<span class="nc bnc" id="L111" title="All 2 branches missed.">        if (buildOutputDirectoryPath != null) {</span>
+<span class="nc" id="L112">          buildOutputDirectory = new File(buildOutputDirectoryPath);</span>
+<span class="nc bnc" id="L113" title="All 2 branches missed.">          if (!buildOutputDirectory.exists()) {</span>
+            // When compiling an aggregating project, sub-modules seem
+            // to be installed and their output directories cleaned
+            // before control returns to the parent project builder.
+            // TODO: confirm this is what actually happens.
+            // So if there is no build output directory, expect to find
+            // the artifact in the local repository.
+<span class="nc" id="L120">            log.debug(</span>
+                &quot;Build output directory &quot; + buildOutputDirectory
+                + &quot; does not exist for &quot; + id
+                + &quot;.  Falling back to local repository.&quot;);
+<span class="nc" id="L124">            buildOutputDirectory = null;</span>
+          }
+        }
+      }
+
+<span class="nc bnc" id="L129" title="All 2 branches missed.">      if (buildOutputDirectory != null) {</span>
+<span class="nc" id="L130">        log.info(</span>
+                 &quot;Found directory class root &quot; + buildOutputDirectory
+<span class="nc" id="L132">                 + &quot; for &quot; + project.getId());</span>
+<span class="nc" id="L133">        classRoots.add(new ClassRoot(</span>
+            art, buildOutputDirectory,
+            ClassRoot.ClassRootKind.BUILD_OUTPUT_DIRECTORY));
+      } else {
+<span class="nc" id="L137">        resolver.resolve(art, remoteRepositories, localRepository);</span>
+<span class="nc" id="L138">        addZipClassRoot(art);</span>
+      }
+    }
+
+    @SuppressWarnings(&quot;unchecked&quot;)
+<span class="nc" id="L143">    List&lt;MavenProject&gt; collectedProjects = project.getCollectedProjects();</span>
+<span class="nc bnc" id="L144" title="All 2 branches missed.">    if (collectedProjects != null) {</span>
+<span class="nc bnc" id="L145" title="All 2 branches missed.">      for (MavenProject collectedProject : collectedProjects) {</span>
+<span class="nc" id="L146">        findClassRoots(collectedProject);</span>
+<span class="nc" id="L147">      }</span>
+    }
+
+<span class="nc" id="L150">    addAllDescendants(node);</span>
+<span class="nc" id="L151">  }</span>
+
+  private void addAllDescendants(DependencyNode node)
+  throws ArtifactNotFoundException, ArtifactResolutionException,
+         EnforcerRuleException {
+<span class="nc" id="L156">    List&lt;DependencyNode&gt; childNodes = node.getChildren();</span>
+<span class="nc bnc" id="L157" title="All 2 branches missed.">    if (childNodes != null) {</span>
+<span class="nc bnc" id="L158" title="All 2 branches missed.">      for (DependencyNode depNode : childNodes) {</span>
+<span class="nc" id="L159">        Artifact artifact = depNode.getArtifact();</span>
+<span class="nc bnc" id="L160" title="All 2 branches missed.">        if (availableAsProject.contains(artifact.getId())) {</span>
+<span class="nc" id="L161">          continue;</span>
+        }
+<span class="nc" id="L163">        resolver.resolve(artifact, remoteRepositories, localRepository);</span>
+
+<span class="nc" id="L165">        boolean isProductionCode = true;  // until proven otherwise.</span>
+<span class="nc bnc" id="L166" title="All 2 branches missed.">        if (depNode.getState() != DependencyNode.INCLUDED</span>
+            // TODO: How does artifact.getScope
+            // relate to the DependencyNode's scopes?
+<span class="nc bnc" id="L169" title="All 2 branches missed.">            || Artifact.SCOPE_TEST.equals(depNode.getOriginalScope())) {</span>
+          // IMHO, test code should be allowed to break abstractions
+          // like debug hooks, so we don't limit test code's ability
+          // to access non-private APIs in the same way that we
+          // do for production code which has to work to preserve
+          // abstractions and system properties.
+<span class="nc" id="L175">          isProductionCode = false;</span>
+        }
+
+<span class="nc bnc" id="L178" title="All 2 branches missed.">        if (isProductionCode) {</span>
+<span class="nc" id="L179">          addZipClassRoot(artifact);</span>
+        }
+
+        // Non-production code and non-class-generating modules may have
+        // dependencies which are themselves available during production,
+        // so we recurse regardless.
+<span class="nc" id="L185">        addAllDescendants(depNode);</span>
+<span class="nc" id="L186">      }</span>
+    }
+<span class="nc" id="L188">  }</span>
+
+  private void addZipClassRoot(final Artifact art)
+  throws EnforcerRuleException {
+<span class="nc" id="L192">    final File artFile = art.getFile();</span>
+<span class="nc bnc" id="L193" title="All 2 branches missed.">    if (artFile == null) {</span>
+<span class="nc" id="L194">      throw new EnforcerRuleException(</span>
+<span class="nc" id="L195">          &quot;Cannot check artifact &quot; + Utils.artToString(art)</span>
+          + &quot; since it has not been packaged.&quot;);
+    }
+<span class="nc" id="L198">    log.info(new LazyString() {</span>
+      @Override
+      protected String makeString() {
+<span class="nc" id="L201">        return &quot;Found zip file &quot; + artFile + &quot; for &quot; + Utils.artToString(art);</span>
+      }
+    });
+<span class="nc" id="L204">    classRoots.add(new ClassRoot(</span>
+        art, artFile, ClassRoot.ClassRootKind.ZIPFILE));
+<span class="nc" id="L206">  }</span>
+}
+</pre><div class="footer"><span class="right">Created with <a href="http://www.eclemma.org/jacoco">JaCoCo</a> 0.7.5.201505241946</span></div></body></html>

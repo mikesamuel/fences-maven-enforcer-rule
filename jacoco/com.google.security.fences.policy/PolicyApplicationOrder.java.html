@@ -1,0 +1,480 @@
+<?xml version="1.0" encoding="UTF-8"?><!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd"><html xmlns="http://www.w3.org/1999/xhtml" lang="en"><head><meta http-equiv="Content-Type" content="text/html;charset=UTF-8"/><link rel="stylesheet" href="../.resources/report.css" type="text/css"/><link rel="shortcut icon" href="../.resources/report.gif" type="image/gif"/><title>PolicyApplicationOrder.java</title><link rel="stylesheet" href="../.resources/prettify.css" type="text/css"/><script type="text/javascript" src="../.resources/prettify.js"></script></head><body onload="window['PR_TAB_WIDTH']=4;prettyPrint()"><div class="breadcrumb" id="breadcrumb"><span class="info"><a href="../.sessions.html" class="el_session">Sessions</a></span><a href="../index.html" class="el_report">Fences Enforcer Rule</a> &gt; <a href="index.source.html" class="el_package">com.google.security.fences.policy</a> &gt; <span class="el_source">PolicyApplicationOrder.java</span></div><h1>PolicyApplicationOrder.java</h1><pre class="source lang-java linenums">package com.google.security.fences.policy;
+
+import java.util.ArrayDeque;
+import java.util.Deque;
+import java.util.Iterator;
+import java.util.NoSuchElementException;
+import java.util.PriorityQueue;
+import java.util.Set;
+
+import org.apache.maven.plugin.logging.Log;
+import org.objectweb.asm.Opcodes;
+
+import com.google.common.base.Optional;
+import com.google.common.base.Preconditions;
+import com.google.common.collect.Sets;
+import com.google.security.fences.inheritance.ClassNode;
+import com.google.security.fences.inheritance.FieldDetails;
+import com.google.security.fences.inheritance.InheritanceGraph;
+import com.google.security.fences.inheritance.MethodDetails;
+import com.google.security.fences.util.LazyString;
+
+/**
+ * A series of API elements from most-specific to less-specific, honoring has-a
+ * and is-a relationships, that can be used in making policy decisions.
+ *
+ * @see &lt;a href=&quot;http://github.com/mikesamuel/fences-maven-enforcer-rule/blob/master/src/site/markdown/policies.md&quot;&gt;policies docs&lt;/a&gt;
+ */
+public final class PolicyApplicationOrder implements Iterable&lt;ApiElement&gt; {
+  private final ApiElement used;
+  private final String descriptor;
+  private final InheritanceGraph inheritanceGraph;
+  private final Log log;
+
+  /**
+   * @param used The use API element.
+   * @param descriptor The descriptor for used.  When the API element is a
+   *     method, then this must be a JVM method descriptor.
+   * @param inheritanceGraph Used to resolve super-types, interfaces, and
+   *     method and field declarations.
+   * @param log Receives debug and informational messages.
+   */
+  public PolicyApplicationOrder(
+      ApiElement used,
+      String descriptor,
+      InheritanceGraph inheritanceGraph,
+<span class="fc" id="L46">      Log log) {</span>
+<span class="pc bpc" id="L47" title="1 of 6 branches missed.">    Preconditions.checkArgument(</span>
+        used.type == ApiElementType.CONSTRUCTOR
+        || used.type == ApiElementType.FIELD
+        || used.type == ApiElementType.METHOD);
+<span class="fc" id="L51">    this.used = used;</span>
+<span class="fc" id="L52">    this.descriptor = descriptor;</span>
+<span class="fc" id="L53">    this.inheritanceGraph = inheritanceGraph;</span>
+<span class="fc" id="L54">    this.log = log;</span>
+<span class="fc" id="L55">  }</span>
+
+  public Iterator&lt;ApiElement&gt; iterator() {
+<span class="fc" id="L58">    return new ApiElementIterator();</span>
+  }
+
+  /** An item on one of the sub lists. */
+  private static final class QueueItem {
+    final ApiElement el;
+    /**
+     * True iff we should avoid enqueuing API elements for non-abstract methods
+     * because a higher priority item overrode them.
+     * &lt;p&gt;
+     * We treat methods with bodies as implementing abstract declarations,
+     * and overriding other methods with bodies.  We skip overridden methods
+     * but not implemented declarations.
+     */
+    final boolean onlyAbstract;
+    /**
+     * True to skip this item and use it only as a placeholder for its
+     * successor queue items.
+     */
+    final boolean skip;
+
+    QueueItem(ApiElement el) {
+<span class="fc" id="L80">      this(el, false, false);</span>
+<span class="fc" id="L81">    }</span>
+
+<span class="fc" id="L83">    QueueItem(ApiElement el, boolean onlyAbstract, boolean skip) {</span>
+<span class="fc" id="L84">      this.el = el;</span>
+<span class="fc" id="L85">      this.onlyAbstract = onlyAbstract;</span>
+<span class="fc" id="L86">      this.skip = skip;</span>
+<span class="fc" id="L87">    }</span>
+
+    @Override
+    public boolean equals(Object o) {
+<span class="pc bpc" id="L91" title="1 of 2 branches missed.">      if (!(o instanceof QueueItem)) {</span>
+<span class="nc" id="L92">        return false;</span>
+      }
+<span class="fc" id="L94">      QueueItem that = (QueueItem) o;</span>
+<span class="pc bpc" id="L95" title="3 of 6 branches missed.">      return this.el.equals(that.el)</span>
+          &amp;&amp; this.onlyAbstract == that.onlyAbstract
+          &amp;&amp; this.skip == that.skip;
+    }
+
+    @Override
+    public int hashCode() {
+<span class="fc bfc" id="L102" title="All 4 branches covered.">      return el.hashCode()</span>
+          ^ (onlyAbstract ? 1 : 0)
+          ^ (skip ? 2 : 0);
+    }
+
+    @Override
+    public String toString() {
+<span class="nc bnc" id="L109" title="All 2 branches missed.">      return &quot;[QueueItem &quot; + el + (onlyAbstract ? &quot; onlyAbstract&quot; : &quot;&quot;) + &quot;]&quot;;</span>
+    }
+  }
+
+  @SuppressWarnings(&quot;synthetic-access&quot;)
+<span class="fc" id="L114">  final class ApiElementIterator implements Iterator&lt;ApiElement&gt; {</span>
+    /** Non-empty sublists in order of priority. */
+<span class="fc" id="L116">    private final PriorityQueue&lt;SubList&gt; sublists</span>
+        = new PriorityQueue&lt;SubList&gt;();
+    /**
+     * Items that have already been enqueued and so which need not be revisited.
+     */
+<span class="fc" id="L121">    private final Set&lt;QueueItem&gt; enqueued = Sets.newHashSet();</span>
+    /**
+     * Items that have been produced.  This is distinct from enqueued since
+     * a given element might be visited in multiple contexts
+     * (like {@link QueueItem#onlyAbstract}) when a given super-type is reached
+     * via multiple paths.  This frequently happens with
+     * {@code java/lang/Object} which is the super-type of interfaces as well
+     * as the tail of all class inheritance chains.
+     */
+<span class="fc" id="L130">    private final Set&lt;ApiElement&gt; produced = Sets.newHashSet();</span>
+
+    /** Null, or the next item, or when consumed the last item. */
+    private QueueItem pending;
+    /** The sublist from which pending was dequeued. */
+    private SubList source;
+    /**
+     * Whether next() has advanced past pending.
+     * If this is false and another next is requested we still need to query
+     * source for lower priority items derived from pending.
+     */
+    private boolean consumed;
+
+    /** The sub list that contains the actual use. */
+<span class="fc" id="L144">    private final SubList useOnly = new SubList(0) {</span>
+      @Override
+      void addLowerPrecedenceItems(QueueItem item) {
+<span class="fc" id="L147">        addCorrespondingMembers(item, true);</span>
+<span class="fc" id="L148">      }</span>
+    };
+
+<span class="fc" id="L151">    private final SubList superTypeMembers = new SubList(1) {</span>
+      @Override
+      void addLowerPrecedenceItems(QueueItem item) {
+<span class="fc" id="L154">        addCorrespondingMembers(item, false);</span>
+<span class="fc" id="L155">      }</span>
+    };
+
+<span class="fc" id="L158">    private final SubList interfaceMethods = new SubList(2) {</span>
+      @Override
+      void addLowerPrecedenceItems(QueueItem item) {
+<span class="fc" id="L161">        addCorrespondingMembers(item, false);</span>
+<span class="fc" id="L162">      }</span>
+    };
+
+<span class="fc" id="L165">    private final SubList classes = new SubList(3) {</span>
+      @Override
+      void addLowerPrecedenceItems(QueueItem item) {
+<span class="fc" id="L168">        addOuterClassesAndPackages(item);</span>
+<span class="fc" id="L169">      }</span>
+    };
+
+<span class="fc" id="L172">    private final SubList interfaces = new SubList(4) {</span>
+      @Override
+      void addLowerPrecedenceItems(QueueItem item) {
+<span class="fc" id="L175">        addOuterClassesAndPackages(item);</span>
+<span class="fc" id="L176">      }</span>
+    };
+
+<span class="fc" id="L179">    private final SubList outerClasses = new SubList(5) {</span>
+      @Override
+      void addLowerPrecedenceItems(QueueItem item) {
+<span class="nc" id="L182">        addOuterClassesAndPackages(item);</span>
+<span class="nc" id="L183">      }</span>
+    };
+
+<span class="fc" id="L186">    private final SubList packages = new SubList(6) {</span>
+      @Override
+      void addLowerPrecedenceItems(QueueItem item) {
+<span class="fc" id="L189">        addSuperPackages(item);</span>
+<span class="fc" id="L190">      }</span>
+    };
+
+    {
+      // Initialize the lists.
+<span class="fc" id="L195">      ApiElement el = PolicyApplicationOrder.this.used;</span>
+<span class="fc" id="L196">      useOnly.add(new QueueItem(el));</span>
+<span class="fc" id="L197">    }</span>
+
+    public boolean hasNext() {
+<span class="fc" id="L200">      update();</span>
+<span class="fc bfc" id="L201" title="All 2 branches covered.">      return pending != null;</span>
+    }
+
+    public ApiElement next() {
+<span class="fc" id="L205">      update();</span>
+<span class="fc" id="L206">      consumed = true;</span>
+<span class="pc bpc" id="L207" title="1 of 2 branches missed.">      if (pending == null) {</span>
+<span class="nc" id="L208">        throw new NoSuchElementException();</span>
+      }
+<span class="fc" id="L210">      return pending.el;</span>
+    }
+
+    private void update() {
+      while (true) {
+<span class="fc bfc" id="L215" title="All 2 branches covered.">        if (pending != null) {</span>
+<span class="fc bfc" id="L216" title="All 2 branches covered.">          if (consumed) {</span>
+<span class="fc" id="L217">            source.addLowerPrecedenceItems(pending);</span>
+<span class="fc" id="L218">            consumed = false;</span>
+<span class="fc" id="L219">            source = null;</span>
+<span class="fc" id="L220">            pending = null;</span>
+          } else {
+<span class="fc" id="L222">            return;</span>
+          }
+        }
+<span class="fc" id="L225">        source = sublists.peek();</span>
+<span class="fc bfc" id="L226" title="All 2 branches covered.">        if (source == null) {</span>
+<span class="fc" id="L227">          break;</span>
+        }
+<span class="fc" id="L229">        pending = source.removeFirst();</span>
+<span class="fc bfc" id="L230" title="All 2 branches covered.">        if (source.isEmpty()) {</span>
+          // We keep empty elements out of the pqueue,
+          // and let SubList.add put them back on as necessary.
+<span class="fc" id="L233">          sublists.poll();</span>
+        }
+<span class="fc bfc" id="L235" title="All 4 branches covered.">        consumed = !produced.add(pending.el) || pending.skip;</span>
+<span class="fc bfc" id="L236" title="All 2 branches covered.">        if (!consumed) {</span>
+<span class="fc" id="L237">          break;</span>
+        }
+      }
+<span class="fc" id="L240">    }</span>
+
+    public void remove() {
+<span class="nc" id="L243">      throw new UnsupportedOperationException();</span>
+    }
+
+
+    private void addCorrespondingMembers(QueueItem item, boolean isExactUse) {
+<span class="fc" id="L248">      ApiElement el = item.el;</span>
+<span class="fc" id="L249">      addContainingClass(el);</span>
+
+<span class="fc" id="L251">      String name = el.name;</span>
+<span class="fc" id="L252">      Optional&lt;ClassNode&gt; cnOpt = classContaining(el);</span>
+<span class="pc bpc" id="L253" title="1 of 2 branches missed.">      if (cnOpt.isPresent()) {</span>
+<span class="fc" id="L254">        ClassNode cn = cnOpt.get();</span>
+<span class="pc bpc" id="L255" title="1 of 4 branches missed.">        switch (el.type) {</span>
+          case METHOD:
+          {
+<span class="fc" id="L258">            Optional&lt;MethodDetails&gt; md = cn.getMethod(name, descriptor);</span>
+<span class="fc" id="L259">            boolean onlyAbstract = item.onlyAbstract;</span>
+<span class="fc" id="L260">            boolean lookOnSuperClass = true;</span>
+<span class="fc bfc" id="L261" title="All 2 branches covered.">            if (md.isPresent()) {</span>
+<span class="fc" id="L262">              int access = md.get().access;</span>
+<span class="fc bfc" id="L263" title="All 2 branches covered.">              boolean isPrivate = (access &amp; Opcodes.ACC_PRIVATE) != 0;</span>
+<span class="fc bfc" id="L264" title="All 2 branches covered.">              boolean isAbstract = (access &amp; Opcodes.ACC_ABSTRACT) != 0;</span>
+<span class="pc bpc" id="L265" title="1 of 4 branches missed.">              if (isPrivate &amp;&amp; isExactUse) {</span>
+<span class="nc" id="L266">                lookOnSuperClass = false;</span>
+<span class="fc bfc" id="L267" title="All 2 branches covered.">              } else if (isAbstract) {</span>
+<span class="pc bpc" id="L268" title="1 of 2 branches missed.">                Preconditions.checkState(!isPrivate);</span>
+              } else {
+<span class="fc bfc" id="L270" title="All 2 branches covered.">                onlyAbstract = !isPrivate;</span>
+              }
+            }
+<span class="pc bpc" id="L273" title="1 of 2 branches missed.">            if (lookOnSuperClass) {</span>
+<span class="fc bfc" id="L274" title="All 2 branches covered.">              if (cn.superType.isPresent()) {</span>
+<span class="fc" id="L275">                ApiElement correspondingApiElement =</span>
+<span class="fc" id="L276">                    ApiElement.fromInternalClassName(cn.superType.get())</span>
+<span class="fc" id="L277">                    .child(name, ApiElementType.METHOD);</span>
+
+<span class="fc" id="L279">                boolean skip = false;</span>
+
+<span class="fc" id="L281">                Optional&lt;ClassNode&gt; superClassNode = classContaining(</span>
+                    correspondingApiElement);
+<span class="fc" id="L283">                Optional&lt;MethodDetails&gt; superMethod = Optional.absent();</span>
+<span class="pc bpc" id="L284" title="1 of 2 branches missed.">                if (superClassNode.isPresent()) {</span>
+<span class="fc" id="L285">                   superMethod = superClassNode.get().getMethod(</span>
+<span class="fc" id="L286">                       name, descriptor);</span>
+                }
+<span class="fc" id="L288">                int superMethodAccess = 0;</span>
+<span class="fc bfc" id="L289" title="All 2 branches covered.">                if (superMethod.isPresent()) {</span>
+<span class="fc" id="L290">                  superMethodAccess = superMethod.get().access;</span>
+                }
+
+<span class="fc bfc" id="L293" title="All 2 branches covered.">                if ((superMethodAccess &amp; Opcodes.ACC_PRIVATE) != 0) {</span>
+<span class="fc" id="L294">                  skip = true;</span>
+<span class="fc bfc" id="L295" title="All 2 branches covered.">                } else if (onlyAbstract) {</span>
+<span class="fc bfc" id="L296" title="All 2 branches covered.">                  skip = (superMethodAccess &amp; Opcodes.ACC_ABSTRACT) == 0;</span>
+                }
+
+<span class="fc" id="L299">                QueueItem correspondingMethod = new QueueItem(</span>
+                    correspondingApiElement,
+                    onlyAbstract,
+                    skip);
+<span class="fc" id="L303">                superTypeMembers.add(correspondingMethod);</span>
+              }
+<span class="fc bfc" id="L305" title="All 2 branches covered.">              for (String interfaceName : cn.interfaces) {</span>
+<span class="fc" id="L306">                QueueItem correspondingMethod = new QueueItem(</span>
+<span class="fc" id="L307">                    ApiElement.fromInternalClassName(interfaceName)</span>
+<span class="fc" id="L308">                    .child(name, ApiElementType.METHOD));</span>
+<span class="fc" id="L309">                interfaceMethods.add(correspondingMethod);</span>
+<span class="fc" id="L310">              }</span>
+            }
+<span class="fc" id="L312">            return;</span>
+          }
+          case FIELD:
+<span class="pc bpc" id="L315" title="1 of 2 branches missed.">            if (cn.superType.isPresent()) {</span>
+<span class="fc" id="L316">              Optional&lt;FieldDetails&gt; fd = cn.getField(name);</span>
+              boolean lookOnSuperClass;
+<span class="fc bfc" id="L318" title="All 2 branches covered.">              if (fd.isPresent()) {</span>
+<span class="fc" id="L319">                int access = fd.get().access;</span>
+<span class="fc bfc" id="L320" title="All 2 branches covered.">                boolean isPrivate = (access &amp; Opcodes.ACC_PRIVATE) != 0;</span>
+<span class="fc bfc" id="L321" title="All 2 branches covered.">                if (isPrivate) {</span>
+<span class="fc bfc" id="L322" title="All 2 branches covered.">                  lookOnSuperClass = !isExactUse;</span>
+                } else {
+<span class="fc" id="L324">                  lookOnSuperClass = false;</span>
+                }
+<span class="fc" id="L326">              } else {</span>
+<span class="fc" id="L327">                lookOnSuperClass = true;</span>
+              }
+<span class="fc bfc" id="L329" title="All 2 branches covered.">              if (lookOnSuperClass) {</span>
+<span class="fc" id="L330">                ApiElement correspondingApiElement =</span>
+<span class="fc" id="L331">                    ApiElement.fromInternalClassName(cn.superType.get())</span>
+<span class="fc" id="L332">                    .child(name, ApiElementType.FIELD);</span>
+
+                // A private field of the same name does not mask a
+                // field declared on a super-type of the super-type.
+<span class="fc" id="L336">                Optional&lt;ClassNode&gt; superClassNode = classContaining(</span>
+                    correspondingApiElement);
+<span class="fc" id="L338">                Optional&lt;FieldDetails&gt; superField = Optional.absent();</span>
+<span class="pc bpc" id="L339" title="1 of 2 branches missed.">                if (superClassNode.isPresent()) {</span>
+<span class="fc" id="L340">                   superField = superClassNode.get().getField(name);</span>
+                }
+<span class="fc" id="L342">                int superFieldAccess = 0;</span>
+<span class="pc bpc" id="L343" title="1 of 2 branches missed.">                if (superField.isPresent()) {</span>
+<span class="fc" id="L344">                  superFieldAccess = superField.get().access;</span>
+                }
+<span class="fc bfc" id="L346" title="All 2 branches covered.">                boolean skip = (superFieldAccess &amp; Opcodes.ACC_PRIVATE) != 0;</span>
+
+<span class="pc bpc" id="L348" title="1 of 2 branches missed.">                if (cn.superType.isPresent()) {</span>
+<span class="fc" id="L349">                  superTypeMembers.add(</span>
+                      new QueueItem(
+                          correspondingApiElement,
+                          false, skip));
+                }
+              }
+            }
+<span class="fc" id="L356">            return;</span>
+          case CONSTRUCTOR:
+<span class="fc" id="L358">            return;</span>
+          case CLASS:
+          case PACKAGE:
+            // Not a use.
+            break;
+        }
+<span class="nc" id="L364">        throw new AssertionError(el.type);</span>
+      }
+<span class="nc" id="L366">    }</span>
+
+
+    private void addContainingClass(ApiElement el) {
+<span class="fc" id="L370">      ApiElement classEl = el.containingClass().get();</span>
+
+<span class="fc" id="L372">      Optional&lt;ClassNode&gt; cnOpt = classContaining(classEl);</span>
+<span class="pc bpc" id="L373" title="1 of 2 branches missed.">      if (cnOpt.isPresent()) {</span>
+<span class="fc" id="L374">        ClassNode cn = cnOpt.get();</span>
+<span class="fc bfc" id="L375" title="All 2 branches covered.">        ((cn.access &amp; Opcodes.ACC_INTERFACE) != 0 ? interfaces : classes)</span>
+<span class="fc" id="L376">            .add(new QueueItem(classEl));</span>
+      }
+<span class="fc" id="L378">    }</span>
+
+    private void addOuterClassesAndPackages(QueueItem item) {
+<span class="fc" id="L381">      ApiElement el = item.el;</span>
+<span class="pc bpc" id="L382" title="1 of 2 branches missed.">      if (el.parent.isPresent()) {</span>
+<span class="fc" id="L383">        ApiElement parent = el.parent.get();</span>
+<span class="pc bpc" id="L384" title="2 of 3 branches missed.">        switch (parent.type) {</span>
+          case CLASS:
+<span class="nc" id="L386">            this.outerClasses.add(new QueueItem(parent));</span>
+<span class="nc" id="L387">            return;</span>
+          case PACKAGE:
+<span class="fc" id="L389">            this.packages.add(new QueueItem(parent));</span>
+<span class="fc" id="L390">            return;</span>
+          case FIELD: case METHOD: case CONSTRUCTOR:
+            // Not a type.
+            break;
+        }
+<span class="nc" id="L395">        throw new AssertionError(parent.type);</span>
+      }
+<span class="nc" id="L397">    }</span>
+
+    private void addSuperPackages(QueueItem item) {
+<span class="pc bpc" id="L400" title="1 of 2 branches missed.">      Preconditions.checkArgument(item.el.type == ApiElementType.PACKAGE);</span>
+<span class="fc" id="L401">      ApiElement el = item.el;</span>
+<span class="fc bfc" id="L402" title="All 2 branches covered.">      if (el.parent.isPresent()) {</span>
+<span class="fc" id="L403">        this.packages.add(new QueueItem(el.parent.get()));</span>
+      }
+<span class="fc" id="L405">    }</span>
+
+
+    /**
+     * A list that is concatenated into the ordering.
+     */
+    private abstract class SubList implements Comparable&lt;SubList&gt; {
+<span class="fc" id="L412">      private final Deque&lt;QueueItem&gt; items = new ArrayDeque&lt;QueueItem&gt;();</span>
+      private final int priority;
+
+<span class="fc" id="L415">      SubList(int priority) {</span>
+<span class="fc" id="L416">        this.priority = priority;</span>
+<span class="fc" id="L417">      }</span>
+
+      QueueItem removeFirst() {
+<span class="fc" id="L420">        return items.removeFirst();</span>
+      }
+
+      boolean isEmpty() {
+<span class="fc" id="L424">        return items.isEmpty();</span>
+      }
+
+      abstract void addLowerPrecedenceItems(QueueItem item);
+
+      void add(QueueItem item) {
+<span class="fc bfc" id="L430" title="All 2 branches covered.">        if (enqueued.add(item)) {</span>
+<span class="fc" id="L431">          boolean wasEmpty = items.isEmpty();</span>
+<span class="fc" id="L432">          items.add(item);</span>
+<span class="fc bfc" id="L433" title="All 2 branches covered.">          if (wasEmpty) {</span>
+<span class="fc" id="L434">            sublists.add(this);</span>
+          }
+        }
+<span class="fc" id="L437">      }</span>
+
+      public int compareTo(SubList ls) {
+<span class="fc" id="L440">        return Integer.compare(this.priority, ls.priority);</span>
+      }
+    }
+  }
+
+
+  private Optional&lt;ClassNode&gt; classContaining(ApiElement el) {
+<span class="fc" id="L447">    Optional&lt;ApiElement&gt; elClass = el.containingClass();</span>
+<span class="fc" id="L448">    Preconditions.checkState(elClass.isPresent());</span>
+<span class="fc" id="L449">    final String elInternalName = elClass.get().toInternalName();</span>
+<span class="fc" id="L450">    Optional&lt;ClassNode&gt; cn = inheritanceGraph.named(elInternalName);</span>
+<span class="pc bpc" id="L451" title="1 of 2 branches missed.">    if (!cn.isPresent()) {</span>
+<span class="nc" id="L452">      log.debug(new LazyString() {</span>
+        @Override
+        protected String makeString() {
+<span class="nc" id="L455">          return &quot;Did not find node for class &quot; + elInternalName;</span>
+        }
+      });
+    }
+<span class="fc" id="L459">    return cn;</span>
+  }
+
+  static Optional&lt;ApiElement&gt; apiElementFromSuper(
+      ApiElement el, String superTypeName) {
+<span class="nc bnc" id="L464" title="All 4 branches missed.">    switch (el.type) {</span>
+      case CLASS:
+<span class="nc" id="L466">        return Optional.of(ApiElement.fromInternalClassName(superTypeName));</span>
+      case CONSTRUCTOR:
+      case FIELD:
+      case METHOD:
+<span class="nc" id="L470">        return Optional.of(</span>
+<span class="nc" id="L471">            apiElementFromSuper(el.parent.get(), superTypeName).get()</span>
+<span class="nc" id="L472">            .child(el.name, el.type));</span>
+      case PACKAGE:
+<span class="nc" id="L474">        return Optional.absent();</span>
+    }
+<span class="nc" id="L476">    throw new AssertionError(el.type);</span>
+  }
+
+}
+</pre><div class="footer"><span class="right">Created with <a href="http://www.eclemma.org/jacoco">JaCoCo</a> 0.7.5.201505241946</span></div></body></html>

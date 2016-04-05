@@ -1,0 +1,261 @@
+<?xml version="1.0" encoding="UTF-8"?><!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd"><html xmlns="http://www.w3.org/1999/xhtml" lang="en"><head><meta http-equiv="Content-Type" content="text/html;charset=UTF-8"/><link rel="stylesheet" href="../.resources/report.css" type="text/css"/><link rel="shortcut icon" href="../.resources/report.gif" type="image/gif"/><title>ApiElement.java</title><link rel="stylesheet" href="../.resources/prettify.css" type="text/css"/><script type="text/javascript" src="../.resources/prettify.js"></script></head><body onload="window['PR_TAB_WIDTH']=4;prettyPrint()"><div class="breadcrumb" id="breadcrumb"><span class="info"><a href="../.sessions.html" class="el_session">Sessions</a></span><a href="../index.html" class="el_report">Fences Enforcer Rule</a> &gt; <a href="index.source.html" class="el_package">com.google.security.fences.policy</a> &gt; <span class="el_source">ApiElement.java</span></div><h1>ApiElement.java</h1><pre class="source lang-java linenums">package com.google.security.fences.policy;
+
+import javax.annotation.Nullable;
+
+import com.google.common.base.Objects;
+import com.google.common.base.Optional;
+import com.google.common.base.Preconditions;
+
+/**
+ * An element of a Java API that can be identified by a dotted name.
+ */
+public class ApiElement implements Comparable&lt;ApiElement&gt; {
+  /** The parent element if any. */
+  public final Optional&lt;ApiElement&gt; parent;
+  /** Unqualified name. */
+  public final String name;
+  /** The type of API element. */
+  public final ApiElementType type;
+  private final int hashCode;
+
+  /** From JVM specification edition 8 chapter 2.9 */
+  public static final String CONSTRUCTOR_SPECIAL_METHOD_NAME = &quot;&lt;init&gt;&quot;;
+
+  /**
+   * The package to which Java source files without a {@code package}
+   * declaration contribute classes.
+   */
+<span class="fc" id="L28">  public static final ApiElement DEFAULT_PACKAGE = new ApiElement(</span>
+<span class="fc" id="L29">      Optional.&lt;ApiElement&gt;absent(), &quot;&quot;, ApiElementType.PACKAGE);</span>
+
+  private ApiElement(
+<span class="fc" id="L32">      Optional&lt;ApiElement&gt; parent, String name, ApiElementType type) {</span>
+<span class="fc" id="L33">    this.parent = parent;</span>
+<span class="fc" id="L34">    this.name = name;</span>
+<span class="fc" id="L35">    this.type = type;</span>
+<span class="fc" id="L36">    this.hashCode = Objects.hashCode(parent, name, type);</span>
+
+<span class="fc" id="L38">    Preconditions.checkArgument(</span>
+<span class="fc bfc" id="L39" title="All 4 branches covered.">        (name.length() == 0)</span>
+<span class="pc bpc" id="L40" title="1 of 4 branches missed.">        == (type == ApiElementType.PACKAGE &amp;&amp; !parent.isPresent()));</span>
+<span class="pc bpc" id="L41" title="1 of 2 branches missed.">    Preconditions.checkArgument(!name.contains(&quot;.&quot;), name);</span>
+<span class="pc bpc" id="L42" title="1 of 4 branches missed.">    Preconditions.checkArgument(parent.isPresent() || name.length() == 0);</span>
+<span class="pc bpc" id="L43" title="1 of 5 branches missed.">    switch (type) {</span>
+      case CLASS:
+<span class="fc" id="L45">        Preconditions.checkArgument(</span>
+<span class="fc bfc" id="L46" title="All 2 branches covered.">            parent.get().type == ApiElementType.PACKAGE</span>
+<span class="pc bpc" id="L47" title="1 of 2 branches missed.">            || parent.get().type == ApiElementType.CLASS);</span>
+<span class="fc" id="L48">        return;</span>
+      case CONSTRUCTOR:
+<span class="fc" id="L50">        Preconditions.checkArgument(</span>
+<span class="fc" id="L51">            name.equals(CONSTRUCTOR_SPECIAL_METHOD_NAME));</span>
+<span class="fc" id="L52">        Preconditions.checkArgument(</span>
+<span class="pc bpc" id="L53" title="1 of 2 branches missed.">            parent.isPresent()</span>
+<span class="pc bpc" id="L54" title="1 of 2 branches missed.">            &amp;&amp; parent.get().type == ApiElementType.CLASS);</span>
+<span class="fc" id="L55">        return;</span>
+      case FIELD:
+      case METHOD:
+<span class="fc" id="L58">        Preconditions.checkArgument(</span>
+<span class="pc bpc" id="L59" title="1 of 2 branches missed.">            parent.isPresent()</span>
+<span class="pc bpc" id="L60" title="1 of 2 branches missed.">            &amp;&amp; parent.get().type == ApiElementType.CLASS);</span>
+<span class="fc" id="L61">        return;</span>
+      case PACKAGE:
+<span class="fc" id="L63">        Preconditions.checkArgument(</span>
+<span class="pc bpc" id="L64" title="1 of 4 branches missed.">            !parent.isPresent() || parent.get().type == ApiElementType.PACKAGE);</span>
+<span class="fc" id="L65">        return;</span>
+    }
+<span class="nc" id="L67">    throw new AssertionError(type);</span>
+  }
+
+  /** Constructs a child of this API element. */
+  public ApiElement child(String childName, ApiElementType childType) {
+<span class="fc" id="L72">    return new ApiElement(Optional.of(this), childName, childType);</span>
+  }
+
+  /**
+   * @param name a JVM internal class name.
+   * @return An API element such that name equals {@link #toInternalName}.
+   */
+  public static ApiElement fromInternalClassName(String name) {
+<span class="fc" id="L80">    ApiElement apiElement = ApiElement.DEFAULT_PACKAGE;</span>
+<span class="fc" id="L81">    String[] nameParts = name.split(&quot;/&quot;);</span>
+<span class="fc bfc" id="L82" title="All 2 branches covered.">    for (int i = 0, n = nameParts.length; i &lt; n - 1; ++i) {</span>
+<span class="fc" id="L83">      apiElement = apiElement.child(nameParts[i], ApiElementType.PACKAGE);</span>
+    }
+<span class="fc" id="L85">    String className = nameParts[nameParts.length - 1];</span>
+<span class="fc bfc" id="L86" title="All 2 branches covered.">    for (String classNamePart : className.split(&quot;[$]&quot;)) {</span>
+<span class="fc" id="L87">      apiElement = apiElement.child(classNamePart, ApiElementType.CLASS);</span>
+    }
+<span class="fc" id="L89">    return apiElement;</span>
+  }
+
+  /**
+   * The containing class if any.
+   * {@code this} if {@link #type} is {@link ApiElementType#CLASS}.
+   */
+  public Optional&lt;ApiElement&gt; containingClass() {
+<span class="pc bpc" id="L97" title="2 of 4 branches missed.">    switch (type) {</span>
+      case CLASS:
+<span class="fc" id="L99">        return Optional.of(this);</span>
+      case CONSTRUCTOR:
+      case FIELD:
+      case METHOD:
+<span class="fc" id="L103">        return parent.get().containingClass();</span>
+      case PACKAGE:
+<span class="nc" id="L105">        return Optional.absent();</span>
+    }
+<span class="nc" id="L107">    throw new AssertionError(type);</span>
+  }
+
+  @Override
+  public boolean equals(Object o) {
+<span class="pc bpc" id="L112" title="1 of 2 branches missed.">    if (!(o instanceof ApiElement)) {</span>
+<span class="nc" id="L113">      return false;</span>
+    }
+<span class="fc" id="L115">    ApiElement that = (ApiElement) o;</span>
+<span class="fc bfc" id="L116" title="All 4 branches covered.">    return type == that.type &amp;&amp; name.equals(that.name)</span>
+<span class="pc bpc" id="L117" title="1 of 2 branches missed.">        &amp;&amp; parent.equals(that.parent);</span>
+  }
+
+  @Override
+  public int hashCode() {
+<span class="fc" id="L122">    return hashCode;</span>
+  }
+
+  public int compareTo(ApiElement that) {
+<span class="nc bnc" id="L126" title="All 2 branches missed.">    int delta = (this.parent.isPresent() ? 1 : 0)</span>
+<span class="nc bnc" id="L127" title="All 2 branches missed.">        - (that.parent.isPresent() ? 1 : 0);</span>
+<span class="nc bnc" id="L128" title="All 2 branches missed.">    if (delta == 0) {</span>
+<span class="nc bnc" id="L129" title="All 2 branches missed.">      if (this.parent.isPresent()) {</span>
+<span class="nc" id="L130">        delta = this.parent.get().compareTo(that.parent.get());</span>
+      }
+<span class="nc bnc" id="L132" title="All 2 branches missed.">      if (delta == 0) {</span>
+<span class="nc" id="L133">        delta = this.name.compareTo(that.name);</span>
+<span class="nc bnc" id="L134" title="All 2 branches missed.">        if (delta == 0) {</span>
+<span class="nc" id="L135">          delta = this.type.compareTo(that.type);</span>
+        }
+      }
+    }
+<span class="nc" id="L139">    return delta;</span>
+  }
+
+  @Override
+  public String toString() {
+<span class="nc" id="L144">    StringBuilder sb = new StringBuilder();</span>
+<span class="nc" id="L145">    sb.append('[').append(type).append(&quot; : &quot;);</span>
+<span class="nc" id="L146">    toName(false, sb);</span>
+<span class="nc" id="L147">    sb.append(']');</span>
+<span class="nc" id="L148">    return sb.toString();</span>
+  }
+
+  /**
+   * A string, like {@link #toInternalName()} but with dots, so more
+   * recognizable to Java devs familiar with fully qualified Java names.
+   */
+  public String toDottedName() {
+<span class="nc" id="L156">    return toName(false, null).toString();</span>
+  }
+
+  /**
+   * Returns an internal class name.
+   * If this is a {@link ApiElementType#CLASS} then this is a Java internal
+   * class name.
+   * If this is a {@link ApiElementType#PACKAGE} then this is a relative
+   * directory name for the package under a class root.
+   */
+  public String toInternalName() {
+<span class="fc" id="L167">    return toName(true, null).toString();</span>
+  }
+
+  private CharSequence toName(boolean internal, @Nullable StringBuilder out) {
+<span class="fc bfc" id="L171" title="All 2 branches covered.">    if (DEFAULT_PACKAGE.equals(this)) {</span>
+<span class="fc" id="L172">      return &quot;&quot;;</span>
+    }
+    // We build in reverse so that we don't have to recurse to parent.
+<span class="fc" id="L175">    StringBuilder sb = out;</span>
+<span class="pc bpc" id="L176" title="1 of 2 branches missed.">    if (sb == null) {</span>
+<span class="fc" id="L177">      sb = new StringBuilder();</span>
+    }
+<span class="fc" id="L179">    int startPosition = sb.length();</span>
+<span class="fc bfc" id="L180" title="All 3 branches covered.">    switch (type) {</span>
+      case PACKAGE:
+        // Treat package names as directories to disambiguate those namespaces.
+<span class="pc bpc" id="L183" title="1 of 2 branches missed.">        if (internal) { sb.append('/'); }</span>
+        break;
+      case METHOD: case CONSTRUCTOR:
+        // Disambiguate callables and fields.
+        // Constructors are disambiguated from methods by the presence of
+        // angle brackets in the name: &lt;init&gt; and &lt;clinit&gt;.
+<span class="fc" id="L189">        sb.append(&quot;)(&quot;);</span>
+<span class="fc" id="L190">        break;</span>
+      case FIELD: case CLASS:
+        break;
+    }
+<span class="fc" id="L194">    ApiElement el = this;</span>
+    while (true) {
+<span class="fc" id="L196">      ApiElement parentEl = el.parent.get();</span>
+<span class="fc" id="L197">      appendInReverse(el.name, sb);</span>
+<span class="fc bfc" id="L198" title="All 2 branches covered.">      if (DEFAULT_PACKAGE.equals(parentEl)) {</span>
+<span class="fc" id="L199">        break;</span>
+      }
+<span class="pc bpc" id="L201" title="1 of 4 branches missed.">      switch (el.type) {</span>
+        case CLASS:
+<span class="pc bpc" id="L203" title="1 of 4 branches missed.">          sb.append(</span>
+              internal
+              ? (parentEl.type == ApiElementType.CLASS ? '$' : '/')
+              : '.');
+<span class="fc" id="L207">          break;</span>
+        case PACKAGE:
+<span class="pc bpc" id="L209" title="1 of 2 branches missed.">          sb.append(internal ? '/' : '.');</span>
+<span class="fc" id="L210">          break;</span>
+        case CONSTRUCTOR:
+        case METHOD:
+        case FIELD:
+<span class="pc bpc" id="L214" title="1 of 2 branches missed.">          sb.append(internal ? '#' : '.');</span>
+          break;
+      }
+<span class="fc" id="L217">      el = parentEl;</span>
+<span class="fc" id="L218">    }</span>
+<span class="fc" id="L219">    reverse(sb, startPosition, sb.length());</span>
+<span class="fc" id="L220">    return sb;</span>
+  }
+
+
+  /** Statically-importable methods that create ApiElements. */
+<span class="nc" id="L225">  public static final class Factory {</span>
+    static ApiElement pkg(String name, ApiElement parent) {
+<span class="fc" id="L227">      return parent.child(name, ApiElementType.PACKAGE);</span>
+    }
+
+    static ApiElement pkg(String name) {
+<span class="fc" id="L231">      return pkg(name, ApiElement.DEFAULT_PACKAGE);</span>
+    }
+
+    static ApiElement clazz(String name, ApiElement parent) {
+<span class="fc" id="L235">      return parent.child(name, ApiElementType.CLASS);</span>
+    }
+
+    static ApiElement field(String name, ApiElement parent) {
+<span class="fc" id="L239">      return parent.child(name, ApiElementType.FIELD);</span>
+    }
+
+    static ApiElement method(String name, ApiElement parent) {
+<span class="nc" id="L243">      return parent.child(name, ApiElementType.METHOD);</span>
+    }
+  }
+
+  private static void appendInReverse(String s, StringBuilder sb) {
+<span class="fc bfc" id="L248" title="All 2 branches covered.">    for (int i = s.length(); --i &gt;= 0;) {</span>
+<span class="fc" id="L249">      sb.append(s.charAt(i));</span>
+    }
+<span class="fc" id="L251">  }</span>
+
+  private static void reverse(StringBuilder sb, int start, int end) {
+<span class="fc bfc" id="L254" title="All 2 branches covered.">    for (int i = start, j = end; --j &gt; i; ++i) {</span>
+<span class="fc" id="L255">      char c = sb.charAt(i), d = sb.charAt(j);</span>
+<span class="fc" id="L256">      sb.setCharAt(i, d);</span>
+<span class="fc" id="L257">      sb.setCharAt(j, c);</span>
+    }
+<span class="fc" id="L259">  }</span>
+}
+</pre><div class="footer"><span class="right">Created with <a href="http://www.eclemma.org/jacoco">JaCoCo</a> 0.7.5.201505241946</span></div></body></html>

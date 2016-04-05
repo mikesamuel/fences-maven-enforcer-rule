@@ -1,0 +1,64 @@
+<?xml version="1.0" encoding="UTF-8"?><!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd"><html xmlns="http://www.w3.org/1999/xhtml" lang="en"><head><meta http-equiv="Content-Type" content="text/html;charset=UTF-8"/><link rel="stylesheet" href="../.resources/report.css" type="text/css"/><link rel="shortcut icon" href="../.resources/report.gif" type="image/gif"/><title>Frenemies.java</title><link rel="stylesheet" href="../.resources/prettify.css" type="text/css"/><script type="text/javascript" src="../.resources/prettify.js"></script></head><body onload="window['PR_TAB_WIDTH']=4;prettyPrint()"><div class="breadcrumb" id="breadcrumb"><span class="info"><a href="../.sessions.html" class="el_session">Sessions</a></span><a href="../index.html" class="el_report">Fences Enforcer Rule</a> &gt; <a href="index.source.html" class="el_package">com.google.security.fences.config</a> &gt; <span class="el_source">Frenemies.java</span></div><h1>Frenemies.java</h1><pre class="source lang-java linenums">package com.google.security.fences.config;
+
+import java.util.LinkedHashSet;
+import java.util.Set;
+
+import com.google.common.collect.ImmutableSet;
+import com.google.security.fences.namespace.Namespace;
+
+/**
+ * Keep your friends close, your enemies closer,
+ * and your frenemies somewhere in between.
+ */
+public final class Frenemies {
+  /** Namespaces explicitly trusted. */
+  public final ImmutableSet&lt;Namespace&gt; friends;
+  /** Namespaces explicitly distrusted. */
+  public final ImmutableSet&lt;Namespace&gt; enemies;
+  /** Explains how to work within the policy and get more help. */
+  public final Rationale rationale;
+
+  private Frenemies(
+      ImmutableSet&lt;Namespace&gt; friends, ImmutableSet&lt;Namespace&gt; enemies,
+<span class="fc" id="L23">      Rationale rationale) {</span>
+<span class="fc" id="L24">    this.friends = friends;</span>
+<span class="fc" id="L25">    this.enemies = enemies;</span>
+<span class="fc" id="L26">    this.rationale = rationale;</span>
+<span class="fc" id="L27">  }</span>
+
+  @SuppressWarnings(&quot;synthetic-access&quot;)
+  static Builder builder() {
+<span class="fc" id="L31">    return new Builder();</span>
+  }
+
+  static final class Builder {
+<span class="fc" id="L35">    private Builder() {}</span>
+
+<span class="fc" id="L37">    private final Set&lt;Namespace&gt; friends = new LinkedHashSet&lt;Namespace&gt;();</span>
+<span class="fc" id="L38">    private final Set&lt;Namespace&gt; enemies = new LinkedHashSet&lt;Namespace&gt;();</span>
+<span class="fc" id="L39">    private Rationale rationale = Rationale.EMPTY;</span>
+
+    Builder addFriend(Namespace ns) {
+<span class="fc" id="L42">      friends.add(ns);</span>
+<span class="fc" id="L43">      return this;</span>
+    }
+
+    Builder addEnemy(Namespace ns) {
+<span class="fc" id="L47">      enemies.add(ns);</span>
+<span class="fc" id="L48">      return this;</span>
+    }
+
+    Builder setRationale(Rationale r) {
+<span class="fc" id="L52">      rationale = r;</span>
+<span class="fc" id="L53">      return this;</span>
+    }
+
+    @SuppressWarnings(&quot;synthetic-access&quot;)
+    Frenemies build() {
+<span class="fc" id="L58">      return new Frenemies(</span>
+<span class="fc" id="L59">          ImmutableSet.copyOf(friends), ImmutableSet.copyOf(enemies),</span>
+          rationale);
+    }
+  }
+}
+</pre><div class="footer"><span class="right">Created with <a href="http://www.eclemma.org/jacoco">JaCoCo</a> 0.7.5.201505241946</span></div></body></html>

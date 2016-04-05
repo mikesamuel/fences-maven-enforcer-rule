@@ -1,0 +1,249 @@
+<?xml version="1.0" encoding="UTF-8"?><!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd"><html xmlns="http://www.w3.org/1999/xhtml" lang="en"><head><meta http-equiv="Content-Type" content="text/html;charset=UTF-8"/><link rel="stylesheet" href="../.resources/report.css" type="text/css"/><link rel="shortcut icon" href="../.resources/report.gif" type="image/gif"/><title>Fence.java</title><link rel="stylesheet" href="../.resources/prettify.css" type="text/css"/><script type="text/javascript" src="../.resources/prettify.js"></script></head><body onload="window['PR_TAB_WIDTH']=4;prettyPrint()"><div class="breadcrumb" id="breadcrumb"><span class="info"><a href="../.sessions.html" class="el_session">Sessions</a></span><a href="../index.html" class="el_report">Fences Enforcer Rule</a> &gt; <a href="index.source.html" class="el_package">com.google.security.fences.config</a> &gt; <span class="el_source">Fence.java</span></div><h1>Fence.java</h1><pre class="source lang-java linenums">package com.google.security.fences.config;
+
+import java.util.List;
+import java.util.Map;
+
+import javax.annotation.Nullable;
+
+import org.apache.maven.enforcer.rule.api.EnforcerRuleException;
+import org.w3c.dom.Document;
+import org.w3c.dom.Element;
+
+import com.google.common.base.Preconditions;
+import com.google.common.collect.ImmutableList;
+import com.google.common.collect.Lists;
+import com.google.common.collect.Maps;
+import com.google.security.fences.namespace.Namespace;
+import com.google.security.fences.policy.ApiElement;
+
+/**
+ * A bean object that can be populated from a POM file {@code &lt;configuration&gt;}
+ * element to specify a {@link com.google.security.fences.policy.Policy}.
+ */
+public abstract class Fence {
+<span class="fc" id="L24">  private final List&lt;Namespace&gt; trusts = Lists.newArrayList();</span>
+<span class="fc" id="L25">  private final List&lt;Namespace&gt; distrusts = Lists.newArrayList();</span>
+<span class="fc" id="L26">  private final Rationale.Builder rationale = new Rationale.Builder();</span>
+  /**
+   * We keep track of the round in which this is imported, so that when
+   * combining configurations into policies, we can drop imported rationales
+   * in fovor of project-level ones that override them for a particular
+   * API element.
+   */
+<span class="fc" id="L33">  private int importOrder = -1;</span>
+
+<span class="fc" id="L35">  Fence() {</span>
+    // package private
+<span class="fc" id="L37">  }</span>
+
+  /**
+   * A key used to group children that refer to the same API element.
+   * When used, the key will be prefixed with the class name, which has the
+   * effect of segregating method/field/class namespaces.
+   * &lt;p&gt;
+   * This must be independent of children, trusts, distrusts, and rationale --
+   * all of the state that can be merged with another node.
+   */
+  abstract String getKey();
+
+  /**
+   * A setter called by reflection during rule configuration.  Actually adds
+   * instead of blowing away prior value.
+   */
+  public void setTrusts(String s) throws EnforcerRuleException {
+<span class="fc" id="L54">    trusts.add(parsePrinciple(s));</span>
+<span class="fc" id="L55">  }</span>
+
+  /**
+   * A setter called by reflection during rule configuration.  Actually adds
+   * instead of blowing away prior value.
+   */
+  public void setDistrusts(String s) throws EnforcerRuleException {
+<span class="fc" id="L62">    distrusts.add(parsePrinciple(s));</span>
+<span class="fc" id="L63">  }</span>
+
+  /**
+   * A human readable string shown when a policy violation is detected that
+   * explains how to work within the policy and where to find more help.
+   * &lt;p&gt;
+   * The documentation at src/site/markdown/configuration.md explains how
+   * to write a good one.
+   *
+   * @param s Human-readable text that may contain maven property expressions.
+   */
+  public void setRationale(@Nullable String s) throws EnforcerRuleException {
+<span class="nc bnc" id="L75" title="All 2 branches missed.">    if (s != null) {</span>
+<span class="nc" id="L76">      rationale.addBody(s);</span>
+    }
+<span class="nc" id="L78">  }</span>
+
+  /**
+   * A human readable string like a {@link #setRationale rationale} but which
+   * is appended at the end regardless of whether there is a more specific
+   * rationale.
+   * &lt;p&gt;
+   * The documentation at src/site/markdown/configuration.md explains how
+   * to use addenda.
+   *
+   * @param s Human-readable text that may contain maven property expressions.
+   */
+  public void setAddendum(@Nullable String s) throws EnforcerRuleException {
+<span class="nc bnc" id="L91" title="All 2 branches missed.">    if (s != null) {</span>
+<span class="nc" id="L92">      rationale.addAddendum(s);</span>
+    }
+<span class="nc" id="L94">  }</span>
+
+  /** By default, just checks children. */
+  public void check() throws EnforcerRuleException {
+<span class="nc bnc" id="L98" title="All 2 branches missed.">    for (Fence childFence : getChildFences()) {</span>
+<span class="nc" id="L99">      childFence.check();</span>
+<span class="nc" id="L100">    }</span>
+<span class="nc" id="L101">  }</span>
+
+  /** Fences contained herein. */
+  public abstract Iterable&lt;Fence&gt; getChildFences();
+
+  /** Updates the list from {@link #getChildFences}. */
+  abstract void replaceChildFences(Iterable&lt;? extends Fence&gt; newChildren);
+
+  /**
+   * The API elements trusted or distrusted by the API element specified by
+   * this fence.
+   */
+  public final Frenemies getFrenemies() {
+<span class="fc" id="L114">    Frenemies.Builder b = Frenemies.builder();</span>
+<span class="fc bfc" id="L115" title="All 2 branches covered.">    for (Namespace ns : trusts) {</span>
+<span class="fc" id="L116">      b.addFriend(ns);</span>
+<span class="fc" id="L117">    }</span>
+<span class="fc bfc" id="L118" title="All 2 branches covered.">    for (Namespace ns : distrusts) {</span>
+<span class="fc" id="L119">      b.addEnemy(ns);</span>
+<span class="fc" id="L120">    }</span>
+<span class="fc" id="L121">    b.setRationale(rationale.build());</span>
+<span class="fc" id="L122">    return b.build();</span>
+  }
+
+  /**
+   * Called to specify the import order used when resolving duplicate
+   * rationales for a particular API element.
+   */
+  public final void assignImportOrder(int newImportOrder) {
+<span class="nc bnc" id="L130" title="All 2 branches missed.">    Preconditions.checkState(this.importOrder == -1);</span>
+<span class="nc bnc" id="L131" title="All 2 branches missed.">    Preconditions.checkArgument(newImportOrder &gt;= 0);</span>
+<span class="nc" id="L132">    this.importOrder = newImportOrder;</span>
+<span class="nc bnc" id="L133" title="All 2 branches missed.">    for (Fence child : getChildFences()) {</span>
+<span class="nc" id="L134">      child.assignImportOrder(newImportOrder);</span>
+<span class="nc" id="L135">    }</span>
+<span class="nc" id="L136">  }</span>
+
+  /**
+   * Modifies children in place so that no node in the fence tree has a dotted
+   * name.
+   * @return the split node so that parents may modify their child lists.
+   */
+  public abstract Fence splitDottedNames();
+
+  /**
+   * Does minimal wrapping to produce a top-level API fence.
+   */
+  public ApiFence promoteToApi() {
+<span class="nc" id="L149">    throw new IllegalStateException(&quot;Cannot promote &quot; + getClass());</span>
+  }
+
+  final void mergeFrom(Fence that) {
+<span class="nc" id="L153">    this.trusts.addAll(that.trusts);</span>
+<span class="nc" id="L154">    this.distrusts.addAll(that.distrusts);</span>
+    // Merge rationales, giving preference to bodies with a lower import order.
+<span class="nc bnc" id="L156" title="All 2 branches missed.">    if (this.importOrder &gt; that.importOrder</span>
+<span class="nc bnc" id="L157" title="All 2 branches missed.">        &amp;&amp; !that.rationale.getBody().isEmpty()) {</span>
+<span class="nc" id="L158">      this.rationale.setBodyFrom(that.rationale.build());</span>
+<span class="nc bnc" id="L159" title="All 2 branches missed.">    } else if (this.importOrder == that.importOrder) {</span>
+<span class="nc" id="L160">      this.rationale.addBodyFrom(that.rationale.build());</span>
+    }
+<span class="nc" id="L162">    this.rationale.addAddendumFrom(that.rationale.build());</span>
+<span class="nc" id="L163">  }</span>
+
+  /**
+   * Merge the salient details of the given configuration into this one,
+   * guaranteeing that there is only one child with a given name.
+   */
+  public final void mergeDeep(Fence f) {
+<span class="nc" id="L170">    mergeFrom(f);</span>
+
+    // Group children by key, merging recursively.
+<span class="nc" id="L173">    Map&lt;String, Fence&gt; childrenByKey = Maps.newLinkedHashMap();</span>
+<span class="nc" id="L174">    ImmutableList&lt;Fence&gt; childrenToMerge = ImmutableList.&lt;Fence&gt;builder()</span>
+<span class="nc" id="L175">        .addAll(getChildFences())</span>
+<span class="nc" id="L176">        .addAll(f.getChildFences())</span>
+<span class="nc" id="L177">        .build();</span>
+<span class="nc bnc" id="L178" title="All 2 branches missed.">    for (Fence childToMerge : childrenToMerge) {</span>
+<span class="nc" id="L179">      String fullKey = childToMerge.getClass().getName()</span>
+<span class="nc" id="L180">          + &quot; : &quot; + childToMerge.getKey();</span>
+<span class="nc" id="L181">      Fence previousChild = childrenByKey.get(fullKey);</span>
+<span class="nc bnc" id="L182" title="All 2 branches missed.">      if (previousChild != null) {</span>
+<span class="nc" id="L183">        previousChild.mergeDeep(childToMerge);</span>
+      } else {
+<span class="nc" id="L185">        childrenByKey.put(fullKey, childToMerge);</span>
+      }
+<span class="nc" id="L187">    }</span>
+
+<span class="nc" id="L189">    replaceChildFences(childrenByKey.values());</span>
+<span class="nc" id="L190">  }</span>
+
+  abstract void visit(FenceVisitor v, ApiElement el);
+
+  /** Start recursively walking the fence tree. */
+  public final void visit(FenceVisitor v) {
+<span class="fc" id="L196">    visit(v, ApiElement.DEFAULT_PACKAGE);</span>
+<span class="fc" id="L197">  }</span>
+
+  abstract String getConfigurationElementName();
+
+  void fleshOutEffectiveConfiguration(Element el) {
+<span class="nc" id="L202">    Document doc = el.getOwnerDocument();</span>
+<span class="nc bnc" id="L203" title="All 2 branches missed.">    for (Namespace ns : trusts) {</span>
+<span class="nc" id="L204">      Element trustElement = doc.createElement(&quot;trusts&quot;);</span>
+<span class="nc" id="L205">      trustElement.appendChild(doc.createTextNode(toTextNode(ns)));</span>
+<span class="nc" id="L206">      el.appendChild(trustElement);</span>
+<span class="nc" id="L207">    }</span>
+<span class="nc bnc" id="L208" title="All 2 branches missed.">    for (Namespace ns : distrusts) {</span>
+<span class="nc" id="L209">      Element trustElement = doc.createElement(&quot;distrusts&quot;);</span>
+<span class="nc" id="L210">      trustElement.appendChild(doc.createTextNode(toTextNode(ns)));</span>
+<span class="nc" id="L211">      el.appendChild(trustElement);</span>
+<span class="nc" id="L212">    }</span>
+<span class="nc" id="L213">    HumanReadableText rbody = rationale.getBody();</span>
+<span class="nc bnc" id="L214" title="All 2 branches missed.">    if (!rbody.isEmpty()) {</span>
+<span class="nc" id="L215">      Element rationaleElement = doc.createElement(&quot;rationale&quot;);</span>
+<span class="nc" id="L216">      rationaleElement.appendChild(doc.createTextNode(rbody.text));</span>
+<span class="nc" id="L217">      el.appendChild(rationaleElement);</span>
+    }
+<span class="nc" id="L219">    HumanReadableText addendum = rationale.getAddendum();</span>
+<span class="nc bnc" id="L220" title="All 2 branches missed.">    if (!addendum.isEmpty()) {</span>
+<span class="nc" id="L221">      Element addendumElement = doc.createElement(&quot;addendum&quot;);</span>
+<span class="nc" id="L222">      addendumElement.appendChild(doc.createTextNode(addendum.text));</span>
+<span class="nc" id="L223">      el.appendChild(addendumElement);</span>
+    }
+<span class="nc bnc" id="L225" title="All 2 branches missed.">    for (Fence child : getChildFences()) {</span>
+<span class="nc" id="L226">      Element childEl = doc.createElement(child.getConfigurationElementName());</span>
+<span class="nc" id="L227">      el.appendChild(childEl);</span>
+<span class="nc" id="L228">      child.fleshOutEffectiveConfiguration(childEl);</span>
+<span class="nc" id="L229">    }</span>
+<span class="nc" id="L230">  }</span>
+
+  private static String toTextNode(Namespace ns) {
+<span class="nc bnc" id="L233" title="All 2 branches missed.">    if (Namespace.DEFAULT_PACKAGE.equals(ns)) {</span>
+<span class="nc" id="L234">      return &quot;*&quot;;</span>
+    }
+<span class="nc" id="L236">    return ns.toString();</span>
+  }
+
+  private static Namespace parsePrinciple(String s)
+  throws EnforcerRuleException {
+<span class="fc" id="L241">    String trimmed = s.trim();</span>
+<span class="fc bfc" id="L242" title="All 4 branches covered.">    if (!&quot;*&quot;.equals(trimmed) &amp;&amp; trimmed.contains(&quot;*&quot;)) {</span>
+<span class="fc" id="L243">      throw new EnforcerRuleException(</span>
+          &quot;Globs not allowed in namespace names: &quot; + trimmed);
+    }
+<span class="fc" id="L246">    return Namespace.fromDottedString(trimmed);</span>
+  }
+}
+</pre><div class="footer"><span class="right">Created with <a href="http://www.eclemma.org/jacoco">JaCoCo</a> 0.7.5.201505241946</span></div></body></html>

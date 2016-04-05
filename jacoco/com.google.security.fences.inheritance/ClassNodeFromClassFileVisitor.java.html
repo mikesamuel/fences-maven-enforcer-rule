@@ -1,0 +1,84 @@
+<?xml version="1.0" encoding="UTF-8"?><!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd"><html xmlns="http://www.w3.org/1999/xhtml" lang="en"><head><meta http-equiv="Content-Type" content="text/html;charset=UTF-8"/><link rel="stylesheet" href="../.resources/report.css" type="text/css"/><link rel="shortcut icon" href="../.resources/report.gif" type="image/gif"/><title>ClassNodeFromClassFileVisitor.java</title><link rel="stylesheet" href="../.resources/prettify.css" type="text/css"/><script type="text/javascript" src="../.resources/prettify.js"></script></head><body onload="window['PR_TAB_WIDTH']=4;prettyPrint()"><div class="breadcrumb" id="breadcrumb"><span class="info"><a href="../.sessions.html" class="el_session">Sessions</a></span><a href="../index.html" class="el_report">Fences Enforcer Rule</a> &gt; <a href="index.source.html" class="el_package">com.google.security.fences.inheritance</a> &gt; <span class="el_source">ClassNodeFromClassFileVisitor.java</span></div><h1>ClassNodeFromClassFileVisitor.java</h1><pre class="source lang-java linenums">package com.google.security.fences.inheritance;
+
+import java.util.Arrays;
+import java.util.List;
+
+import javax.annotation.Nullable;
+
+import org.objectweb.asm.ClassVisitor;
+import org.objectweb.asm.FieldVisitor;
+import org.objectweb.asm.MethodVisitor;
+import org.objectweb.asm.Opcodes;
+
+import com.google.common.base.Optional;
+import com.google.common.base.Preconditions;
+import com.google.common.collect.Lists;
+
+/**
+ * A class visitor that visits an ASM class to declare
+ * its inheritance relationships to an {@link InheritanceGraph.Builder}.
+ */
+public final class ClassNodeFromClassFileVisitor extends ClassVisitor {
+  private final InheritanceGraph.Builder graphBuilder;
+
+  private String name;
+  private int access;
+  private Optional&lt;String&gt; superName;
+  private Iterable&lt;String&gt; interfaces;
+  private List&lt;FieldDetails&gt; fields;
+  private List&lt;MethodDetails&gt; methods;
+<span class="nc" id="L30">  private boolean includePrivates = true;</span>
+
+  /**
+   * @param graphBuilder receives declarations for classes visited.
+   */
+  public ClassNodeFromClassFileVisitor(InheritanceGraph.Builder graphBuilder) {
+<span class="nc" id="L36">    super(Opcodes.ASM5);</span>
+<span class="nc" id="L37">    this.graphBuilder = graphBuilder;</span>
+<span class="nc" id="L38">  }</span>
+
+  void setIncludePrivates(boolean newIncludePrivates) {
+<span class="nc" id="L41">    this.includePrivates = newIncludePrivates;</span>
+<span class="nc" id="L42">  }</span>
+
+  @Override
+  public void visit(
+      int version, int accessFlags, String className, String signature,
+      @Nullable String superClassName, String[] interfaceNames) {
+<span class="nc bnc" id="L48" title="All 2 branches missed.">    Preconditions.checkState(this.name == null);</span>
+<span class="nc" id="L49">    this.name = className;</span>
+<span class="nc" id="L50">    this.access = accessFlags;</span>
+<span class="nc" id="L51">    this.superName = Optional.fromNullable(superClassName);</span>
+<span class="nc" id="L52">    this.interfaces = Arrays.asList(interfaceNames);</span>
+<span class="nc" id="L53">    this.fields = Lists.newArrayList();</span>
+<span class="nc" id="L54">    this.methods = Lists.newArrayList();</span>
+<span class="nc" id="L55">  }</span>
+
+  @Override
+  public void visitEnd() {
+<span class="nc" id="L59">    graphBuilder.declare(</span>
+        name, access, superName, interfaces, methods, fields);
+
+<span class="nc" id="L62">  }</span>
+
+  @Override
+  public FieldVisitor visitField(
+      int fieldAccess, String fieldName, String desc,
+      String signature, Object value) {
+<span class="nc bnc" id="L68" title="All 4 branches missed.">    if (includePrivates || (access &amp; Opcodes.ACC_PRIVATE) == 0) {</span>
+<span class="nc" id="L69">      this.fields.add(new FieldDetails(fieldName, fieldAccess));</span>
+    }
+<span class="nc" id="L71">    return null;</span>
+  }
+
+  @Override
+  public MethodVisitor visitMethod(
+      int methodAccess, String methodName, String desc,
+      String signature, String[] exceptions) {
+<span class="nc bnc" id="L78" title="All 4 branches missed.">    if (includePrivates || (access &amp; Opcodes.ACC_PRIVATE) == 0) {</span>
+<span class="nc" id="L79">      this.methods.add(new MethodDetails(methodName, desc, methodAccess));</span>
+    }
+<span class="nc" id="L81">    return null;</span>
+  }
+}
+</pre><div class="footer"><span class="right">Created with <a href="http://www.eclemma.org/jacoco">JaCoCo</a> 0.7.5.201505241946</span></div></body></html>

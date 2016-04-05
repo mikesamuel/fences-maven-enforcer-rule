@@ -1,0 +1,120 @@
+<?xml version="1.0" encoding="UTF-8"?><!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd"><html xmlns="http://www.w3.org/1999/xhtml" lang="en"><head><meta http-equiv="Content-Type" content="text/html;charset=UTF-8"/><link rel="stylesheet" href="../.resources/report.css" type="text/css"/><link rel="shortcut icon" href="../.resources/report.gif" type="image/gif"/><title>ApiFence.java</title><link rel="stylesheet" href="../.resources/prettify.css" type="text/css"/><script type="text/javascript" src="../.resources/prettify.js"></script></head><body onload="window['PR_TAB_WIDTH']=4;prettyPrint()"><div class="breadcrumb" id="breadcrumb"><span class="info"><a href="../.sessions.html" class="el_session">Sessions</a></span><a href="../index.html" class="el_report">Fences Enforcer Rule</a> &gt; <a href="index.source.html" class="el_package">com.google.security.fences.config</a> &gt; <span class="el_source">ApiFence.java</span></div><h1>ApiFence.java</h1><pre class="source lang-java linenums">package com.google.security.fences.config;
+
+import java.util.List;
+
+import javax.xml.parsers.DocumentBuilderFactory;
+import javax.xml.parsers.ParserConfigurationException;
+
+import org.w3c.dom.Document;
+import org.w3c.dom.Element;
+
+import com.google.common.base.Preconditions;
+import com.google.common.collect.ImmutableList;
+import com.google.common.collect.Lists;
+import com.google.security.fences.policy.ApiElement;
+
+/** An unnammed collection of fences. */
+<span class="fc" id="L17">public final class ApiFence extends Fence {</span>
+<span class="fc" id="L18">  private final List&lt;PackageFence&gt; packages = Lists.newArrayList();</span>
+<span class="fc" id="L19">  private final List&lt;ClassFence&gt; classes = Lists.newArrayList();</span>
+
+  /**
+   * A setter called by reflection during rule configuration.  Actually adds
+   * instead of blowing away prior value.
+   */
+  public void setPackage(PackageFence x) {
+<span class="nc" id="L26">    packages.add(Preconditions.checkNotNull(x));</span>
+<span class="nc" id="L27">  }</span>
+
+  /**
+   * A setter called by reflection during rule configuration.  Actually adds
+   * instead of blowing away prior value.
+   */
+  public void setClass(ClassFence x) {
+<span class="nc" id="L34">    classes.add(Preconditions.checkNotNull(x));</span>
+<span class="nc" id="L35">  }</span>
+
+  ImmutableList&lt;PackageFence&gt; getPackages() {
+<span class="nc" id="L38">    return ImmutableList.copyOf(packages);</span>
+  }
+
+  ImmutableList&lt;ClassFence&gt; getClasses() {
+<span class="nc" id="L42">    return ImmutableList.copyOf(classes);</span>
+  }
+
+  @Override
+  public Iterable&lt;Fence&gt; getChildFences() {
+<span class="nc" id="L47">    return ImmutableList.&lt;Fence&gt;builder()</span>
+<span class="nc" id="L48">        .addAll(packages)</span>
+<span class="nc" id="L49">        .addAll(classes)</span>
+<span class="nc" id="L50">        .build();</span>
+  }
+
+  @Override
+  void visit(FenceVisitor v, ApiElement el) {
+    // ApiFence should not be a child of another fence.
+<span class="nc" id="L56">    Preconditions.checkArgument(el.equals(ApiElement.DEFAULT_PACKAGE));</span>
+<span class="nc" id="L57">    v.visit(this, ApiElement.DEFAULT_PACKAGE);</span>
+<span class="nc bnc" id="L58" title="All 2 branches missed.">    for (Fence child : getChildFences()) {</span>
+<span class="nc" id="L59">      child.visit(v, ApiElement.DEFAULT_PACKAGE);</span>
+<span class="nc" id="L60">    }</span>
+<span class="nc" id="L61">  }</span>
+
+  @Override
+  public ApiFence splitDottedNames() {
+<span class="nc" id="L65">    ImmutableList.Builder&lt;Fence&gt; splitChildren = ImmutableList.builder();</span>
+<span class="nc bnc" id="L66" title="All 2 branches missed.">    for (Fence unsplitChild : getChildFences()) {</span>
+<span class="nc" id="L67">      splitChildren.add(unsplitChild.splitDottedNames());</span>
+<span class="nc" id="L68">    }</span>
+<span class="nc" id="L69">    replaceChildFences(splitChildren.build());</span>
+<span class="nc" id="L70">    return this;</span>
+  }
+
+  @Override
+  void replaceChildFences(Iterable&lt;? extends Fence&gt; newChildren) {
+<span class="nc" id="L75">    packages.clear();</span>
+<span class="nc" id="L76">    classes.clear();</span>
+<span class="nc bnc" id="L77" title="All 2 branches missed.">    for (Fence newChild : newChildren) {</span>
+<span class="nc bnc" id="L78" title="All 2 branches missed.">      if (newChild instanceof PackageFence) {</span>
+<span class="nc" id="L79">        packages.add((PackageFence) newChild);</span>
+<span class="nc bnc" id="L80" title="All 2 branches missed.">      } else if (newChild instanceof ClassFence) {</span>
+<span class="nc" id="L81">        classes.add((ClassFence) newChild);</span>
+<span class="nc bnc" id="L82" title="All 2 branches missed.">      } else if (newChild instanceof ApiFence) {</span>
+<span class="nc" id="L83">        ApiFence apiChild = (ApiFence) newChild;</span>
+<span class="nc" id="L84">        mergeFrom(apiChild);</span>
+<span class="nc" id="L85">        packages.addAll(apiChild.packages);</span>
+<span class="nc" id="L86">        classes.addAll(apiChild.classes);</span>
+<span class="nc" id="L87">      } else {</span>
+<span class="nc" id="L88">        throw new IllegalArgumentException(newChild.getClass().getName());</span>
+      }
+<span class="nc" id="L90">    }</span>
+<span class="nc" id="L91">  }</span>
+
+  @Override
+  String getKey() {
+<span class="nc" id="L95">    return &quot;&quot;;</span>
+  }
+
+  /**
+   * Creates an XML tree that should plexus-configure to an equivalent Fence.
+   */
+  public Element buildEffectiveConfiguration()
+  throws ParserConfigurationException {
+<span class="nc" id="L103">    DocumentBuilderFactory factory = DocumentBuilderFactory.newInstance();</span>
+<span class="nc" id="L104">    Document doc = factory.newDocumentBuilder().newDocument();</span>
+<span class="nc" id="L105">    Element el = doc.createElement(getConfigurationElementName());</span>
+<span class="nc" id="L106">    fleshOutEffectiveConfiguration(el);</span>
+<span class="nc" id="L107">    return el;</span>
+  }
+
+  @Override
+  String getConfigurationElementName() {
+<span class="nc" id="L112">    return &quot;api&quot;;</span>
+  }
+
+  @Override
+  public ApiFence promoteToApi() {
+<span class="nc" id="L117">    return this;</span>
+  }
+}
+</pre><div class="footer"><span class="right">Created with <a href="http://www.eclemma.org/jacoco">JaCoCo</a> 0.7.5.201505241946</span></div></body></html>
