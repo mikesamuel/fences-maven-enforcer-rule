@@ -36,16 +36,15 @@ public class ApiElement implements Comparable<ApiElement> {
     this.hashCode = Objects.hashCode(parent, name, type);
 
     Preconditions.checkArgument(
-        name.length() != 0
-        || (type == ApiElementType.PACKAGE && !parent.isPresent()));
+        (name.length() == 0)
+        == (type == ApiElementType.PACKAGE && !parent.isPresent()));
     Preconditions.checkArgument(!name.contains("."), name);
     Preconditions.checkArgument(parent.isPresent() || name.length() == 0);
     switch (type) {
       case CLASS:
         Preconditions.checkArgument(
-            !parent.isPresent() || (
-                parent.get().type == ApiElementType.PACKAGE
-                || parent.get().type == ApiElementType.CLASS));
+            parent.get().type == ApiElementType.PACKAGE
+            || parent.get().type == ApiElementType.CLASS);
         return;
       case CONSTRUCTOR:
         Preconditions.checkArgument(

@@ -98,7 +98,7 @@ public final class ApiFence extends Fence {
   /**
    * Creates an XML tree that should plexus-configure to an equivalent Fence.
    */
-  public final Element buildEffectiveConfiguration()
+  public Element buildEffectiveConfiguration()
   throws ParserConfigurationException {
     DocumentBuilderFactory factory = DocumentBuilderFactory.newInstance();
     Document doc = factory.newDocumentBuilder().newDocument();

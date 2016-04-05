@@ -61,14 +61,13 @@ public final class InheritanceGraph {
         Iterable<? extends MethodDetails> methods,
         Iterable<? extends FieldDetails> fields) {
       ClassNode node = classNodes.get(name);
-      if (node != null) {
-        // Assume that subsequent declarations are from masked class-files on
-        // the same class-path.
-      } else {
+      if (node == null) {
         node = new ClassNode(
             name, access, superClassName, interfaceNames, methods, fields);
         classNodes.put(name, node);
       }
+      // Otherwise assume that subsequent declarations are from masked
+      // class-files on the same class-path.
       return this;
     }
 

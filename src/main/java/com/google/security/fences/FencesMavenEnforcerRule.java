@@ -118,18 +118,16 @@ public final class FencesMavenEnforcerRule implements EnforcerRule {
       resolver = (ArtifactResolver) helper.getComponent(ArtifactResolver.class);
       treeBuilder = (DependencyTreeBuilder)
           helper.getComponent(DependencyTreeBuilder.class);
-      if (false) {
-        // This seems "the right way" since plexus is supposed to inject
-        // dependencies, but when run without -X to turn on debugging,
-        // we get a MapOrientedComponentConfigurator which cannot configure
-        // this object.
-        // http://stackoverflow.com/questions/35919157/using-xmlplexusconfiguration-to-import-more-configuration-for-a-bean-style-maven
-        // explains the symptoms.
-        configurator = (ComponentConfigurator) helper.getComponent(
-            ComponentConfigurator.class);
-      } else {
-        configurator = new BasicComponentConfigurator();
-      }
+
+      // This seems "the right way" since plexus is supposed to inject
+      // dependencies, but when run without -X to turn on debugging,
+      // we get a MapOrientedComponentConfigurator which cannot configure
+      // this object.
+      // http://stackoverflow.com/questions/35919157/using-xmlplexusconfiguration-to-import-more-configuration-for-a-bean-style-maven
+      // explains the symptoms.
+      //  configurator = (ComponentConfigurator) helper.getComponent(
+      //      ComponentConfigurator.class);
+      configurator = new BasicComponentConfigurator();
     } catch (ComponentLookupException ex) {
       throw new EnforcerRuleException(
           "Failed to locate component: " + ex.getLocalizedMessage(), ex);

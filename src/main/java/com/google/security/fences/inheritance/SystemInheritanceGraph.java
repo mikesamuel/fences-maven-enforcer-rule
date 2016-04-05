@@ -118,10 +118,8 @@ public class SystemInheritanceGraph {
       // Berkeley DB requires a home directory.
       File home = File.createTempFile(
           "system-inheritance-graph-", "-home");
-      if (home.exists()) {
-        if (!home.delete()) {
-          throw new IOException("Could not delete temp file " + home);
-        }
+      if (home.exists() && !home.delete()) {
+        throw new IOException("Could not delete temp file " + home);
       }
       if (!home.mkdirs()) {
         throw new IOException("Could not make temp dir " + home);

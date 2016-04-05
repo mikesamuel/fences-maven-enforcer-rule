@@ -47,7 +47,7 @@ final class PolicyViolationReporter {
   int report(ImmutableList<Violation> violations) {
     int errorCount = violations.size();
     // Probably overly paranoid given ints are always 32b.
-    if (errorCount < 0 || (errorCount == 0 && !violations.isEmpty())) {
+    if (!(violations.isEmpty() ? errorCount == 0 : errorCount > 0)) {
       // Causing the error counter to overflow should not spuriously report
       // compliance.
       errorCount = Integer.MAX_VALUE;

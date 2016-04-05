@@ -99,12 +99,9 @@ public final class ClassNode implements Comparable<ClassNode> {
       // do not affect descriptors because javac creates two methods --
       // the specialized version and an unspecialized version that calls the
       // former.
-      if (m.name.equals(methodName) && m.desc.equals(descriptor)) {
-        // Methods do not inherit from private methods and private methods
-        // do not override methods declared in super-types.
-        if ((m.access & Opcodes.ACC_PRIVATE) == 0) {
-          return false;
-        }
+      if (m.name.equals(methodName) && m.desc.equals(descriptor)
+          && (m.access & Opcodes.ACC_PRIVATE) == 0) {
+        return false;
       }
     }
     return true;
@@ -117,11 +114,10 @@ public final class ClassNode implements Comparable<ClassNode> {
    */
   public boolean isFieldVisibleThrough(String fieldName) {
     for (FieldDetails f : fields) {
-      if (f.name.equals(fieldName)) {
-        // Private fields do not mask fields in super-tpes.
-        if ((f.access & Opcodes.ACC_PRIVATE) == 0) {
-          return false;
-        }
+      if (f.name.equals(fieldName)
+          // Private fields do not mask fields in super-tpes.
+          && (f.access & Opcodes.ACC_PRIVATE) == 0) {
+        return false;
       }
     }
     return true;
