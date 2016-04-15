@@ -19,7 +19,7 @@ Add the following to your POM.
           <dependency>
             <groupId>com.google.security</groupId>
             <artifactId>fences-maven-enforcer-rule</artifactId>
-            <version>1.0</version>
+            <version>${project.version}</version>
           </dependency>
         </dependencies>
         <executions>
