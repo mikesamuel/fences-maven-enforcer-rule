@@ -5,12 +5,14 @@ import java.util.List;
 import javax.xml.parsers.DocumentBuilderFactory;
 import javax.xml.parsers.ParserConfigurationException;
 
+import org.apache.maven.enforcer.rule.api.EnforcerRuleException;
 import org.w3c.dom.Document;
 import org.w3c.dom.Element;
 
 import com.google.common.base.Preconditions;
 import com.google.common.collect.ImmutableList;
 import com.google.common.collect.Lists;
+import com.google.security.fences.inheritance.InheritanceGraph;
 import com.google.security.fences.policy.ApiElement;
 
 /** An unnammed collection of fences. */
@@ -61,10 +63,12 @@ public final class ApiFence extends Fence {
   }
 
   @Override
-  public ApiFence splitDottedNames() {
+  public ApiFence splitDottedNames(ApiElement parentEl, InheritanceGraph g)
+  throws EnforcerRuleException {
+    Preconditions.checkArgument(parentEl.equals(ApiElement.DEFAULT_PACKAGE));
     ImmutableList.Builder<Fence> splitChildren = ImmutableList.builder();
     for (Fence unsplitChild : getChildFences()) {
-      splitChildren.add(unsplitChild.splitDottedNames());
+      splitChildren.add(unsplitChild.splitDottedNames(parentEl, g));
     }
     replaceChildFences(splitChildren.build());
     return this;

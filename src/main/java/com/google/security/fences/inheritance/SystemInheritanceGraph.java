@@ -69,6 +69,11 @@ public class SystemInheritanceGraph {
   private static final String SUPERTYPE_DB_NAME = "supertype";
   /**
    * Name of a database that maps internal names to
+   * internal names of enclosing classes.
+   */
+  private static final String OUTER_CLASS_DB_NAME = "outerclasses";
+  /**
+   * Name of a database that maps internal names to
    * comma separated interface names.
    */
   private static final String INTERFACE_DB_NAME = "interfaces";
@@ -90,6 +95,7 @@ public class SystemInheritanceGraph {
     private final Environment env;
     private final Database accessDb;
     private final Database supertypeDb;
+    private final Database outerClassDb;
     private final Database interfaceDb;
     private final Database methodDb;
     private final Database fieldDb;
@@ -109,6 +115,7 @@ public class SystemInheritanceGraph {
       dbConfig.setReadOnly(true);
       this.accessDb = env.openDatabase(null, ACCESS_DB_NAME, dbConfig);
       this.supertypeDb = env.openDatabase(null, SUPERTYPE_DB_NAME, dbConfig);
+      this.outerClassDb =  env.openDatabase(null, OUTER_CLASS_DB_NAME, dbConfig);
       this.interfaceDb = env.openDatabase(null, INTERFACE_DB_NAME, dbConfig);
       this.methodDb = env.openDatabase(null, METHOD_DB_NAME, dbConfig);
       this.fieldDb = env.openDatabase(null, FIELD_DB_NAME, dbConfig);
@@ -182,6 +189,14 @@ public class SystemInheritanceGraph {
         supertypeName = Optional.of(utf8(supertype));
       }
 
+      DatabaseEntry outerClass = new DatabaseEntry();
+      OperationStatus oclassStatus = outerClassDb.get(
+          null, nameData, outerClass, LockMode.DEFAULT);
+      Optional<String> outerClassName = Optional.absent();
+      if (OperationStatus.SUCCESS.equals(oclassStatus)) {
+        outerClassName = Optional.of(utf8(outerClass));
+      }
+
       String interfaceNamesCsv = utf8(interfaces);
       List<String> interfaceNames = ImmutableList.of();
       if (!interfaceNamesCsv.isEmpty()) {
@@ -217,7 +232,8 @@ public class SystemInheritanceGraph {
       }
 
       ClassNode node = new ClassNode(
-          name, access, supertypeName, interfaceNames, methods, fields);
+          name, access, supertypeName, outerClassName,
+          interfaceNames, methods, fields);
       inMap = this.classNodes.putIfAbsent(name, node);
       return inMap != null ? inMap : node;
     }
@@ -366,6 +382,8 @@ public class SystemInheritanceGraph {
       dbConfig.setReadOnly(false);
       Database accessDb = env.openDatabase(txn, ACCESS_DB_NAME, dbConfig);
       Database supertypeDb = env.openDatabase(txn, SUPERTYPE_DB_NAME, dbConfig);
+      Database outerClassDb = env.openDatabase(
+          txn, OUTER_CLASS_DB_NAME, dbConfig);
       Database interfaceDb = env.openDatabase(txn, INTERFACE_DB_NAME, dbConfig);
       Database methodDb = env.openDatabase(txn, METHOD_DB_NAME, dbConfig);
       Database fieldDb = env.openDatabase(txn, FIELD_DB_NAME, dbConfig);
@@ -403,6 +421,7 @@ public class SystemInheritanceGraph {
       fieldDb.close();
       methodDb.close();
       interfaceDb.close();
+      outerClassDb.close();
       supertypeDb.close();
       accessDb.close();
       env.close();

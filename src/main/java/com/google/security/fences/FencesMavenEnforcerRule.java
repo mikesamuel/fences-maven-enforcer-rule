@@ -27,6 +27,7 @@ import com.google.security.fences.config.ClassFence;
 import com.google.security.fences.config.Fence;
 import com.google.security.fences.config.PackageFence;
 import com.google.security.fences.inheritance.InheritanceGraph;
+import com.google.security.fences.policy.ApiElement;
 import com.google.security.fences.policy.Policy;
 import com.google.security.fences.util.LazyString;
 import com.google.security.fences.util.Utils;
@@ -58,7 +59,7 @@ public final class FencesMavenEnforcerRule implements EnforcerRule {
 
   private void addFence(Fence f) throws EnforcerRuleException {
     f.check();
-    fences.add(f.splitDottedNames());
+    fences.add(f);
   }
 
   /**
@@ -164,6 +165,16 @@ public final class FencesMavenEnforcerRule implements EnforcerRule {
 
     ImmutableList<ClassRoot> classRoots = finder.getClassRoots();
 
+    InheritanceGraph inheritanceGraph;
+    try {
+      inheritanceGraph = InheritanceGraphExtractor
+          .fromClassRoots(classRoots);
+    } catch (IOException ex) {
+      throw new EnforcerRuleException(
+          "Failed to read classes to find inheritance relationships",
+          ex);
+    }
+
     int nAssignedImportOrder = 0;
     int importOrder = 0;
     // Do the imports.
@@ -171,7 +182,7 @@ public final class FencesMavenEnforcerRule implements EnforcerRule {
     // just walk the list destructively.
     for (; !imports.isEmpty(); ++importOrder) {
       nAssignedImportOrder = rerootAndAssignImportOrder(
-          nAssignedImportOrder, importOrder);
+          inheritanceGraph, nAssignedImportOrder, importOrder);
       ConfigurationImport imp = imports.removeFirst();
       if (alreadyImported.add(imp.key)) {
         log.debug("Importing " + imp.key);
@@ -183,7 +194,8 @@ public final class FencesMavenEnforcerRule implements EnforcerRule {
         log.info("Not importing " + imp.key + " a second time");
       }
     }
-    rerootAndAssignImportOrder(nAssignedImportOrder, importOrder);
+    rerootAndAssignImportOrder(
+        inheritanceGraph, nAssignedImportOrder, importOrder);
 
     ImmutableList<Fence> allFences = ImmutableList.copyOf(fences);
 
@@ -233,14 +245,17 @@ public final class FencesMavenEnforcerRule implements EnforcerRule {
       }
     }
 
-    checkAllClasses(project, mergedFence, log, classRoots);
+    checkAllClasses(project, log, inheritanceGraph, mergedFence, classRoots);
   }
 
-  private int rerootAndAssignImportOrder(int start, int importOrder) {
+  private int rerootAndAssignImportOrder(
+      InheritanceGraph inheritanceGraph, int start, int importOrder)
+  throws EnforcerRuleException {
     int end = fences.size();
     for (int i = start; i < end; ++i) {
       Fence f = fences.get(i);
-      f = f.splitDottedNames().promoteToApi();
+      f = f.splitDottedNames(ApiElement.DEFAULT_PACKAGE, inheritanceGraph)
+          .promoteToApi();
       f.assignImportOrder(importOrder);
       fences.set(i, f);
     }
@@ -248,19 +263,9 @@ public final class FencesMavenEnforcerRule implements EnforcerRule {
   }
 
   protected static void checkAllClasses(
-      MavenProject project, ApiFence mergedFence,
-      Log log, Iterable<? extends ClassRoot> classRoots)
+      MavenProject project, Log log, InheritanceGraph inheritanceGraph,
+      ApiFence mergedFence, Iterable<? extends ClassRoot> classRoots)
   throws EnforcerRuleException {
-    InheritanceGraph inheritanceGraph;
-    try {
-      inheritanceGraph = InheritanceGraphExtractor
-          .fromClassRoots(classRoots);
-    } catch (IOException ex) {
-      throw new EnforcerRuleException(
-          "Failed to read classes to find inheritance relationships",
-          ex);
-    }
-
     final Policy p = Policy.fromFence(mergedFence);
     log.debug(new LazyString() {
       @Override

@@ -35,13 +35,10 @@ public final class SystemInheritanceGraphTest extends TestCase {
 
   public static final void testInheritanceGraph() {
     InheritanceGraph g = InheritanceGraph.builder()
-        .declare(
-            "com/example/SillyInputStream",
-            Opcodes.ACC_PUBLIC,
-            Optional.of("java/io/InputStream"),
-            ImmutableList.of("java/io/Serializable"),
-            ImmutableList.<MethodDetails>of(),
-            ImmutableList.<FieldDetails>of())
+        .declare("com/example/SillyInputStream", Opcodes.ACC_PUBLIC)
+        .superClassName(Optional.of("java/io/InputStream"))
+        .interfaceNames(ImmutableList.of("java/io/Serializable"))
+        .commit()
         .build();
     assertClassNodeEquals(
         g,
@@ -80,21 +77,19 @@ public final class SystemInheritanceGraphTest extends TestCase {
 
   public static void testFieldsAndMethods() {
     InheritanceGraph g = InheritanceGraph.builder()
-        .declare(
-            "com/example/MyReader",
-            Opcodes.ACC_PUBLIC,
-            Optional.of("java/io/Reader"),
-            ImmutableList.<String>of(),
-            ImmutableList.of(
+        .declare("com/example/MyReader", Opcodes.ACC_PUBLIC)
+            .superClassName(Optional.of("java/io/Reader"))
+            .methods(ImmutableList.of(
                 new MethodDetails("close", "()V", Opcodes.ACC_PUBLIC),
                 new MethodDetails("read", "([CII)I", Opcodes.ACC_PUBLIC),
-                new MethodDetails("reset", "()V", Opcodes.ACC_PRIVATE)),
-            ImmutableList.of(
+                new MethodDetails("reset", "()V", Opcodes.ACC_PRIVATE)))
+            .fields(ImmutableList.of(
                 new FieldDetails("x", /*"I",*/ Opcodes.ACC_PRIVATE),
                 new FieldDetails(
                     "DEFAULT_CAPACITY", /*"I",*/
                     Opcodes.ACC_PUBLIC | Opcodes.ACC_FINAL
                     | Opcodes.ACC_STATIC)))
+            .commit()
         .build();
     {
       Optional<ClassNode> pushbackReader = g.named("java/io/PushbackReader");

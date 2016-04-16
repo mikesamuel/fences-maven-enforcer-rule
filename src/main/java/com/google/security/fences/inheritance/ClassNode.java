@@ -29,6 +29,10 @@ public final class ClassNode implements Comparable<ClassNode> {
    */
   public final Optional<String> superType;
   /**
+   * The internal name of the outer-class if any.
+   */
+  public final Optional<String> outerClass;
+  /**
    * For classes, the internal names of interfaces it {@code implements}, and
    * for interfaces the interfaces it {@code extends}.
    */
@@ -45,7 +49,9 @@ public final class ClassNode implements Comparable<ClassNode> {
   ClassNode(
       String name,
       int access,
-      Optional<String> superType, Iterable<? extends String> interfaces,
+      Optional<String> superType,
+      Optional<String> outerClass,
+      Iterable<? extends String> interfaces,
       Iterable<? extends MethodDetails> methods,
       Iterable<? extends FieldDetails> fields) {
     // Names should be of form com/example/Name, not com.example.Name.
@@ -53,6 +59,7 @@ public final class ClassNode implements Comparable<ClassNode> {
     this.name = name;
     this.access = access;
     this.superType = superType;
+    this.outerClass = outerClass;
     this.interfaces = ImmutableList.copyOf(interfaces);
     this.methods = ImmutableSet.copyOf(methods);
     this.fields = ImmutableSet.copyOf(fields);

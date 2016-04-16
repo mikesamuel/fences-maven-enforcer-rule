@@ -2,6 +2,7 @@ package com.google.security.fences.config;
 
 import com.google.common.base.Preconditions;
 import com.google.common.collect.ImmutableList;
+import com.google.security.fences.inheritance.InheritanceGraph;
 import com.google.security.fences.policy.ApiElement;
 import com.google.security.fences.policy.ApiElementType;
 
@@ -21,7 +22,7 @@ public final class ConstructorFence extends Fence {
   }
 
   @Override
-  public Fence splitDottedNames() {
+  public Fence splitDottedNames(ApiElement parentEl, InheritanceGraph g) {
     return this;
   }
 

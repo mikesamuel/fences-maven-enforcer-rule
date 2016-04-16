@@ -2,6 +2,8 @@ package com.google.security.fences.config;
 
 import com.google.common.base.Preconditions;
 import com.google.common.collect.ImmutableList;
+import com.google.security.fences.inheritance.InheritanceGraph;
+import com.google.security.fences.policy.ApiElement;
 
 abstract class NamedLeafFence extends NamedFence {
   @Override
@@ -17,7 +19,7 @@ abstract class NamedLeafFence extends NamedFence {
   protected abstract void addToClass(ClassFence container);
 
   @Override
-  public Fence splitDottedNames() {
+  public Fence splitDottedNames(ApiElement parentEl, InheritanceGraph g) {
     String name = getName();
     String[] parts = name.split("[.]");
     if (parts.length == 1) {

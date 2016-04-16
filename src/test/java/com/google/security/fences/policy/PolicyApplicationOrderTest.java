@@ -52,8 +52,12 @@ public class PolicyApplicationOrderTest extends TestCase {
         Iterable<? extends String> interfaceNames,
         Iterable<? extends MethodDetails> methods,
         Iterable<? extends FieldDetails> fields) {
-      inheritanceGraphBuilder.declare(
-          name, access, superName, interfaceNames, methods, fields);
+      inheritanceGraphBuilder.declare(name, access)
+          .superClassName(superName)
+          .interfaceNames(interfaceNames)
+          .methods(methods)
+          .fields(fields)
+          .commit();
       return this;
     }
 

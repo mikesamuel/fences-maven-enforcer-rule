@@ -24,6 +24,7 @@ public final class ClassNodeFromClassFileVisitor extends ClassVisitor {
   private String name;
   private int access;
   private Optional<String> superName;
+  private Optional<String> outerClass;
   private Iterable<String> interfaces;
   private List<FieldDetails> fields;
   private List<MethodDetails> methods;
@@ -49,6 +50,7 @@ public final class ClassNodeFromClassFileVisitor extends ClassVisitor {
     this.name = className;
     this.access = accessFlags;
     this.superName = Optional.fromNullable(superClassName);
+    this.outerClass = Optional.absent();
     this.interfaces = Arrays.asList(interfaceNames);
     this.fields = Lists.newArrayList();
     this.methods = Lists.newArrayList();
@@ -56,9 +58,21 @@ public final class ClassNodeFromClassFileVisitor extends ClassVisitor {
 
   @Override
   public void visitEnd() {
-    graphBuilder.declare(
-        name, access, superName, interfaces, methods, fields);
+    graphBuilder
+        .declare(name, access)
+        .superClassName(superName)
+        .outerClassName(outerClass)
+        .interfaceNames(interfaces)
+        .methods(methods)
+        .fields(fields)
+        .commit();
+  }
 
+  @Override
+  public void visitOuterClass(
+      String outerClassName, @Nullable String enclosingMethodName,
+      @Nullable String enclosingMethodDescriptor) {
+    this.outerClass = Optional.of(outerClassName);
   }
 
   @Override

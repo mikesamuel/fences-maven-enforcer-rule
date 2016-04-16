@@ -13,6 +13,7 @@ import com.google.common.base.Preconditions;
 import com.google.common.collect.ImmutableList;
 import com.google.common.collect.Lists;
 import com.google.common.collect.Maps;
+import com.google.security.fences.inheritance.InheritanceGraph;
 import com.google.security.fences.namespace.Namespace;
 import com.google.security.fences.policy.ApiElement;
 
@@ -140,7 +141,9 @@ public abstract class Fence {
    * name.
    * @return the split node so that parents may modify their child lists.
    */
-  public abstract Fence splitDottedNames();
+  public abstract Fence splitDottedNames(ApiElement parent, InheritanceGraph g)
+  // TODO: better exception type
+  throws EnforcerRuleException;
 
   /**
    * Does minimal wrapping to produce a top-level API fence.

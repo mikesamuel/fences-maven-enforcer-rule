@@ -55,26 +55,90 @@ public final class InheritanceGraph {
     /**
      * Defines a relationship between name and its super-interfaces.
      */
-    public Builder declare(
-        String name, int access, Optional<String> superClassName,
-        Iterable<? extends String> interfaceNames,
-        Iterable<? extends MethodDetails> methods,
-        Iterable<? extends FieldDetails> fields) {
-      ClassNode node = classNodes.get(name);
-      if (node == null) {
-        node = new ClassNode(
-            name, access, superClassName, interfaceNames, methods, fields);
-        classNodes.put(name, node);
-      }
-      // Otherwise assume that subsequent declarations are from masked
-      // class-files on the same class-path.
-      return this;
+    public DeclarationBuilder declare(String name, int access) {
+      return new DeclarationBuilder(name, access);
     }
 
     /** Single use builder.  State is cleared after call to build(). */
     public InheritanceGraph build() {
       return new InheritanceGraph(classNodes, lazyLoadSystemClass);
     }
+
+    /**
+     * Used to add additional details about a class.
+     */
+    public final class DeclarationBuilder {
+      private final String name;
+      private final int access;
+
+      private Optional<String> superClassName = Optional.of("java/lang/Object");
+      private Optional<String> outerClassName = Optional.absent();
+      private ImmutableList<String> interfaceNames = ImmutableList.of();
+      private ImmutableList<MethodDetails> methods = ImmutableList.of();
+      private ImmutableList<FieldDetails> fields = ImmutableList.of();
+
+      DeclarationBuilder(String name, int access) {
+        this.name = name;
+        this.access = access;
+      }
+
+      /** Sets the super-class name if any.  Null only for "java/lang/Object" */
+      public DeclarationBuilder superClassName(
+          Optional<String> newSuperClassName) {
+        this.superClassName = newSuperClassName;
+        return this;
+      }
+      /** Sets the outer-class name if any. */
+      public DeclarationBuilder outerClassName(
+          Optional<String> newOuterClassName) {
+        this.outerClassName = newOuterClassName;
+        return this;
+      }
+      /** Sets the interface list. */
+      public DeclarationBuilder interfaceNames(
+          Iterable<? extends String> newInterfaceNames) {
+        this.interfaceNames = ImmutableList.<String>builder()
+            .addAll(interfaceNames)
+            .addAll(newInterfaceNames)
+            .build();
+        return this;
+      }
+      /** Sets the list of declared methods. */
+      public DeclarationBuilder methods(
+          Iterable<? extends MethodDetails> newMethods) {
+        this.methods = ImmutableList.<MethodDetails>builder()
+            .addAll(methods)
+            .addAll(newMethods)
+            .build();
+        return this;
+      }
+      /** Sets the list of declared fields. */
+      public DeclarationBuilder fields(
+          Iterable<? extends FieldDetails> newFields) {
+        this.fields = ImmutableList.<FieldDetails>builder()
+            .addAll(fields)
+            .addAll(newFields)
+            .build();
+        return this;
+      }
+
+      /** Commit the built declaration into the parent builders map. */
+      public Builder commit() {
+        @SuppressWarnings("synthetic-access")
+        Map<String, ClassNode> classNodesMap = Builder.this.classNodes;
+        ClassNode node = classNodesMap.get(name);
+        if (node == null) {
+          node = new ClassNode(
+              name, access, superClassName, outerClassName,
+              interfaceNames, methods, fields);
+          classNodesMap.put(name, node);
+        }
+        // Otherwise assume that subsequent declarations are from masked
+        // class-files on the same class-path.
+        return Builder.this;
+      }
+    }
+
   }
 
   /** All the names of class declared, or lazily fetched. */

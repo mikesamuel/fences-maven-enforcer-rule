@@ -2,9 +2,12 @@ package com.google.security.fences.config;
 
 import java.util.List;
 
+import org.apache.maven.enforcer.rule.api.EnforcerRuleException;
+
 import com.google.common.base.Preconditions;
 import com.google.common.collect.ImmutableList;
 import com.google.common.collect.Lists;
+import com.google.security.fences.inheritance.InheritanceGraph;
 import com.google.security.fences.policy.ApiElement;
 import com.google.security.fences.policy.ApiElementType;
 
@@ -48,15 +51,28 @@ public final class PackageFence extends NamedFence {
   }
 
   @Override
-  public Fence splitDottedNames() {
+  public Fence splitDottedNames(ApiElement parentEl, InheritanceGraph g)
+  throws EnforcerRuleException {
+    List<String> nameParts;
+    String name = getName();
+    if (name.isEmpty()) {
+      nameParts = ImmutableList.of();
+    } else {
+      nameParts = ImmutableList.of(name.split("[./]"));
+    }
+
     ImmutableList.Builder<Fence> splitChildren = ImmutableList.builder();
+    ApiElement el = parentEl;
+    for (String namePart : nameParts) {
+      el = el.child(namePart, ApiElementType.PACKAGE);
+    }
     for (Fence unsplitChild : getChildFences()) {
-      splitChildren.add(unsplitChild.splitDottedNames());
+      splitChildren.add(unsplitChild.splitDottedNames(el, g));
     }
     replaceChildFences(splitChildren.build());
 
-    String name = getName();
-    if (name.isEmpty()) {
+    int nParts = nameParts.size();
+    if (nParts == 0) {
       ApiFence apiFence = new ApiFence();
       apiFence.mergeFrom(this);
       for (PackageFence pkg : this.packages) {
@@ -67,14 +83,10 @@ public final class PackageFence extends NamedFence {
       }
       return apiFence;
     } else {
-      String[] parts = name.split("[.]");
-      if (parts.length == 1) {
-        return this;
-      }
       PackageFence pkg = this;
-      this.setName(parts[parts.length - 1]);
-      for (int i = parts.length - 1; --i >= 0;) {
-        String part = parts[i];
+      this.setName(nameParts.get(nParts - 1));
+      for (int i = nParts - 1; --i >= 0;) {
+        String part = nameParts.get(i);
         PackageFence parent = new PackageFence();
         parent.setName(part);
         parent.setPackage(pkg);
@@ -88,19 +100,18 @@ public final class PackageFence extends NamedFence {
   void replaceChildFences(Iterable<? extends Fence> newChildren) {
     packages.clear();
     classes.clear();
-    for (Fence unsplitChild : newChildren) {
-      Fence splitChild = unsplitChild.splitDottedNames();
-      if (splitChild instanceof PackageFence) {
-        packages.add((PackageFence) splitChild);
-      } else if (splitChild instanceof ClassFence) {
-        classes.add((ClassFence) splitChild);
-      } else if (splitChild instanceof ApiFence) {
-        ApiFence apiChild = (ApiFence) splitChild;
+    for (Fence newChild : newChildren) {
+      if (newChild instanceof PackageFence) {
+        packages.add((PackageFence) newChild);
+      } else if (newChild instanceof ClassFence) {
+        classes.add((ClassFence) newChild);
+      } else if (newChild instanceof ApiFence) {
+        ApiFence apiChild = (ApiFence) newChild;
         mergeFrom(apiChild);
         packages.addAll(apiChild.getPackages());
         classes.addAll(apiChild.getClasses());
       } else {
-        throw new IllegalArgumentException(splitChild.getClass().getName());
+        throw new IllegalArgumentException(newChild.getClass().getName());
       }
     }
   }
