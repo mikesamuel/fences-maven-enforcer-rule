@@ -24,7 +24,6 @@ public final class ClassNodeFromClassFileVisitor extends ClassVisitor {
   private String name;
   private int access;
   private Optional<String> superName;
-  private Optional<String> outerClass;
   private Iterable<String> interfaces;
   private List<FieldDetails> fields;
   private List<MethodDetails> methods;
@@ -50,7 +49,6 @@ public final class ClassNodeFromClassFileVisitor extends ClassVisitor {
     this.name = className;
     this.access = accessFlags;
     this.superName = Optional.fromNullable(superClassName);
-    this.outerClass = Optional.absent();
     this.interfaces = Arrays.asList(interfaceNames);
     this.fields = Lists.newArrayList();
     this.methods = Lists.newArrayList();
@@ -61,18 +59,24 @@ public final class ClassNodeFromClassFileVisitor extends ClassVisitor {
     graphBuilder
         .declare(name, access)
         .superClassName(superName)
-        .outerClassName(outerClass)
         .interfaceNames(interfaces)
         .methods(methods)
         .fields(fields)
         .commit();
+    this.name = null;
   }
 
   @Override
-  public void visitOuterClass(
-      String outerClassName, @Nullable String enclosingMethodName,
-      @Nullable String enclosingMethodDescriptor) {
-    this.outerClass = Optional.of(outerClassName);
+  public void visitInnerClass(String innerInternalName,
+      String outerName,
+      String innerName,
+      int innerClassAccess) {
+    if (outerName != null) {
+      // There are inner class declarations on the outer and inner classes and
+      // sub-classes of each, so handle these out of band because there is no
+      // clear relationship between this.name and outerName or innerInternalName
+      graphBuilder.classContains(outerName, innerInternalName);
+    }
   }
 
   @Override

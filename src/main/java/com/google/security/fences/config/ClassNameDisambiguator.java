@@ -150,8 +150,8 @@ final class ClassNameDisambiguator {
 
   private static boolean isContainedIn(ClassNode inner, ApiElement outer) {
     Optional<String> outerClass = inner.outerClass;
-    if (outer.type == ApiElementType.PACKAGE && !inner.outerClass.isPresent()) {
-      return true;
+    if (outer.type == ApiElementType.PACKAGE) {
+      return !outerClass.isPresent();
     }
     if (outerClass.isPresent()) {
       return outer.toInternalName().equals(outerClass.get());
