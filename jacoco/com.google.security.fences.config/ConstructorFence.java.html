@@ -2,42 +2,43 @@
 
 import com.google.common.base.Preconditions;
 import com.google.common.collect.ImmutableList;
+import com.google.security.fences.inheritance.InheritanceGraph;
 import com.google.security.fences.policy.ApiElement;
 import com.google.security.fences.policy.ApiElementType;
 
 /** A fence for a class's constructors. */
-<span class="nc" id="L9">public final class ConstructorFence extends Fence {</span>
+<span class="nc" id="L10">public final class ConstructorFence extends Fence {</span>
 
   @Override
   String getKey() {
-<span class="nc" id="L13">    return ApiElement.CONSTRUCTOR_SPECIAL_METHOD_NAME;</span>
+<span class="nc" id="L14">    return ApiElement.CONSTRUCTOR_SPECIAL_METHOD_NAME;</span>
   }
 
   @Override
   void visit(FenceVisitor v, ApiElement el) {
-<span class="nc" id="L18">    v.visit(this, el.child(</span>
+<span class="nc" id="L19">    v.visit(this, el.child(</span>
         ApiElement.CONSTRUCTOR_SPECIAL_METHOD_NAME,
         ApiElementType.CONSTRUCTOR));
-<span class="nc" id="L21">  }</span>
+<span class="nc" id="L22">  }</span>
 
   @Override
-  public Fence splitDottedNames() {
-<span class="nc" id="L25">    return this;</span>
+  public Fence splitDottedNames(ApiElement parentEl, InheritanceGraph g) {
+<span class="nc" id="L26">    return this;</span>
   }
 
   @Override
   public Iterable&lt;Fence&gt; getChildFences() {
-<span class="nc" id="L30">    return ImmutableList.of();</span>
+<span class="nc" id="L31">    return ImmutableList.of();</span>
   }
 
   @Override
   void replaceChildFences(Iterable&lt;? extends Fence&gt; newChildren) {
-<span class="nc bnc" id="L35" title="All 2 branches missed.">    Preconditions.checkArgument(!newChildren.iterator().hasNext());</span>
-<span class="nc" id="L36">  }</span>
+<span class="nc bnc" id="L36" title="All 2 branches missed.">    Preconditions.checkArgument(!newChildren.iterator().hasNext());</span>
+<span class="nc" id="L37">  }</span>
 
   @Override
   String getConfigurationElementName() {
-<span class="nc" id="L40">    return &quot;constructor&quot;;</span>
+<span class="nc" id="L41">    return &quot;constructor&quot;;</span>
   }
 }
 </pre><div class="footer"><span class="right">Created with <a href="http://www.eclemma.org/jacoco">JaCoCo</a> 0.7.5.201505241946</span></div></body></html>

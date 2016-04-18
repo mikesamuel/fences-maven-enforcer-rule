@@ -42,11 +42,11 @@ import com.google.common.base.Preconditions;
 
   @Override
   void fleshOutEffectiveConfiguration(Element el) {
-<span class="nc" id="L45">    Document doc = el.getOwnerDocument();</span>
-<span class="nc" id="L46">    Element nameElement = doc.createElement(&quot;name&quot;);</span>
-<span class="nc" id="L47">    nameElement.appendChild(doc.createTextNode(name));</span>
-<span class="nc" id="L48">    el.appendChild(nameElement);</span>
-<span class="nc" id="L49">    super.fleshOutEffectiveConfiguration(el);</span>
-<span class="nc" id="L50">  }</span>
+<span class="fc" id="L45">    Document doc = el.getOwnerDocument();</span>
+<span class="fc" id="L46">    Element nameElement = doc.createElement(&quot;name&quot;);</span>
+<span class="fc" id="L47">    nameElement.appendChild(doc.createTextNode(name));</span>
+<span class="fc" id="L48">    el.appendChild(nameElement);</span>
+<span class="fc" id="L49">    super.fleshOutEffectiveConfiguration(el);</span>
+<span class="fc" id="L50">  }</span>
 }
 </pre><div class="footer"><span class="right">Created with <a href="http://www.eclemma.org/jacoco">JaCoCo</a> 0.7.5.201505241946</span></div></body></html>

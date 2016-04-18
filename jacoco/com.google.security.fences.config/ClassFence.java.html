@@ -2,133 +2,163 @@
 
 import java.util.List;
 
+import org.apache.maven.enforcer.rule.api.EnforcerRuleException;
+
+import com.google.common.base.Optional;
 import com.google.common.base.Preconditions;
 import com.google.common.collect.ImmutableList;
 import com.google.common.collect.Lists;
+import com.google.security.fences.inheritance.InheritanceGraph;
 import com.google.security.fences.policy.ApiElement;
 import com.google.security.fences.policy.ApiElementType;
 
 /** A fence for a class. */
-<span class="pc bpc" id="L12" title="1 of 2 branches missed.">public final class ClassFence extends NamedFence {</span>
-<span class="fc" id="L13">  private final List&lt;ClassFence&gt; classes = Lists.newArrayList();</span>
-<span class="fc" id="L14">  private final List&lt;ConstructorFence&gt; constructors = Lists.newArrayList();</span>
-<span class="fc" id="L15">  private final List&lt;MethodFence&gt; methods = Lists.newArrayList();</span>
-<span class="fc" id="L16">  private final List&lt;FieldFence&gt; fields = Lists.newArrayList();</span>
+<span class="fc" id="L16">public final class ClassFence extends NamedFence {</span>
+<span class="fc" id="L17">  private final List&lt;ClassFence&gt; classes = Lists.newArrayList();</span>
+<span class="fc" id="L18">  private final List&lt;ConstructorFence&gt; constructors = Lists.newArrayList();</span>
+<span class="fc" id="L19">  private final List&lt;MethodFence&gt; methods = Lists.newArrayList();</span>
+<span class="fc" id="L20">  private final List&lt;FieldFence&gt; fields = Lists.newArrayList();</span>
 
   /**
    * A setter called by reflection during rule configuration.  Actually adds
    * instead of blowing away prior value.
    */
   public void setClass(ClassFence x) {
-<span class="nc" id="L23">    classes.add(Preconditions.checkNotNull(x));</span>
-<span class="nc" id="L24">  }</span>
+<span class="fc" id="L27">    classes.add(Preconditions.checkNotNull(x));</span>
+<span class="fc" id="L28">  }</span>
 
   /**
    * A setter called by reflection during rule configuration.  Actually adds
    * instead of blowing away prior value.
    */
   public void setConstructor(ConstructorFence x) {
-<span class="nc" id="L31">    constructors.add(Preconditions.checkNotNull(x));</span>
-<span class="nc" id="L32">  }</span>
+<span class="nc" id="L35">    constructors.add(Preconditions.checkNotNull(x));</span>
+<span class="nc" id="L36">  }</span>
 
   /**
    * A setter called by reflection during rule configuration.  Actually adds
    * instead of blowing away prior value.
    */
   public void setMethod(MethodFence x) {
-<span class="nc" id="L39">    methods.add(Preconditions.checkNotNull(x));</span>
-<span class="nc" id="L40">  }</span>
+<span class="nc" id="L43">    methods.add(Preconditions.checkNotNull(x));</span>
+<span class="nc" id="L44">  }</span>
 
   /**
    * A setter called by reflection during rule configuration.  Actually adds
    * instead of blowing away prior value.
    */
   public void setField(FieldFence x) {
-<span class="fc" id="L47">    fields.add(Preconditions.checkNotNull(x));</span>
-<span class="fc" id="L48">  }</span>
+<span class="fc" id="L51">    fields.add(Preconditions.checkNotNull(x));</span>
+<span class="fc" id="L52">  }</span>
 
   @Override
   public Iterable&lt;Fence&gt; getChildFences() {
-<span class="fc" id="L52">    return ImmutableList.&lt;Fence&gt;builder()</span>
-<span class="fc" id="L53">        .addAll(classes)</span>
-<span class="fc" id="L54">        .addAll(constructors)</span>
-<span class="fc" id="L55">        .addAll(methods)</span>
-<span class="fc" id="L56">        .addAll(fields)</span>
-<span class="fc" id="L57">        .build();</span>
+<span class="fc" id="L56">    return ImmutableList.&lt;Fence&gt;builder()</span>
+<span class="fc" id="L57">        .addAll(classes)</span>
+<span class="fc" id="L58">        .addAll(constructors)</span>
+<span class="fc" id="L59">        .addAll(methods)</span>
+<span class="fc" id="L60">        .addAll(fields)</span>
+<span class="fc" id="L61">        .build();</span>
   }
 
   @Override
   void visit(FenceVisitor v, ApiElement el) {
-<span class="fc" id="L62">    String name = getName();</span>
-<span class="fc" id="L63">    ApiElement classEl = el.child(name, ApiElementType.CLASS);</span>
-<span class="fc" id="L64">    v.visit(this, classEl);</span>
-<span class="fc bfc" id="L65" title="All 2 branches covered.">    for (Fence child : getChildFences()) {</span>
-<span class="fc" id="L66">      child.visit(v, classEl);</span>
-<span class="fc" id="L67">    }</span>
-<span class="fc" id="L68">  }</span>
+<span class="fc" id="L66">    String name = getName();</span>
+<span class="fc" id="L67">    ApiElement classEl = el.child(name, ApiElementType.CLASS);</span>
+<span class="fc" id="L68">    v.visit(this, classEl);</span>
+<span class="fc bfc" id="L69" title="All 2 branches covered.">    for (Fence child : getChildFences()) {</span>
+<span class="fc" id="L70">      child.visit(v, classEl);</span>
+<span class="fc" id="L71">    }</span>
+<span class="fc" id="L72">  }</span>
 
   @Override
   void replaceChildFences(Iterable&lt;? extends Fence&gt; newChildren) {
-<span class="nc" id="L72">    this.classes.clear();</span>
-<span class="nc" id="L73">    this.constructors.clear();</span>
-<span class="nc" id="L74">    this.methods.clear();</span>
-<span class="nc" id="L75">    this.fields.clear();</span>
+<span class="fc" id="L76">    this.classes.clear();</span>
+<span class="fc" id="L77">    this.constructors.clear();</span>
+<span class="fc" id="L78">    this.methods.clear();</span>
+<span class="fc" id="L79">    this.fields.clear();</span>
 
-<span class="nc bnc" id="L77" title="All 2 branches missed.">    for (Fence splitChild : newChildren) {</span>
-<span class="nc bnc" id="L78" title="All 2 branches missed.">      if (splitChild instanceof ClassFence) {</span>
-<span class="nc" id="L79">        classes.add((ClassFence) splitChild);</span>
-<span class="nc bnc" id="L80" title="All 2 branches missed.">      } else if (splitChild instanceof ConstructorFence) {</span>
-<span class="nc" id="L81">        constructors.add((ConstructorFence) splitChild);</span>
-<span class="nc bnc" id="L82" title="All 2 branches missed.">      } else if (splitChild instanceof MethodFence) {</span>
-<span class="nc" id="L83">        methods.add((MethodFence) splitChild);</span>
-<span class="nc bnc" id="L84" title="All 2 branches missed.">      } else if (splitChild instanceof FieldFence) {</span>
-<span class="nc" id="L85">        fields.add((FieldFence) splitChild);</span>
+<span class="pc bpc" id="L81" title="1 of 2 branches missed.">    for (Fence newChild : newChildren) {</span>
+<span class="nc bnc" id="L82" title="All 2 branches missed.">      if (newChild instanceof ClassFence) {</span>
+<span class="nc" id="L83">        classes.add((ClassFence) newChild);</span>
+<span class="nc bnc" id="L84" title="All 2 branches missed.">      } else if (newChild instanceof ConstructorFence) {</span>
+<span class="nc" id="L85">        constructors.add((ConstructorFence) newChild);</span>
+<span class="nc bnc" id="L86" title="All 2 branches missed.">      } else if (newChild instanceof MethodFence) {</span>
+<span class="nc" id="L87">        methods.add((MethodFence) newChild);</span>
+<span class="nc bnc" id="L88" title="All 2 branches missed.">      } else if (newChild instanceof FieldFence) {</span>
+<span class="nc" id="L89">        fields.add((FieldFence) newChild);</span>
       } else {
-<span class="nc" id="L87">        throw new IllegalArgumentException(splitChild.getClass().getName());</span>
+<span class="nc" id="L91">        throw new IllegalArgumentException(newChild.getClass().getName());</span>
       }
-<span class="nc" id="L89">    }</span>
-<span class="nc" id="L90">  }</span>
+<span class="nc" id="L93">    }</span>
+<span class="fc" id="L94">  }</span>
 
   @Override
-  public Fence splitDottedNames() {
-<span class="nc" id="L94">    ImmutableList.Builder&lt;Fence&gt; splitChildren = ImmutableList.builder();</span>
-<span class="nc bnc" id="L95" title="All 2 branches missed.">    for (Fence unsplitChild : getChildFences()) {</span>
-<span class="nc" id="L96">      splitChildren.add(unsplitChild.splitDottedNames());</span>
-<span class="nc" id="L97">    }</span>
-<span class="nc" id="L98">    replaceChildFences(splitChildren.build());</span>
+  public Fence splitDottedNames(ApiElement parentEl, InheritanceGraph g)
+  throws EnforcerRuleException {
+<span class="fc" id="L99">    String partiallyQualifiedName = Preconditions.checkNotNull(getName());</span>
+<span class="fc" id="L100">    ClassNameDisambiguator dis = new ClassNameDisambiguator(</span>
+        g, partiallyQualifiedName);
 
-<span class="nc" id="L100">    String[] nameParts = this.getName().split(&quot;[.]&quot;);</span>
-<span class="nc bnc" id="L101" title="All 2 branches missed.">    if (nameParts.length == 1) {</span>
-<span class="nc" id="L102">      return this;</span>
-    } else {
-<span class="nc bnc" id="L104" title="All 4 branches missed.">      assert nameParts.length &gt;= 2;</span>
-<span class="nc" id="L105">      int i = nameParts.length - 1;</span>
-<span class="nc" id="L106">      setName(nameParts[i]);</span>
-<span class="nc" id="L107">      Fence f = this;</span>
-<span class="nc bnc" id="L108" title="All 2 branches missed.">      while (--i &gt;= 0) {</span>
-<span class="nc" id="L109">        PackageFence pkgFence = new PackageFence();</span>
-<span class="nc" id="L110">        pkgFence.setName(nameParts[i]);</span>
-<span class="nc bnc" id="L111" title="All 2 branches missed.">        if (f instanceof ClassFence) {</span>
-<span class="nc" id="L112">          pkgFence.setClass((ClassFence) f);</span>
-        } else {
-<span class="nc" id="L114">          pkgFence.setPackage((PackageFence) f);</span>
-        }
-<span class="nc" id="L116">        f = pkgFence;</span>
-<span class="nc" id="L117">      }</span>
-<span class="nc" id="L118">      return f;</span>
+<span class="fc" id="L103">    Optional&lt;ApiElement&gt; unambiguous = dis.resolve(parentEl);</span>
+<span class="pc bpc" id="L104" title="1 of 2 branches missed.">    if (!unambiguous.isPresent()) {</span>
+<span class="nc" id="L105">      throw new EnforcerRuleException(</span>
+          &quot;Cannot find a class on the class path corresponding to `&quot;
+          + partiallyQualifiedName
+<span class="nc" id="L108">          + &quot;` in `&quot; + parentEl.toInternalName());</span>
     }
+
+<span class="fc" id="L111">    ApiElement el = unambiguous.get();</span>
+<span class="pc bpc" id="L112" title="1 of 2 branches missed.">    Preconditions.checkState(el.type == ApiElementType.CLASS, el);</span>
+
+<span class="fc" id="L114">    ImmutableList.Builder&lt;Fence&gt; splitChildren = ImmutableList.builder();</span>
+<span class="pc bpc" id="L115" title="1 of 2 branches missed.">    for (Fence unsplitChild : getChildFences()) {</span>
+<span class="nc" id="L116">      splitChildren.add(unsplitChild.splitDottedNames(el, g));</span>
+<span class="nc" id="L117">    }</span>
+<span class="fc" id="L118">    replaceChildFences(splitChildren.build());</span>
+
+<span class="fc" id="L120">    setName(el.name);</span>
+<span class="fc" id="L121">    Fence f = this;</span>
+
+<span class="fc" id="L123">    for (ApiElement anc = el.parent.get();</span>
+<span class="fc bfc" id="L124" title="All 2 branches covered.">         !anc.equals(parentEl);</span>
+<span class="fc" id="L125">         anc = anc.parent.get()) {</span>
+<span class="fc" id="L126">      String partName = anc.name;</span>
+<span class="pc bpc" id="L127" title="1 of 3 branches missed.">      switch (anc.type) {</span>
+        case CLASS:
+<span class="fc" id="L129">          ClassFence classFence = new ClassFence();</span>
+<span class="fc" id="L130">          classFence.setName(partName);</span>
+<span class="fc" id="L131">          classFence.setClass((ClassFence) f);</span>
+<span class="fc" id="L132">          f = classFence;</span>
+<span class="fc" id="L133">          continue;</span>
+        case PACKAGE:
+<span class="fc" id="L135">          PackageFence pkgFence = new PackageFence();</span>
+<span class="fc" id="L136">          pkgFence.setName(partName);</span>
+<span class="fc bfc" id="L137" title="All 2 branches covered.">          if (f instanceof ClassFence) {</span>
+<span class="fc" id="L138">            pkgFence.setClass((ClassFence) f);</span>
+          } else {
+<span class="fc" id="L140">            pkgFence.setPackage((PackageFence) f);</span>
+          }
+<span class="fc" id="L142">          f = pkgFence;</span>
+<span class="fc" id="L143">          continue;</span>
+        case METHOD: case FIELD: case CONSTRUCTOR:
+          break;
+      }
+<span class="nc" id="L147">      throw new AssertionError(anc.type);</span>
+    }
+<span class="fc" id="L149">    return f;</span>
   }
 
   @Override
   String getConfigurationElementName() {
-<span class="nc" id="L124">    return &quot;class&quot;;</span>
+<span class="fc" id="L154">    return &quot;class&quot;;</span>
   }
 
   @Override
   public ApiFence promoteToApi() {
-<span class="nc" id="L129">    ApiFence api = new ApiFence();</span>
-<span class="nc" id="L130">    api.setClass(this);</span>
-<span class="nc" id="L131">    return api;</span>
+<span class="nc" id="L159">    ApiFence api = new ApiFence();</span>
+<span class="nc" id="L160">    api.setClass(this);</span>
+<span class="nc" id="L161">    return api;</span>
   }
 }
 </pre><div class="footer"><span class="right">Created with <a href="http://www.eclemma.org/jacoco">JaCoCo</a> 0.7.5.201505241946</span></div></body></html>

@@ -27,6 +27,7 @@ import com.google.security.fences.config.ClassFence;
 import com.google.security.fences.config.Fence;
 import com.google.security.fences.config.PackageFence;
 import com.google.security.fences.inheritance.InheritanceGraph;
+import com.google.security.fences.policy.ApiElement;
 import com.google.security.fences.policy.Policy;
 import com.google.security.fences.util.LazyString;
 import com.google.security.fences.util.Utils;
@@ -49,49 +50,49 @@ import javax.xml.transform.stream.StreamResult;
  * Augments Java access control by verifying that a project and its dependencies
  * don't statically violate a policy.
  */
-<span class="nc" id="L52">public final class FencesMavenEnforcerRule implements EnforcerRule {</span>
+<span class="nc" id="L53">public final class FencesMavenEnforcerRule implements EnforcerRule {</span>
 
-<span class="nc" id="L54">  private final List&lt;Fence&gt; fences = Lists.newArrayList();</span>
-<span class="nc" id="L55">  private final LinkedList&lt;ConfigurationImport&gt; imports = Lists.newLinkedList();</span>
-<span class="nc" id="L56">  private final Set&lt;ConfigurationImport.PartialArtifactKey&gt; alreadyImported =</span>
-<span class="nc" id="L57">      Sets.newLinkedHashSet();</span>
+<span class="nc" id="L55">  private final List&lt;Fence&gt; fences = Lists.newArrayList();</span>
+<span class="nc" id="L56">  private final LinkedList&lt;ConfigurationImport&gt; imports = Lists.newLinkedList();</span>
+<span class="nc" id="L57">  private final Set&lt;ConfigurationImport.PartialArtifactKey&gt; alreadyImported =</span>
+<span class="nc" id="L58">      Sets.newLinkedHashSet();</span>
 
   private void addFence(Fence f) throws EnforcerRuleException {
-<span class="nc" id="L60">    f.check();</span>
-<span class="nc" id="L61">    fences.add(f.splitDottedNames());</span>
-<span class="nc" id="L62">  }</span>
+<span class="nc" id="L61">    f.check();</span>
+<span class="nc" id="L62">    fences.add(f);</span>
+<span class="nc" id="L63">  }</span>
 
   /**
    * A setter called by reflection during configuration.  Actually adds
    * instead of blowing away prior value.
    */
   public void setApi(ApiFence x) throws EnforcerRuleException {
-<span class="nc" id="L69">    addFence(x);</span>
-<span class="nc" id="L70">  }</span>
+<span class="nc" id="L70">    addFence(x);</span>
+<span class="nc" id="L71">  }</span>
 
   /**
    * A setter called by reflection during configuration.  Actually adds
    * instead of blowing away prior value.
    */
   public void setPackage(PackageFence x) throws EnforcerRuleException {
-<span class="nc" id="L77">    addFence(x);</span>
-<span class="nc" id="L78">  }</span>
+<span class="nc" id="L78">    addFence(x);</span>
+<span class="nc" id="L79">  }</span>
 
   /**
    * A setter called by reflection during configuration.  Actually adds
    * instead of blowing away prior value.
    */
   public void setClass(ClassFence x) throws EnforcerRuleException {
-<span class="nc" id="L85">    addFence(x);</span>
-<span class="nc" id="L86">  }</span>
+<span class="nc" id="L86">    addFence(x);</span>
+<span class="nc" id="L87">  }</span>
 
   /**
    * A setter called by reflection during configuration.  Actually adds
    * instead of blowing away prior value.
    */
   public void setImport(String x) throws EnforcerRuleException {
-<span class="nc" id="L93">    imports.add(new ConfigurationImport(x));</span>
-<span class="nc" id="L94">  }</span>
+<span class="nc" id="L94">    imports.add(new ConfigurationImport(x));</span>
+<span class="nc" id="L95">  }</span>
 
   /**
    * A setter called by reflection during configuration.  Actually adds
@@ -99,13 +100,13 @@ import javax.xml.transform.stream.StreamResult;
    * value.
    */
   public void setAddendum(String x) throws EnforcerRuleException {
-<span class="nc" id="L102">    Fence api = new ApiFence();</span>
-<span class="nc" id="L103">    api.setAddendum(x);</span>
-<span class="nc" id="L104">    fences.add(api);</span>
-<span class="nc" id="L105">  }</span>
+<span class="nc" id="L103">    Fence api = new ApiFence();</span>
+<span class="nc" id="L104">    api.setAddendum(x);</span>
+<span class="nc" id="L105">    fences.add(api);</span>
+<span class="nc" id="L106">  }</span>
 
   public void execute(EnforcerRuleHelper helper) throws EnforcerRuleException {
-<span class="nc" id="L108">    final Log log = helper.getLog();</span>
+<span class="nc" id="L109">    final Log log = helper.getLog();</span>
 
     // TODO: maybe check MavenSession.getGoals() to see if this is being
     // run at phase &quot;validate&quot; instead of phase &quot;verify&quot; to warn of a
@@ -115,9 +116,9 @@ import javax.xml.transform.stream.StreamResult;
     DependencyTreeBuilder treeBuilder;
     ComponentConfigurator configurator;
     try {
-<span class="nc" id="L118">      resolver = (ArtifactResolver) helper.getComponent(ArtifactResolver.class);</span>
-<span class="nc" id="L119">      treeBuilder = (DependencyTreeBuilder)</span>
-<span class="nc" id="L120">          helper.getComponent(DependencyTreeBuilder.class);</span>
+<span class="nc" id="L119">      resolver = (ArtifactResolver) helper.getComponent(ArtifactResolver.class);</span>
+<span class="nc" id="L120">      treeBuilder = (DependencyTreeBuilder)</span>
+<span class="nc" id="L121">          helper.getComponent(DependencyTreeBuilder.class);</span>
 
       // This seems &quot;the right way&quot; since plexus is supposed to inject
       // dependencies, but when run without -X to turn on debugging,
@@ -127,68 +128,79 @@ import javax.xml.transform.stream.StreamResult;
       // explains the symptoms.
       //  configurator = (ComponentConfigurator) helper.getComponent(
       //      ComponentConfigurator.class);
-<span class="nc" id="L130">      configurator = new BasicComponentConfigurator();</span>
-<span class="nc" id="L131">    } catch (ComponentLookupException ex) {</span>
-<span class="nc" id="L132">      throw new EnforcerRuleException(</span>
-<span class="nc" id="L133">          &quot;Failed to locate component: &quot; + ex.getLocalizedMessage(), ex);</span>
-<span class="nc" id="L134">    }</span>
+<span class="nc" id="L131">      configurator = new BasicComponentConfigurator();</span>
+<span class="nc" id="L132">    } catch (ComponentLookupException ex) {</span>
+<span class="nc" id="L133">      throw new EnforcerRuleException(</span>
+<span class="nc" id="L134">          &quot;Failed to locate component: &quot; + ex.getLocalizedMessage(), ex);</span>
+<span class="nc" id="L135">    }</span>
 
     MavenProject project;
     ArtifactRepository localRepository;
     List&lt;ArtifactRepository&gt; remoteRepositories;
     try {
-<span class="nc" id="L140">      project = (MavenProject) helper.evaluate(&quot;${project}&quot;);</span>
-<span class="nc" id="L141">      localRepository = (ArtifactRepository)</span>
-<span class="nc" id="L142">          helper.evaluate(&quot;${localRepository}&quot;);</span>
+<span class="nc" id="L141">      project = (MavenProject) helper.evaluate(&quot;${project}&quot;);</span>
+<span class="nc" id="L142">      localRepository = (ArtifactRepository)</span>
+<span class="nc" id="L143">          helper.evaluate(&quot;${localRepository}&quot;);</span>
       @SuppressWarnings(&quot;unchecked&quot;)
-<span class="nc" id="L144">      List&lt;ArtifactRepository&gt; rr = (List&lt;ArtifactRepository&gt;)</span>
-<span class="nc" id="L145">          helper.evaluate(&quot;${project.remoteArtifactRepositories}&quot;);</span>
-<span class="nc" id="L146">      remoteRepositories = rr;</span>
-<span class="nc" id="L147">    } catch (ExpressionEvaluationException ex) {</span>
-<span class="nc" id="L148">      throw new EnforcerRuleException(</span>
-<span class="nc" id="L149">          &quot;Failed to locate component: &quot; + ex.getLocalizedMessage(), ex);</span>
-<span class="nc" id="L150">    }</span>
+<span class="nc" id="L145">      List&lt;ArtifactRepository&gt; rr = (List&lt;ArtifactRepository&gt;)</span>
+<span class="nc" id="L146">          helper.evaluate(&quot;${project.remoteArtifactRepositories}&quot;);</span>
+<span class="nc" id="L147">      remoteRepositories = rr;</span>
+<span class="nc" id="L148">    } catch (ExpressionEvaluationException ex) {</span>
+<span class="nc" id="L149">      throw new EnforcerRuleException(</span>
+<span class="nc" id="L150">          &quot;Failed to locate component: &quot; + ex.getLocalizedMessage(), ex);</span>
+<span class="nc" id="L151">    }</span>
 
-<span class="nc" id="L152">    ArtifactFinder finder = new ArtifactFinder(</span>
+<span class="nc" id="L153">    ArtifactFinder finder = new ArtifactFinder(</span>
         resolver, treeBuilder, localRepository, remoteRepositories, log);
 
     try {
-<span class="nc" id="L156">      finder.findClassRoots(project);</span>
-<span class="nc" id="L157">    } catch (DependencyTreeBuilderException ex) {</span>
-<span class="nc" id="L158">      throw new EnforcerRuleException(&quot;Failed to find artifacts&quot;, ex);</span>
-<span class="nc" id="L159">    } catch (ArtifactResolutionException ex) {</span>
-<span class="nc" id="L160">      throw new EnforcerRuleException(&quot;Failed to find artifacts&quot;, ex);</span>
-<span class="nc" id="L161">    } catch (ArtifactNotFoundException ex) {</span>
-<span class="nc" id="L162">      throw new EnforcerRuleException(&quot;Failed to find artifacts&quot;, ex);</span>
-<span class="nc" id="L163">    }</span>
+<span class="nc" id="L157">      finder.findClassRoots(project);</span>
+<span class="nc" id="L158">    } catch (DependencyTreeBuilderException ex) {</span>
+<span class="nc" id="L159">      throw new EnforcerRuleException(&quot;Failed to find artifacts&quot;, ex);</span>
+<span class="nc" id="L160">    } catch (ArtifactResolutionException ex) {</span>
+<span class="nc" id="L161">      throw new EnforcerRuleException(&quot;Failed to find artifacts&quot;, ex);</span>
+<span class="nc" id="L162">    } catch (ArtifactNotFoundException ex) {</span>
+<span class="nc" id="L163">      throw new EnforcerRuleException(&quot;Failed to find artifacts&quot;, ex);</span>
+<span class="nc" id="L164">    }</span>
 
-<span class="nc" id="L165">    ImmutableList&lt;ClassRoot&gt; classRoots = finder.getClassRoots();</span>
+<span class="nc" id="L166">    ImmutableList&lt;ClassRoot&gt; classRoots = finder.getClassRoots();</span>
 
-<span class="nc" id="L167">    int nAssignedImportOrder = 0;</span>
-<span class="nc" id="L168">    int importOrder = 0;</span>
+    InheritanceGraph inheritanceGraph;
+    try {
+<span class="nc" id="L170">      inheritanceGraph = InheritanceGraphExtractor</span>
+<span class="nc" id="L171">          .fromClassRoots(classRoots);</span>
+<span class="nc" id="L172">    } catch (IOException ex) {</span>
+<span class="nc" id="L173">      throw new EnforcerRuleException(</span>
+          &quot;Failed to read classes to find inheritance relationships&quot;,
+          ex);
+<span class="nc" id="L176">    }</span>
+
+<span class="nc" id="L178">    int nAssignedImportOrder = 0;</span>
+<span class="nc" id="L179">    int importOrder = 0;</span>
     // Do the imports.
     // Since an import might load a configuration that adds more imports, we
     // just walk the list destructively.
-<span class="nc bnc" id="L172" title="All 2 branches missed.">    for (; !imports.isEmpty(); ++importOrder) {</span>
-<span class="nc" id="L173">      nAssignedImportOrder = rerootAndAssignImportOrder(</span>
-          nAssignedImportOrder, importOrder);
-<span class="nc" id="L175">      ConfigurationImport imp = imports.removeFirst();</span>
-<span class="nc bnc" id="L176" title="All 2 branches missed.">      if (alreadyImported.add(imp.key)) {</span>
-<span class="nc" id="L177">        log.debug(&quot;Importing &quot; + imp.key);</span>
-<span class="nc" id="L178">        imp.configure(</span>
+<span class="nc bnc" id="L183" title="All 2 branches missed.">    for (; !imports.isEmpty(); ++importOrder) {</span>
+<span class="nc" id="L184">      nAssignedImportOrder = rerootAndAssignImportOrder(</span>
+          inheritanceGraph, nAssignedImportOrder, importOrder);
+<span class="nc" id="L186">      ConfigurationImport imp = imports.removeFirst();</span>
+<span class="nc bnc" id="L187" title="All 2 branches missed.">      if (alreadyImported.add(imp.key)) {</span>
+<span class="nc" id="L188">        log.debug(&quot;Importing &quot; + imp.key);</span>
+<span class="nc" id="L189">        imp.configure(</span>
             this, configurator,
-<span class="nc" id="L180">            new ConfigurationImport.ClassRoots(classRoots.iterator()),</span>
+<span class="nc" id="L191">            new ConfigurationImport.ClassRoots(classRoots.iterator()),</span>
             log);
       } else {
-<span class="nc" id="L183">        log.info(&quot;Not importing &quot; + imp.key + &quot; a second time&quot;);</span>
+<span class="nc" id="L194">        log.info(&quot;Not importing &quot; + imp.key + &quot; a second time&quot;);</span>
       }
     }
-<span class="nc" id="L186">    rerootAndAssignImportOrder(nAssignedImportOrder, importOrder);</span>
+<span class="nc" id="L197">    rerootAndAssignImportOrder(</span>
+        inheritanceGraph, nAssignedImportOrder, importOrder);
 
-<span class="nc" id="L188">    ImmutableList&lt;Fence&gt; allFences = ImmutableList.copyOf(fences);</span>
+<span class="nc" id="L200">    ImmutableList&lt;Fence&gt; allFences = ImmutableList.copyOf(fences);</span>
 
-<span class="nc bnc" id="L190" title="All 2 branches missed.">    if (allFences.isEmpty()) {</span>
-<span class="nc" id="L191">      throw new EnforcerRuleException(</span>
+<span class="nc bnc" id="L202" title="All 2 branches missed.">    if (allFences.isEmpty()) {</span>
+<span class="nc" id="L203">      throw new EnforcerRuleException(</span>
           &quot;No fences.  Please configure this rule with a policy.&quot;
           + &quot;  See https://github.com/mikesamuel/&quot;
           + &quot;fences-maven-enforcer-rule/blob/master/src/site/markdown/usage.md&quot;
@@ -196,118 +208,111 @@ import javax.xml.transform.stream.StreamResult;
     }
 
     // Merge all the fences into one master.
-<span class="nc" id="L199">    final ApiFence mergedFence = new ApiFence();</span>
-<span class="nc bnc" id="L200" title="All 2 branches missed.">    for (Fence f : allFences) {</span>
-<span class="nc" id="L201">      mergedFence.mergeDeep(f);</span>
-<span class="nc" id="L202">    }</span>
+<span class="nc" id="L211">    final ApiFence mergedFence = new ApiFence();</span>
+<span class="nc bnc" id="L212" title="All 2 branches missed.">    for (Fence f : allFences) {</span>
+<span class="nc" id="L213">      mergedFence.mergeDeep(f);</span>
+<span class="nc" id="L214">    }</span>
 
     // Log the effective configuration
-<span class="nc" id="L205">    boolean showConfig = RelevantSystemProperties.shouldShowEffectiveConfig();</span>
-<span class="nc bnc" id="L206" title="All 4 branches missed.">    if (showConfig || log.isDebugEnabled()) {</span>
+<span class="nc" id="L217">    boolean showConfig = RelevantSystemProperties.shouldShowEffectiveConfig();</span>
+<span class="nc bnc" id="L218" title="All 4 branches missed.">    if (showConfig || log.isDebugEnabled()) {</span>
       try {
-<span class="nc" id="L208">        Element config = mergedFence.buildEffectiveConfiguration();</span>
-<span class="nc" id="L209">        TransformerFactory tf = TransformerFactory.newInstance();</span>
-<span class="nc" id="L210">        Transformer transformer = tf.newTransformer();</span>
-<span class="nc" id="L211">        transformer.setOutputProperty(OutputKeys.OMIT_XML_DECLARATION, &quot;yes&quot;);</span>
-<span class="nc" id="L212">        transformer.setOutputProperty(OutputKeys.METHOD, &quot;xml&quot;);</span>
-<span class="nc" id="L213">        transformer.setOutputProperty(OutputKeys.INDENT, &quot;yes&quot;);</span>
-<span class="nc" id="L214">        transformer.setOutputProperty(OutputKeys.ENCODING, &quot;UTF-8&quot;);</span>
-<span class="nc" id="L215">        transformer.setOutputProperty(</span>
+<span class="nc" id="L220">        Element config = mergedFence.buildEffectiveConfiguration();</span>
+<span class="nc" id="L221">        TransformerFactory tf = TransformerFactory.newInstance();</span>
+<span class="nc" id="L222">        Transformer transformer = tf.newTransformer();</span>
+<span class="nc" id="L223">        transformer.setOutputProperty(OutputKeys.OMIT_XML_DECLARATION, &quot;yes&quot;);</span>
+<span class="nc" id="L224">        transformer.setOutputProperty(OutputKeys.METHOD, &quot;xml&quot;);</span>
+<span class="nc" id="L225">        transformer.setOutputProperty(OutputKeys.INDENT, &quot;yes&quot;);</span>
+<span class="nc" id="L226">        transformer.setOutputProperty(OutputKeys.ENCODING, &quot;UTF-8&quot;);</span>
+<span class="nc" id="L227">        transformer.setOutputProperty(</span>
             &quot;{http://xml.apache.org/xslt}indent-amount&quot;, &quot;2&quot;);
 
-<span class="nc" id="L218">        StringWriter xmlOut = new StringWriter();</span>
-<span class="nc" id="L219">        xmlOut.write(&quot;Effective Fences Rule Configuration:\n&quot;);</span>
-<span class="nc" id="L220">        transformer.transform(</span>
+<span class="nc" id="L230">        StringWriter xmlOut = new StringWriter();</span>
+<span class="nc" id="L231">        xmlOut.write(&quot;Effective Fences Rule Configuration:\n&quot;);</span>
+<span class="nc" id="L232">        transformer.transform(</span>
             new DOMSource(config),
             new StreamResult(xmlOut));
-<span class="nc" id="L223">        String xml = xmlOut.toString();</span>
-<span class="nc bnc" id="L224" title="All 2 branches missed.">        if (showConfig) {</span>
-<span class="nc" id="L225">          log.info(xml);</span>
+<span class="nc" id="L235">        String xml = xmlOut.toString();</span>
+<span class="nc bnc" id="L236" title="All 2 branches missed.">        if (showConfig) {</span>
+<span class="nc" id="L237">          log.info(xml);</span>
         } else {
-<span class="nc" id="L227">          log.debug(xml);</span>
+<span class="nc" id="L239">          log.debug(xml);</span>
         }
-<span class="nc" id="L229">      } catch (ParserConfigurationException ex) {</span>
-<span class="nc" id="L230">        log.error(ex);</span>
-<span class="nc" id="L231">      } catch (TransformerException ex) {</span>
-<span class="nc" id="L232">        log.error(ex);</span>
-<span class="nc" id="L233">      }</span>
+<span class="nc" id="L241">      } catch (ParserConfigurationException ex) {</span>
+<span class="nc" id="L242">        log.error(ex);</span>
+<span class="nc" id="L243">      } catch (TransformerException ex) {</span>
+<span class="nc" id="L244">        log.error(ex);</span>
+<span class="nc" id="L245">      }</span>
     }
 
-<span class="nc" id="L236">    checkAllClasses(project, mergedFence, log, classRoots);</span>
-<span class="nc" id="L237">  }</span>
+<span class="nc" id="L248">    checkAllClasses(project, log, inheritanceGraph, mergedFence, classRoots);</span>
+<span class="nc" id="L249">  }</span>
 
-  private int rerootAndAssignImportOrder(int start, int importOrder) {
-<span class="nc" id="L240">    int end = fences.size();</span>
-<span class="nc bnc" id="L241" title="All 2 branches missed.">    for (int i = start; i &lt; end; ++i) {</span>
-<span class="nc" id="L242">      Fence f = fences.get(i);</span>
-<span class="nc" id="L243">      f = f.splitDottedNames().promoteToApi();</span>
-<span class="nc" id="L244">      f.assignImportOrder(importOrder);</span>
-<span class="nc" id="L245">      fences.set(i, f);</span>
+  private int rerootAndAssignImportOrder(
+      InheritanceGraph inheritanceGraph, int start, int importOrder)
+  throws EnforcerRuleException {
+<span class="nc" id="L254">    int end = fences.size();</span>
+<span class="nc bnc" id="L255" title="All 2 branches missed.">    for (int i = start; i &lt; end; ++i) {</span>
+<span class="nc" id="L256">      Fence f = fences.get(i);</span>
+<span class="nc" id="L257">      f = f.splitDottedNames(ApiElement.DEFAULT_PACKAGE, inheritanceGraph)</span>
+<span class="nc" id="L258">          .promoteToApi();</span>
+<span class="nc" id="L259">      f.assignImportOrder(importOrder);</span>
+<span class="nc" id="L260">      fences.set(i, f);</span>
     }
-<span class="nc" id="L247">    return end;</span>
+<span class="nc" id="L262">    return end;</span>
   }
 
   protected static void checkAllClasses(
-      MavenProject project, ApiFence mergedFence,
-      Log log, Iterable&lt;? extends ClassRoot&gt; classRoots)
+      MavenProject project, Log log, InheritanceGraph inheritanceGraph,
+      ApiFence mergedFence, Iterable&lt;? extends ClassRoot&gt; classRoots)
   throws EnforcerRuleException {
-    InheritanceGraph inheritanceGraph;
-    try {
-<span class="nc" id="L256">      inheritanceGraph = InheritanceGraphExtractor</span>
-<span class="nc" id="L257">          .fromClassRoots(classRoots);</span>
-<span class="nc" id="L258">    } catch (IOException ex) {</span>
-<span class="nc" id="L259">      throw new EnforcerRuleException(</span>
-          &quot;Failed to read classes to find inheritance relationships&quot;,
-          ex);
-<span class="nc" id="L262">    }</span>
-
-<span class="nc" id="L264">    final Policy p = Policy.fromFence(mergedFence);</span>
-<span class="nc" id="L265">    log.debug(new LazyString() {</span>
+<span class="nc" id="L269">    final Policy p = Policy.fromFence(mergedFence);</span>
+<span class="nc" id="L270">    log.debug(new LazyString() {</span>
       @Override
       protected String makeString() {
-<span class="nc" id="L268">        return &quot;Using policy\n&quot; + p.toString();</span>
+<span class="nc" id="L273">        return &quot;Using policy\n&quot; + p.toString();</span>
       }
     });
 
-<span class="nc" id="L272">    Checker checker = new Checker(log, inheritanceGraph, p);</span>
+<span class="nc" id="L277">    Checker checker = new Checker(log, inheritanceGraph, p);</span>
 
-<span class="nc bnc" id="L274" title="All 2 branches missed.">    for (ClassRoot classRoot : classRoots) {</span>
-<span class="nc" id="L275">      Artifact art = classRoot.art;</span>
-<span class="nc" id="L276">      log.info(&quot;Checking &quot; + art.getId() + &quot; from scope &quot; + art.getScope());</span>
+<span class="nc bnc" id="L279" title="All 2 branches missed.">    for (ClassRoot classRoot : classRoots) {</span>
+<span class="nc" id="L280">      Artifact art = classRoot.art;</span>
+<span class="nc" id="L281">      log.info(&quot;Checking &quot; + art.getId() + &quot; from scope &quot; + art.getScope());</span>
       try {
-<span class="nc" id="L278">        checker.visitAll(ImmutableList.of(classRoot));</span>
-<span class="nc" id="L279">      } catch (IOException ex) {</span>
-<span class="nc" id="L280">        throw new EnforcerRuleException(</span>
-<span class="nc" id="L281">            &quot;Failed to check &quot; + Utils.artToString(art), ex);</span>
-<span class="nc" id="L282">      }</span>
-<span class="nc" id="L283">    }</span>
+<span class="nc" id="L283">        checker.visitAll(ImmutableList.of(classRoot));</span>
+<span class="nc" id="L284">      } catch (IOException ex) {</span>
+<span class="nc" id="L285">        throw new EnforcerRuleException(</span>
+<span class="nc" id="L286">            &quot;Failed to check &quot; + Utils.artToString(art), ex);</span>
+<span class="nc" id="L287">      }</span>
+<span class="nc" id="L288">    }</span>
 
-<span class="nc" id="L285">    ImmutableList&lt;Violation&gt; violations = checker.getViolations();</span>
-<span class="nc" id="L286">    PolicyViolationReporter reporter = new PolicyViolationReporter(log);</span>
-<span class="nc" id="L287">    reporter.interpolator.addValueSource(</span>
-<span class="nc" id="L288">        new PropertiesBasedValueSource(project.getProperties()));</span>
-<span class="nc" id="L289">    int errorCount = reporter.report(violations);</span>
-<span class="nc bnc" id="L290" title="All 2 branches missed.">    if (errorCount != 0) {</span>
-<span class="nc bnc" id="L291" title="All 2 branches missed.">      String message = errorCount + &quot; access policy violation&quot;</span>
+<span class="nc" id="L290">    ImmutableList&lt;Violation&gt; violations = checker.getViolations();</span>
+<span class="nc" id="L291">    PolicyViolationReporter reporter = new PolicyViolationReporter(log);</span>
+<span class="nc" id="L292">    reporter.interpolator.addValueSource(</span>
+<span class="nc" id="L293">        new PropertiesBasedValueSource(project.getProperties()));</span>
+<span class="nc" id="L294">    int errorCount = reporter.report(violations);</span>
+<span class="nc bnc" id="L295" title="All 2 branches missed.">    if (errorCount != 0) {</span>
+<span class="nc bnc" id="L296" title="All 2 branches missed.">      String message = errorCount + &quot; access policy violation&quot;</span>
           + (errorCount == 1 ? &quot;&quot; : &quot;s&quot;);
-<span class="nc bnc" id="L293" title="All 2 branches missed.">      if (RelevantSystemProperties.inExperimentalMode()) {</span>
-<span class="nc" id="L294">        log.info(message + &quot; ignored in experimental mode&quot;);</span>
+<span class="nc bnc" id="L298" title="All 2 branches missed.">      if (RelevantSystemProperties.inExperimentalMode()) {</span>
+<span class="nc" id="L299">        log.info(message + &quot; ignored in experimental mode&quot;);</span>
       } else {
-<span class="nc" id="L296">        throw new EnforcerRuleException(message);</span>
+<span class="nc" id="L301">        throw new EnforcerRuleException(message);</span>
       }
     }
-<span class="nc" id="L299">  }</span>
+<span class="nc" id="L304">  }</span>
 
   public String getCacheId() {
-<span class="nc" id="L302">    return null;</span>
+<span class="nc" id="L307">    return null;</span>
   }
 
   public boolean isCacheable() {
-<span class="nc" id="L306">    return false;</span>
+<span class="nc" id="L311">    return false;</span>
   }
 
   public boolean isResultValid(EnforcerRule arg0) {
-<span class="nc" id="L310">    return false;</span>
+<span class="nc" id="L315">    return false;</span>
   }
 
 }

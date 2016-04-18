@@ -2,48 +2,50 @@
 
 import com.google.common.base.Preconditions;
 import com.google.common.collect.ImmutableList;
+import com.google.security.fences.inheritance.InheritanceGraph;
+import com.google.security.fences.policy.ApiElement;
 
-<span class="fc" id="L6">abstract class NamedLeafFence extends NamedFence {</span>
+<span class="fc" id="L8">abstract class NamedLeafFence extends NamedFence {</span>
   @Override
   public Iterable&lt;Fence&gt; getChildFences() {
-<span class="nc" id="L9">    return ImmutableList.of();</span>
+<span class="nc" id="L11">    return ImmutableList.of();</span>
   }
 
   @Override
   void replaceChildFences(Iterable&lt;? extends Fence&gt; newChildren) {
-<span class="nc bnc" id="L14" title="All 2 branches missed.">    Preconditions.checkArgument(!newChildren.iterator().hasNext());</span>
-<span class="nc" id="L15">  }</span>
+<span class="nc bnc" id="L16" title="All 2 branches missed.">    Preconditions.checkArgument(!newChildren.iterator().hasNext());</span>
+<span class="nc" id="L17">  }</span>
 
   protected abstract void addToClass(ClassFence container);
 
   @Override
-  public Fence splitDottedNames() {
-<span class="nc" id="L21">    String name = getName();</span>
-<span class="nc" id="L22">    String[] parts = name.split(&quot;[.]&quot;);</span>
-<span class="nc bnc" id="L23" title="All 2 branches missed.">    if (parts.length == 1) {</span>
-<span class="nc" id="L24">      return this;</span>
+  public Fence splitDottedNames(ApiElement parentEl, InheritanceGraph g) {
+<span class="nc" id="L23">    String name = getName();</span>
+<span class="nc" id="L24">    String[] parts = name.split(&quot;[.]&quot;);</span>
+<span class="nc bnc" id="L25" title="All 2 branches missed.">    if (parts.length == 1) {</span>
+<span class="nc" id="L26">      return this;</span>
     }
 
-<span class="nc" id="L27">    int i = parts.length - 1;</span>
-<span class="nc" id="L28">    this.setName(parts[i]);</span>
-<span class="nc" id="L29">    String className = parts[--i];</span>
-<span class="nc" id="L30">    ClassFence c = new ClassFence();</span>
-<span class="nc" id="L31">    c.setName(className);</span>
-<span class="nc" id="L32">    addToClass(c);</span>
+<span class="nc" id="L29">    int i = parts.length - 1;</span>
+<span class="nc" id="L30">    this.setName(parts[i]);</span>
+<span class="nc" id="L31">    String className = parts[--i];</span>
+<span class="nc" id="L32">    ClassFence c = new ClassFence();</span>
+<span class="nc" id="L33">    c.setName(className);</span>
+<span class="nc" id="L34">    addToClass(c);</span>
 
-<span class="nc" id="L34">    Fence f = c;</span>
-<span class="nc bnc" id="L35" title="All 2 branches missed.">    while (--i &gt;= 0) {</span>
-<span class="nc" id="L36">      String part = parts[i];</span>
-<span class="nc" id="L37">      PackageFence pkg = new PackageFence();</span>
-<span class="nc" id="L38">      pkg.setName(part);</span>
-<span class="nc bnc" id="L39" title="All 2 branches missed.">      if (f instanceof ClassFence) {</span>
-<span class="nc" id="L40">        pkg.setClass((ClassFence) f);</span>
+<span class="nc" id="L36">    Fence f = c;</span>
+<span class="nc bnc" id="L37" title="All 2 branches missed.">    while (--i &gt;= 0) {</span>
+<span class="nc" id="L38">      String part = parts[i];</span>
+<span class="nc" id="L39">      PackageFence pkg = new PackageFence();</span>
+<span class="nc" id="L40">      pkg.setName(part);</span>
+<span class="nc bnc" id="L41" title="All 2 branches missed.">      if (f instanceof ClassFence) {</span>
+<span class="nc" id="L42">        pkg.setClass((ClassFence) f);</span>
       } else {
-<span class="nc" id="L42">        pkg.setPackage((PackageFence) f);</span>
+<span class="nc" id="L44">        pkg.setPackage((PackageFence) f);</span>
       }
-<span class="nc" id="L44">      f = pkg;</span>
-<span class="nc" id="L45">    }</span>
-<span class="nc" id="L46">    return f;</span>
+<span class="nc" id="L46">      f = pkg;</span>
+<span class="nc" id="L47">    }</span>
+<span class="nc" id="L48">    return f;</span>
   }
 }
 </pre><div class="footer"><span class="right">Created with <a href="http://www.eclemma.org/jacoco">JaCoCo</a> 0.7.5.201505241946</span></div></body></html>

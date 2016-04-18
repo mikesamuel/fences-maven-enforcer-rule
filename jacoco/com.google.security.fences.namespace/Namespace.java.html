@@ -52,10 +52,10 @@ import com.google.common.base.Preconditions;
 
   @Override
   public boolean equals(Object o) {
-<span class="nc bnc" id="L55" title="All 2 branches missed.">    if (!(o instanceof Namespace)) { return false; }</span>
-<span class="nc" id="L56">    Namespace that = (Namespace) o;</span>
-<span class="nc bnc" id="L57" title="All 2 branches missed.">    return Objects.equal(name, that.name)</span>
-<span class="nc bnc" id="L58" title="All 2 branches missed.">        &amp;&amp; Objects.equal(parent, that.parent);</span>
+<span class="pc bpc" id="L55" title="1 of 2 branches missed.">    if (!(o instanceof Namespace)) { return false; }</span>
+<span class="fc" id="L56">    Namespace that = (Namespace) o;</span>
+<span class="fc bfc" id="L57" title="All 2 branches covered.">    return Objects.equal(name, that.name)</span>
+<span class="pc bpc" id="L58" title="1 of 2 branches missed.">        &amp;&amp; Objects.equal(parent, that.parent);</span>
   }
 
   @Override
@@ -65,26 +65,26 @@ import com.google.common.base.Preconditions;
 
   @Override
   public String toString() {
-<span class="nc" id="L68">    StringBuilder sb = new StringBuilder();</span>
-<span class="nc" id="L69">    toStringBuilder(sb);</span>
-<span class="nc" id="L70">    return sb.toString();</span>
+<span class="fc" id="L68">    StringBuilder sb = new StringBuilder();</span>
+<span class="fc" id="L69">    toStringBuilder(sb);</span>
+<span class="fc" id="L70">    return sb.toString();</span>
   }
 
   /**
    * appends a dotted path to sb.
    */
   public void toStringBuilder(StringBuilder sb) {
-<span class="nc bnc" id="L77" title="All 2 branches missed.">    if (parent != null) {</span>
-<span class="nc" id="L78">      int n = sb.length();</span>
-<span class="nc" id="L79">      parent.toStringBuilder(sb);</span>
-<span class="nc bnc" id="L80" title="All 2 branches missed.">      if (sb.length() != n) {</span>
-<span class="nc" id="L81">        sb.append('.');</span>
+<span class="fc bfc" id="L77" title="All 2 branches covered.">    if (parent != null) {</span>
+<span class="fc" id="L78">      int n = sb.length();</span>
+<span class="fc" id="L79">      parent.toStringBuilder(sb);</span>
+<span class="fc bfc" id="L80" title="All 2 branches covered.">      if (sb.length() != n) {</span>
+<span class="fc" id="L81">        sb.append('.');</span>
       }
-<span class="nc" id="L83">      sb.append(name);</span>
-<span class="nc" id="L84">    } else {</span>
-<span class="nc bnc" id="L85" title="All 4 branches missed.">      assert name == null;</span>
+<span class="fc" id="L83">      sb.append(name);</span>
+<span class="fc" id="L84">    } else {</span>
+<span class="pc bpc" id="L85" title="2 of 4 branches missed.">      assert name == null;</span>
     }
-<span class="nc" id="L87">  }</span>
+<span class="fc" id="L87">  }</span>
 
   /**
    * @param dottedString a package name or fully-qualified class name.

@@ -28,7 +28,7 @@ public final class InheritanceGraph {
    */
   public Optional&lt;ClassNode&gt; named(String name) {
 <span class="fc" id="L30">    ClassNode node = classNodes.get(name);</span>
-<span class="pc bpc" id="L31" title="1 of 4 branches missed.">    if (node == null &amp;&amp; !classNodes.containsKey(name)) {</span>
+<span class="fc bfc" id="L31" title="All 4 branches covered.">    if (node == null &amp;&amp; !classNodes.containsKey(name)) {</span>
 <span class="fc" id="L32">      classNodes.put(name, node = fallback.apply(name));</span>
     }
 <span class="fc" id="L34">    return Optional.fromNullable(node);</span>
@@ -47,44 +47,122 @@ public final class InheritanceGraph {
   public static final class Builder {
 <span class="fc" id="L48">    private final Map&lt;String, ClassNode&gt; classNodes = Maps.newLinkedHashMap();</span>
     private final Function&lt;String, ClassNode&gt; lazyLoadSystemClass;
+<span class="fc" id="L50">    private final Map&lt;String, String&gt; outers = Maps.newLinkedHashMap();</span>
 
-<span class="fc" id="L51">    Builder(final Function&lt;String, ClassNode&gt; lazyLoadSystemClass) {</span>
-<span class="fc" id="L52">      this.lazyLoadSystemClass = lazyLoadSystemClass;</span>
-<span class="fc" id="L53">    }</span>
+<span class="fc" id="L52">    Builder(final Function&lt;String, ClassNode&gt; lazyLoadSystemClass) {</span>
+<span class="fc" id="L53">      this.lazyLoadSystemClass = lazyLoadSystemClass;</span>
+<span class="fc" id="L54">    }</span>
 
     /**
      * Defines a relationship between name and its super-interfaces.
      */
-    public Builder declare(
-        String name, int access, Optional&lt;String&gt; superClassName,
-        Iterable&lt;? extends String&gt; interfaceNames,
-        Iterable&lt;? extends MethodDetails&gt; methods,
-        Iterable&lt;? extends FieldDetails&gt; fields) {
-<span class="fc" id="L63">      ClassNode node = classNodes.get(name);</span>
-<span class="pc bpc" id="L64" title="1 of 2 branches missed.">      if (node == null) {</span>
-<span class="fc" id="L65">        node = new ClassNode(</span>
-            name, access, superClassName, interfaceNames, methods, fields);
-<span class="fc" id="L67">        classNodes.put(name, node);</span>
-      }
-      // Otherwise assume that subsequent declarations are from masked
-      // class-files on the same class-path.
-<span class="fc" id="L71">      return this;</span>
+    public DeclarationBuilder declare(String name, int access) {
+<span class="fc" id="L60">      return new DeclarationBuilder(name, access);</span>
     }
 
     /** Single use builder.  State is cleared after call to build(). */
     public InheritanceGraph build() {
-<span class="fc" id="L76">      return new InheritanceGraph(classNodes, lazyLoadSystemClass);</span>
+<span class="fc" id="L65">      return new InheritanceGraph(classNodes, lazyLoadSystemClass);</span>
     }
+
+    void classContains(String outer, String inner) {
+<span class="fc" id="L69">      ClassNode innerNode = classNodes.get(inner);</span>
+<span class="fc bfc" id="L70" title="All 2 branches covered.">      if (innerNode != null) {</span>
+<span class="fc" id="L71">        innerNode = new ClassNode(</span>
+            innerNode.name, innerNode.access, innerNode.superType,
+<span class="fc" id="L73">            Optional.of(outer), innerNode.interfaces, innerNode.methods,</span>
+            innerNode.fields);
+<span class="fc" id="L75">        classNodes.put(inner, innerNode);</span>
+      } else {
+<span class="fc" id="L77">        outers.put(inner, outer);</span>
+      }
+<span class="fc" id="L79">    }</span>
+
+    /**
+     * Used to add additional details about a class.
+     */
+    public final class DeclarationBuilder {
+      private final String name;
+      private final int access;
+
+<span class="fc" id="L88">      private Optional&lt;String&gt; superClassName = Optional.of(&quot;java/lang/Object&quot;);</span>
+<span class="fc" id="L89">      private Optional&lt;String&gt; outerClassName = Optional.absent();</span>
+<span class="fc" id="L90">      private ImmutableList.Builder&lt;String&gt; interfaceNames =</span>
+<span class="fc" id="L91">          ImmutableList.builder();</span>
+<span class="fc" id="L92">      private ImmutableList.Builder&lt;MethodDetails&gt; methods =</span>
+<span class="fc" id="L93">          ImmutableList.builder();</span>
+<span class="fc" id="L94">      private ImmutableList.Builder&lt;FieldDetails&gt; fields =</span>
+<span class="fc" id="L95">          ImmutableList.builder();</span>
+
+<span class="fc" id="L97">      DeclarationBuilder(String name, int access) {</span>
+<span class="fc" id="L98">        this.name = name;</span>
+<span class="fc" id="L99">        this.access = access;</span>
+<span class="fc" id="L100">      }</span>
+
+      /** Sets the super-class name if any.  Null only for &quot;java/lang/Object&quot; */
+      public DeclarationBuilder superClassName(
+          Optional&lt;String&gt; newSuperClassName) {
+<span class="fc" id="L105">        this.superClassName = newSuperClassName;</span>
+<span class="fc" id="L106">        return this;</span>
+      }
+      /** Sets the outer-class name if any. */
+      public DeclarationBuilder outerClassName(
+          Optional&lt;String&gt; newOuterClassName) {
+<span class="fc" id="L111">        this.outerClassName = newOuterClassName;</span>
+<span class="fc" id="L112">        return this;</span>
+      }
+      /** Sets the interface list. */
+      public DeclarationBuilder interfaceNames(
+          Iterable&lt;? extends String&gt; newInterfaceNames) {
+<span class="fc" id="L117">        this.interfaceNames.addAll(newInterfaceNames);</span>
+<span class="fc" id="L118">        return this;</span>
+      }
+      /** Sets the list of declared methods. */
+      public DeclarationBuilder methods(
+          Iterable&lt;? extends MethodDetails&gt; newMethods) {
+<span class="fc" id="L123">        this.methods.addAll(newMethods);</span>
+<span class="fc" id="L124">        return this;</span>
+      }
+      /** Sets the list of declared fields. */
+      public DeclarationBuilder fields(
+          Iterable&lt;? extends FieldDetails&gt; newFields) {
+<span class="fc" id="L129">        this.fields.addAll(newFields);</span>
+<span class="fc" id="L130">        return this;</span>
+      }
+
+      /** Commit the built declaration into the parent builders map. */
+      public Builder commit() {
+        @SuppressWarnings(&quot;synthetic-access&quot;)
+<span class="fc" id="L136">        Map&lt;String, ClassNode&gt; classNodesMap = Builder.this.classNodes;</span>
+        @SuppressWarnings(&quot;synthetic-access&quot;)
+<span class="fc" id="L138">        Map&lt;String, String&gt; outersMap = Builder.this.outers;</span>
+<span class="fc" id="L139">        ClassNode node = classNodesMap.get(name);</span>
+<span class="pc bpc" id="L140" title="1 of 2 branches missed.">        if (node == null) {</span>
+<span class="fc" id="L141">          Optional&lt;String&gt; outer = outerClassName;</span>
+<span class="fc bfc" id="L142" title="All 2 branches covered.">          if (!outer.isPresent()) {</span>
+<span class="fc" id="L143">            outer = Optional.fromNullable(outersMap.remove(name));</span>
+          }
+<span class="fc" id="L145">          node = new ClassNode(</span>
+              name, access, superClassName, outer,
+<span class="fc" id="L147">              interfaceNames.build(), methods.build(), fields.build());</span>
+<span class="fc" id="L148">          classNodesMap.put(name, node);</span>
+        }
+        // Otherwise assume that subsequent declarations are from masked
+        // class-files on the same class-path.
+<span class="fc" id="L152">        return Builder.this;</span>
+      }
+    }
+
   }
 
   /** All the names of class declared, or lazily fetched. */
   public Iterable&lt;String&gt; allDeclaredNames() {
-<span class="nc" id="L82">    return ImmutableList.copyOf(classNodes.keySet());</span>
+<span class="nc" id="L160">    return ImmutableList.copyOf(classNodes.keySet());</span>
   }
 
   /** All the names of class declared, or lazily fetched. */
   public Iterable&lt;ClassNode&gt; allDeclaredNodes() {
-<span class="nc" id="L87">    return ImmutableList.copyOf(classNodes.values());</span>
+<span class="nc" id="L165">    return ImmutableList.copyOf(classNodes.values());</span>
   }
 }
 </pre><div class="footer"><span class="right">Created with <a href="http://www.eclemma.org/jacoco">JaCoCo</a> 0.7.5.201505241946</span></div></body></html>

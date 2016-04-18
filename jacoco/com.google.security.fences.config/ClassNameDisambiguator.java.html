@@ -1,0 +1,162 @@
+<?xml version="1.0" encoding="UTF-8"?><!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd"><html xmlns="http://www.w3.org/1999/xhtml" lang="en"><head><meta http-equiv="Content-Type" content="text/html;charset=UTF-8"/><link rel="stylesheet" href="../.resources/report.css" type="text/css"/><link rel="shortcut icon" href="../.resources/report.gif" type="image/gif"/><title>ClassNameDisambiguator.java</title><link rel="stylesheet" href="../.resources/prettify.css" type="text/css"/><script type="text/javascript" src="../.resources/prettify.js"></script></head><body onload="window['PR_TAB_WIDTH']=4;prettyPrint()"><div class="breadcrumb" id="breadcrumb"><span class="info"><a href="../.sessions.html" class="el_session">Sessions</a></span><a href="../index.html" class="el_report">Fences Enforcer Rule</a> &gt; <a href="index.source.html" class="el_package">com.google.security.fences.config</a> &gt; <span class="el_source">ClassNameDisambiguator.java</span></div><h1>ClassNameDisambiguator.java</h1><pre class="source lang-java linenums">package com.google.security.fences.config;
+
+import com.google.common.base.Optional;
+import com.google.security.fences.inheritance.ClassNode;
+import com.google.security.fences.inheritance.InheritanceGraph;
+import com.google.security.fences.policy.ApiElement;
+import com.google.security.fences.policy.ApiElementType;
+
+/**
+ * Resolves ambiguity between
+ * &lt;pre&gt;
+ * class Foo {
+ *   class Bar {
+ *     ...
+ *   }
+ * }&lt;/pre&gt;
+ * and
+ * &lt;pre&gt;
+ * class Foo$Bar { ... }
+ * &lt;/pre&gt;
+ * by looking up classes in the inheritance graph derived from the class path.
+ */
+final class ClassNameDisambiguator {
+  private final InheritanceGraph g;
+  private final String partiallyQualifiedName;
+
+<span class="fc" id="L27">  ClassNameDisambiguator(InheritanceGraph g, String partiallyQualifiedName) {</span>
+<span class="fc" id="L28">    this.g = g;</span>
+<span class="fc" id="L29">    this.partiallyQualifiedName = partiallyQualifiedName;</span>
+<span class="fc" id="L30">  }</span>
+
+  Optional&lt;ApiElement&gt; resolve(ApiElement parent) {
+<span class="fc" id="L33">    return resolve(parent, 0, 0);</span>
+  }
+
+  private Optional&lt;ApiElement&gt; resolve(
+      ApiElement parent, int nameStartIndex, int nameIndex) {
+<span class="fc" id="L38">    ApiElementType parentType = parent.type;</span>
+<span class="fc" id="L39">    int n = partiallyQualifiedName.length();</span>
+<span class="fc bfc" id="L40" title="All 2 branches covered.">    if (nameIndex == n) {</span>
+<span class="pc bpc" id="L41" title="1 of 2 branches missed.">      if (nameStartIndex == nameIndex) {</span>
+<span class="pc bpc" id="L42" title="1 of 2 branches missed.">        if (parentType == ApiElementType.CLASS) {</span>
+<span class="fc" id="L43">          return Optional.of(parent);</span>
+        }
+      } else {
+<span class="nc bnc" id="L46" title="All 2 branches missed.">        char boundaryType = nameStartIndex &gt;= 0</span>
+<span class="nc" id="L47">            ? partiallyQualifiedName.charAt(nameStartIndex - 1)</span>
+            : '.';
+<span class="nc bnc" id="L49" title="All 4 branches missed.">        if (boundaryType == '$' || boundaryType == '.') {</span>
+<span class="nc" id="L50">          String name = partiallyQualifiedName.substring(</span>
+              nameStartIndex + 1, nameIndex);
+<span class="nc" id="L52">          return Optional.of(parent.child(name, ApiElementType.CLASS));</span>
+        }
+      }
+<span class="nc" id="L55">      return Optional.absent();</span>
+    }
+    int nameEndIndex;
+<span class="fc" id="L58">    boolean canBeClassBoundary = true;</span>
+<span class="fc" id="L59">    boolean canBePackageBoundary = false;</span>
+<span class="fc" id="L60">    boolean optional = false;</span>
+<span class="fc bfc" id="L61" title="All 2 branches covered.">    for (nameEndIndex = nameIndex; ++nameEndIndex &lt; n;) {</span>
+      // By pre-incrementing we ensure that there is never an empty identifier
+      // to the left of the split-point, and by checking here, we ensure that
+      // there is never an empty identifier to the right of the split point.
+<span class="fc bfc" id="L65" title="All 2 branches covered.">      if (nameEndIndex + 1 == n) {</span>
+<span class="fc" id="L66">        continue;</span>
+      }
+<span class="fc" id="L68">      char ch = partiallyQualifiedName.charAt(nameEndIndex);</span>
+<span class="fc bfc" id="L69" title="All 2 branches covered.">      if (ch == '.') {</span>
+<span class="fc" id="L70">        canBeClassBoundary = canBePackageBoundary = true;</span>
+<span class="fc" id="L71">        optional = false;</span>
+<span class="fc" id="L72">        break;</span>
+<span class="fc bfc" id="L73" title="All 2 branches covered.">      } else if (ch == '$') {</span>
+<span class="fc" id="L74">        canBeClassBoundary = true;</span>
+<span class="fc" id="L75">        canBePackageBoundary = false;</span>
+<span class="fc" id="L76">        optional = true;</span>
+<span class="fc" id="L77">        break;</span>
+<span class="fc bfc" id="L78" title="All 2 branches covered.">      } else if (ch == '/') {</span>
+<span class="fc" id="L79">        canBeClassBoundary = false;</span>
+<span class="fc" id="L80">        canBePackageBoundary = true;</span>
+<span class="fc" id="L81">        optional = false;</span>
+<span class="fc" id="L82">        break;</span>
+      }
+<span class="fc" id="L84">    }</span>
+
+<span class="pc bpc" id="L86" title="2 of 6 branches missed.">    if (optional &amp;&amp; nameEndIndex &lt; n &amp;&amp; nameEndIndex != nameIndex) {</span>
+      // Bias towards longer names since the split version can always be
+      // specified in a &lt;configuration&gt; with more elements as in
+      // &lt;class&gt;
+      //   &lt;name&gt;Foo&lt;/name&gt;
+      //   &lt;class&gt;
+      //     &lt;name&gt;Bar&lt;/name&gt;
+      //   &lt;/class&gt;
+      // &lt;/class&gt;
+      // but there is only one way to specify a class with a `$` in its name:
+      // &lt;class&gt;&lt;name&gt;Foo$Bar&lt;/name&gt;...&lt;/class&gt;
+<span class="fc" id="L97">      Optional&lt;ApiElement&gt; longerOption = resolve(</span>
+          parent, nameStartIndex, nameEndIndex);
+<span class="fc bfc" id="L99" title="All 2 branches covered.">      if (longerOption.isPresent()) {</span>
+<span class="fc" id="L100">        return longerOption;</span>
+      }
+    }
+
+<span class="fc" id="L104">    String partName = partiallyQualifiedName.substring(</span>
+        nameStartIndex, nameEndIndex);
+<span class="fc bfc" id="L106" title="All 4 branches covered.">    if (partName.indexOf('/') &gt;= 0 || partName.indexOf('.') &gt;= 0) {</span>
+<span class="fc" id="L107">      return Optional.absent();</span>
+    }
+<span class="fc bfc" id="L109" title="All 2 branches covered.">    int nextStartIndex = nameEndIndex &lt; n ? nameEndIndex + 1 : nameEndIndex;</span>
+
+    // Bias towards packages.
+    //   foo.bar.baz -&gt; foo/bar/baz
+    // instead of
+    //   foo/bar$baz
+    // for no particular reason.
+<span class="pc bpc" id="L116" title="1 of 4 branches missed.">    if (canBePackageBoundary &amp;&amp; nameEndIndex &lt; n) {</span>
+<span class="fc" id="L117">      ApiElement newParent = parent.child(partName, ApiElementType.PACKAGE);</span>
+<span class="fc" id="L118">      Optional&lt;ApiElement&gt; packageOption = resolve(</span>
+          newParent, nextStartIndex, nextStartIndex);
+<span class="fc bfc" id="L120" title="All 2 branches covered.">      if (packageOption.isPresent()) {</span>
+<span class="fc" id="L121">        return packageOption;</span>
+      }
+    }
+
+<span class="fc bfc" id="L125" title="All 2 branches covered.">    if (canBeClassBoundary) {</span>
+<span class="fc" id="L126">      ApiElement newParent = parent.child(partName, ApiElementType.CLASS);</span>
+      // This allows us to deal with unambiguously specified provided
+      // dependencies.
+<span class="fc" id="L129">      Optional&lt;ClassNode&gt; classNode = g.named(newParent.toInternalName());</span>
+<span class="fc bfc" id="L130" title="All 4 branches covered.">      if (classNode.isPresent() &amp;&amp; isContainedIn(classNode.get(), parent)) {</span>
+<span class="fc" id="L131">        Optional&lt;ApiElement&gt; classOption = resolve(</span>
+            newParent, nextStartIndex, nextStartIndex);
+<span class="pc bpc" id="L133" title="1 of 2 branches missed.">        if (classOption.isPresent()) {</span>
+<span class="fc" id="L134">          return classOption;</span>
+        }
+      }
+    }
+
+    // Handle unambiguous provided dependencies.
+<span class="fc bfc" id="L140" title="All 4 branches covered.">    if (nameStartIndex == 0 &amp;&amp; nameEndIndex == n</span>
+<span class="pc bpc" id="L141" title="1 of 2 branches missed.">        &amp;&amp; partiallyQualifiedName.indexOf('/') &lt; 0</span>
+<span class="pc bpc" id="L142" title="1 of 2 branches missed.">        &amp;&amp; partiallyQualifiedName.indexOf('.') &lt; 0</span>
+<span class="fc bfc" id="L143" title="All 2 branches covered.">        &amp;&amp; partiallyQualifiedName.indexOf('$') &lt; 0) {</span>
+<span class="fc" id="L144">      return Optional.of(</span>
+<span class="fc" id="L145">          parent.child(partiallyQualifiedName, ApiElementType.CLASS));</span>
+    }
+
+<span class="fc" id="L148">    return Optional.absent();</span>
+  }
+
+  private static boolean isContainedIn(ClassNode inner, ApiElement outer) {
+<span class="fc" id="L152">    Optional&lt;String&gt; outerClass = inner.outerClass;</span>
+<span class="fc bfc" id="L153" title="All 2 branches covered.">    if (outer.type == ApiElementType.PACKAGE) {</span>
+<span class="fc bfc" id="L154" title="All 2 branches covered.">      return !outerClass.isPresent();</span>
+    }
+<span class="fc bfc" id="L156" title="All 2 branches covered.">    if (outerClass.isPresent()) {</span>
+<span class="fc" id="L157">      return outer.toInternalName().equals(outerClass.get());</span>
+    }
+<span class="fc" id="L159">    return false;</span>
+  }
+}
+</pre><div class="footer"><span class="right">Created with <a href="http://www.eclemma.org/jacoco">JaCoCo</a> 0.7.5.201505241946</span></div></body></html>
