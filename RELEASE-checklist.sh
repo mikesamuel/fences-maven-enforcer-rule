@@ -1,0 +1,101 @@
+#!/bin/bash
+
+echo This is not meant to be run automatically.
+
+exit
+
+set -e
+
+
+# Make sure the build is ok via
+mvn -f aggregate clean verify site javadoc:jar
+
+echo
+echo Browse to
+echo "file://$PWD/target/site"
+echo and check the findbugs and jacoco reports.
+
+echo
+echo Check https://central.sonatype.org/pages/apache-maven.html#nexus-staging-maven-plugin-for-deployment-and-release
+echo and make sure you have the relevant credentials in your ~/.m2/settings.xml
+
+echo
+echo Check https://search.maven.org/#search%7Cga%7C1%7Cowasp-java-html-sanitizer
+echo and make sure that the current POM release number is max.
+
+# Pick a release version
+export NEW_VERSION=1.4-beta
+export NEW_DEV_VERSION=1.5-beta-SNAPSHOT
+
+cd ~/work
+export RELEASE_CLONE="$PWD/fences-maven-enforcer-rule-release"
+rm -rf "$RELEASE_CLONE"
+cd "$(dirname "$RELEASE_CLONE")"
+git clone git@github.com:mikesamuel/fences-maven-enforcer-rule.git \
+    "$(basename "$RELEASE_CLONE")"
+cd "$RELEASE_CLONE"
+
+# Update the version
+# mvn release:update-versions puts -SNAPSHOT on the end no matter what
+# so this is a two step process.
+export VERSION_PLACEHOLDER=99999999999999-SNAPSHOT
+mvn \
+    release:update-versions \
+    -DautoVersionSubmodules=true \
+    -DdevelopmentVersion="$VERSION_PLACEHOLDER"
+find . -name pom.xml \
+    | xargs perl -i.placeholder -pe "s/$VERSION_PLACEHOLDER/$NEW_VERSION/g"
+
+perl -i -pe "s|<project-under-test.version>.*?</project-under-test.version>|<project-under-test.version>$NEW_VERSION</project-under-test.version>|" \
+     "$RELEASE_CLONE/src/it/resources/pom.xml"
+
+# Make sure the change log is up-to-date.
+perl -i.bak \
+     -pe 'if (m/^  [*] / && !$added) { $_ = qq(  * Release $ENV{"NEW_VERSION"}\n$_); $added = 1; }' \
+     change_log.md
+
+"$EDITOR" change_log.md
+
+# A dry run.
+mvn clean install -DskipTests=true
+mvn clean source:jar javadoc:jar verify -DperformRelease=true
+
+# Commit and tag
+git commit -am "Release candidate $NEW_VERSION"
+git tag -m "Release $NEW_VERSION" -s "release-$NEW_VERSION"
+git push origin "release-$NEW_VERSION"
+
+# Actually deploy.
+mvn clean source:jar javadoc:jar verify deploy:deploy -DperformRelease=true
+
+# Workaround a problem with markdown translation
+# ( https:// stackoverflow.com/questions/36708241 )
+find "$RELEASE_CLONE/target/site" -name \*.html \
+    | xargs perl -i -pe 's/(href="[^"#?]*)\.md(#[^"]*)?(")/$1.html$2$3/g'
+
+# Publish the site to gh-pages
+mvn com.github.github:site-maven-plugin:site
+
+# Bump the development version.
+for ph in $(find . -name pom.xml.placeholder); do
+    cp "$ph" "$(dirname "$ph")"/"$(basename "$ph" .placeholder)"
+done
+find . -name pom.xml \
+    | xargs perl -i.placeholder \
+            -pe "s/99999999999999-SNAPSHOT/$NEW_DEV_VERSION/"
+perl -i -pe "s|<project-under-test.version>.*?</project-under-test.version>|<project-under-test.version>$NEW_DEV_VERSION</project-under-test.version>|" \
+     "$RELEASE_CLONE/src/it/resources/pom.xml"
+find . -name pom.xml.placeholder | xargs rm
+
+git commit -am "Bumped dev version"
+
+git push origin master
+
+# Now Release
+echo '1. Go to oss.sonatype.org'
+echo '2. Look under staging repositories for one named'
+echo '   comgooglecodeowasp-java-html-sanitizer-...'
+echo '3. Close it.'
+echo '4. Refresh until it is marked "Closed".'
+echo '5. Check that its OK.'
+echo '6. Release it.'
