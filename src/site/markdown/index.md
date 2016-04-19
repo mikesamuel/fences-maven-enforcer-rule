@@ -29,13 +29,13 @@ responsible for.  But these various packages can't work
 together except via the `public`/`protected` API so that API
 must be larger than just the safe APIs
 
-Development going quickly; Sally sees so many commits going by she
+Development is going quickly; Sally sees so many commits going by she
 knows there's no way she can review all of them to see that only the
 safe API is used or that the larger `public` API is only used in ways
 that preserve the security property.
 
 Sally puts together a patch to the [project POM][multi-module-projects]
-that [uses the fences rule](usage.md).
+that [uses the fences rule](getting_started.md).
 The policy restricts access to the sensitive portions of Sally's
 APIs to code that she knows was reviewed with the system's security
 properties in mind.
