@@ -83,7 +83,9 @@ public final class HumanReadableText {
       }
       minWhitespace = Math.min(minWhitespace, leadingWhitespace);
     }
-    if (minWhitespace == 0) { return ImmutableList.of(lines); }
+    if (minWhitespace == 0) {
+      return ImmutableList.copyOf(Arrays.asList(lines));
+    }
     for (int j = nLines; --j >= 0;) {
       int nToTrim = minWhitespace;
       String line = lines[j];

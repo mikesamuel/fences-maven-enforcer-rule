@@ -1,5 +1,6 @@
 package com.google.security.fences.config;
 
+import java.util.Arrays;
 import java.util.List;
 
 import org.apache.maven.enforcer.rule.api.EnforcerRuleException;
@@ -58,7 +59,7 @@ public final class PackageFence extends NamedFence {
     if (name.isEmpty()) {
       nameParts = ImmutableList.of();
     } else {
-      nameParts = ImmutableList.of(name.split("[./]"));
+      nameParts = ImmutableList.copyOf(Arrays.asList(name.split("[./]")));
     }
 
     ImmutableList.Builder<Fence> splitChildren = ImmutableList.builder();
