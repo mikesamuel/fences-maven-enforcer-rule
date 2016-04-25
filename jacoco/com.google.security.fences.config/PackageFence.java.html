@@ -1,5 +1,6 @@
 <?xml version="1.0" encoding="UTF-8"?><!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd"><html xmlns="http://www.w3.org/1999/xhtml" lang="en"><head><meta http-equiv="Content-Type" content="text/html;charset=UTF-8"/><link rel="stylesheet" href="../.resources/report.css" type="text/css"/><link rel="shortcut icon" href="../.resources/report.gif" type="image/gif"/><title>PackageFence.java</title><link rel="stylesheet" href="../.resources/prettify.css" type="text/css"/><script type="text/javascript" src="../.resources/prettify.js"></script></head><body onload="window['PR_TAB_WIDTH']=4;prettyPrint()"><div class="breadcrumb" id="breadcrumb"><span class="info"><a href="../.sessions.html" class="el_session">Sessions</a></span><a href="../index.html" class="el_report">Fences Enforcer Rule</a> &gt; <a href="index.source.html" class="el_package">com.google.security.fences.config</a> &gt; <span class="el_source">PackageFence.java</span></div><h1>PackageFence.java</h1><pre class="source lang-java linenums">package com.google.security.fences.config;
 
+import java.util.Arrays;
 import java.util.List;
 
 import org.apache.maven.enforcer.rule.api.EnforcerRuleException;
@@ -12,120 +13,120 @@ import com.google.security.fences.policy.ApiElement;
 import com.google.security.fences.policy.ApiElementType;
 
 /** A Fence for a package. */
-<span class="fc" id="L15">public final class PackageFence extends NamedFence {</span>
-<span class="fc" id="L16">  private final List&lt;PackageFence&gt; packages = Lists.newArrayList();</span>
-<span class="fc" id="L17">  private final List&lt;ClassFence&gt; classes = Lists.newArrayList();</span>
+<span class="fc" id="L16">public final class PackageFence extends NamedFence {</span>
+<span class="fc" id="L17">  private final List&lt;PackageFence&gt; packages = Lists.newArrayList();</span>
+<span class="fc" id="L18">  private final List&lt;ClassFence&gt; classes = Lists.newArrayList();</span>
 
   /**
    * A setter called by reflection during Mojo configuration.  Actually adds
    * instead of blowing away prior value.
    */
   public void setPackage(PackageFence x) {
-<span class="fc" id="L24">    packages.add(Preconditions.checkNotNull(x));</span>
-<span class="fc" id="L25">  }</span>
+<span class="fc" id="L25">    packages.add(Preconditions.checkNotNull(x));</span>
+<span class="fc" id="L26">  }</span>
 
   /**
    * A setter called by reflection during Mojo configuration.  Actually adds
    * instead of blowing away prior value.
    */
   public void setClass(ClassFence x) {
-<span class="fc" id="L32">    classes.add(Preconditions.checkNotNull(x));</span>
-<span class="fc" id="L33">  }</span>
+<span class="fc" id="L33">    classes.add(Preconditions.checkNotNull(x));</span>
+<span class="fc" id="L34">  }</span>
 
   @Override
   public Iterable&lt;Fence&gt; getChildFences() {
-<span class="fc" id="L37">    return ImmutableList.&lt;Fence&gt;builder()</span>
-<span class="fc" id="L38">        .addAll(packages)</span>
-<span class="fc" id="L39">        .addAll(classes)</span>
-<span class="fc" id="L40">        .build();</span>
+<span class="fc" id="L38">    return ImmutableList.&lt;Fence&gt;builder()</span>
+<span class="fc" id="L39">        .addAll(packages)</span>
+<span class="fc" id="L40">        .addAll(classes)</span>
+<span class="fc" id="L41">        .build();</span>
   }
 
   @Override
   void visit(FenceVisitor v, ApiElement el) {
-<span class="fc" id="L45">    String name = getName();</span>
-<span class="fc" id="L46">    ApiElement pkgEl = el.child(name, ApiElementType.PACKAGE);</span>
-<span class="fc" id="L47">    v.visit(this, pkgEl);</span>
-<span class="fc bfc" id="L48" title="All 2 branches covered.">    for (Fence child : getChildFences()) {</span>
-<span class="fc" id="L49">      child.visit(v, pkgEl);</span>
-<span class="fc" id="L50">    }</span>
-<span class="fc" id="L51">  }</span>
+<span class="fc" id="L46">    String name = getName();</span>
+<span class="fc" id="L47">    ApiElement pkgEl = el.child(name, ApiElementType.PACKAGE);</span>
+<span class="fc" id="L48">    v.visit(this, pkgEl);</span>
+<span class="fc bfc" id="L49" title="All 2 branches covered.">    for (Fence child : getChildFences()) {</span>
+<span class="fc" id="L50">      child.visit(v, pkgEl);</span>
+<span class="fc" id="L51">    }</span>
+<span class="fc" id="L52">  }</span>
 
   @Override
   public Fence splitDottedNames(ApiElement parentEl, InheritanceGraph g)
   throws EnforcerRuleException {
     List&lt;String&gt; nameParts;
-<span class="nc" id="L57">    String name = getName();</span>
-<span class="nc bnc" id="L58" title="All 2 branches missed.">    if (name.isEmpty()) {</span>
-<span class="nc" id="L59">      nameParts = ImmutableList.of();</span>
+<span class="nc" id="L58">    String name = getName();</span>
+<span class="nc bnc" id="L59" title="All 2 branches missed.">    if (name.isEmpty()) {</span>
+<span class="nc" id="L60">      nameParts = ImmutableList.of();</span>
     } else {
-<span class="nc" id="L61">      nameParts = ImmutableList.of(name.split(&quot;[./]&quot;));</span>
+<span class="nc" id="L62">      nameParts = ImmutableList.copyOf(Arrays.asList(name.split(&quot;[./]&quot;)));</span>
     }
 
-<span class="nc" id="L64">    ImmutableList.Builder&lt;Fence&gt; splitChildren = ImmutableList.builder();</span>
-<span class="nc" id="L65">    ApiElement el = parentEl;</span>
-<span class="nc bnc" id="L66" title="All 2 branches missed.">    for (String namePart : nameParts) {</span>
-<span class="nc" id="L67">      el = el.child(namePart, ApiElementType.PACKAGE);</span>
-<span class="nc" id="L68">    }</span>
-<span class="nc bnc" id="L69" title="All 2 branches missed.">    for (Fence unsplitChild : getChildFences()) {</span>
-<span class="nc" id="L70">      splitChildren.add(unsplitChild.splitDottedNames(el, g));</span>
-<span class="nc" id="L71">    }</span>
-<span class="nc" id="L72">    replaceChildFences(splitChildren.build());</span>
+<span class="nc" id="L65">    ImmutableList.Builder&lt;Fence&gt; splitChildren = ImmutableList.builder();</span>
+<span class="nc" id="L66">    ApiElement el = parentEl;</span>
+<span class="nc bnc" id="L67" title="All 2 branches missed.">    for (String namePart : nameParts) {</span>
+<span class="nc" id="L68">      el = el.child(namePart, ApiElementType.PACKAGE);</span>
+<span class="nc" id="L69">    }</span>
+<span class="nc bnc" id="L70" title="All 2 branches missed.">    for (Fence unsplitChild : getChildFences()) {</span>
+<span class="nc" id="L71">      splitChildren.add(unsplitChild.splitDottedNames(el, g));</span>
+<span class="nc" id="L72">    }</span>
+<span class="nc" id="L73">    replaceChildFences(splitChildren.build());</span>
 
-<span class="nc" id="L74">    int nParts = nameParts.size();</span>
-<span class="nc bnc" id="L75" title="All 2 branches missed.">    if (nParts == 0) {</span>
-<span class="nc" id="L76">      ApiFence apiFence = new ApiFence();</span>
-<span class="nc" id="L77">      apiFence.mergeFrom(this);</span>
-<span class="nc bnc" id="L78" title="All 2 branches missed.">      for (PackageFence pkg : this.packages) {</span>
-<span class="nc" id="L79">        apiFence.setPackage(pkg);</span>
-<span class="nc" id="L80">      }</span>
-<span class="nc bnc" id="L81" title="All 2 branches missed.">      for (ClassFence cls : this.classes) {</span>
-<span class="nc" id="L82">        apiFence.setClass(cls);</span>
-<span class="nc" id="L83">      }</span>
-<span class="nc" id="L84">      return apiFence;</span>
+<span class="nc" id="L75">    int nParts = nameParts.size();</span>
+<span class="nc bnc" id="L76" title="All 2 branches missed.">    if (nParts == 0) {</span>
+<span class="nc" id="L77">      ApiFence apiFence = new ApiFence();</span>
+<span class="nc" id="L78">      apiFence.mergeFrom(this);</span>
+<span class="nc bnc" id="L79" title="All 2 branches missed.">      for (PackageFence pkg : this.packages) {</span>
+<span class="nc" id="L80">        apiFence.setPackage(pkg);</span>
+<span class="nc" id="L81">      }</span>
+<span class="nc bnc" id="L82" title="All 2 branches missed.">      for (ClassFence cls : this.classes) {</span>
+<span class="nc" id="L83">        apiFence.setClass(cls);</span>
+<span class="nc" id="L84">      }</span>
+<span class="nc" id="L85">      return apiFence;</span>
     } else {
-<span class="nc" id="L86">      PackageFence pkg = this;</span>
-<span class="nc" id="L87">      this.setName(nameParts.get(nParts - 1));</span>
-<span class="nc bnc" id="L88" title="All 2 branches missed.">      for (int i = nParts - 1; --i &gt;= 0;) {</span>
-<span class="nc" id="L89">        String part = nameParts.get(i);</span>
-<span class="nc" id="L90">        PackageFence parent = new PackageFence();</span>
-<span class="nc" id="L91">        parent.setName(part);</span>
-<span class="nc" id="L92">        parent.setPackage(pkg);</span>
-<span class="nc" id="L93">        pkg = parent;</span>
-<span class="nc" id="L94">      }</span>
-<span class="nc" id="L95">      return pkg;</span>
+<span class="nc" id="L87">      PackageFence pkg = this;</span>
+<span class="nc" id="L88">      this.setName(nameParts.get(nParts - 1));</span>
+<span class="nc bnc" id="L89" title="All 2 branches missed.">      for (int i = nParts - 1; --i &gt;= 0;) {</span>
+<span class="nc" id="L90">        String part = nameParts.get(i);</span>
+<span class="nc" id="L91">        PackageFence parent = new PackageFence();</span>
+<span class="nc" id="L92">        parent.setName(part);</span>
+<span class="nc" id="L93">        parent.setPackage(pkg);</span>
+<span class="nc" id="L94">        pkg = parent;</span>
+<span class="nc" id="L95">      }</span>
+<span class="nc" id="L96">      return pkg;</span>
     }
   }
 
   @Override
   void replaceChildFences(Iterable&lt;? extends Fence&gt; newChildren) {
-<span class="nc" id="L101">    packages.clear();</span>
-<span class="nc" id="L102">    classes.clear();</span>
-<span class="nc bnc" id="L103" title="All 2 branches missed.">    for (Fence newChild : newChildren) {</span>
-<span class="nc bnc" id="L104" title="All 2 branches missed.">      if (newChild instanceof PackageFence) {</span>
-<span class="nc" id="L105">        packages.add((PackageFence) newChild);</span>
-<span class="nc bnc" id="L106" title="All 2 branches missed.">      } else if (newChild instanceof ClassFence) {</span>
-<span class="nc" id="L107">        classes.add((ClassFence) newChild);</span>
-<span class="nc bnc" id="L108" title="All 2 branches missed.">      } else if (newChild instanceof ApiFence) {</span>
-<span class="nc" id="L109">        ApiFence apiChild = (ApiFence) newChild;</span>
-<span class="nc" id="L110">        mergeFrom(apiChild);</span>
-<span class="nc" id="L111">        packages.addAll(apiChild.getPackages());</span>
-<span class="nc" id="L112">        classes.addAll(apiChild.getClasses());</span>
-<span class="nc" id="L113">      } else {</span>
-<span class="nc" id="L114">        throw new IllegalArgumentException(newChild.getClass().getName());</span>
+<span class="nc" id="L102">    packages.clear();</span>
+<span class="nc" id="L103">    classes.clear();</span>
+<span class="nc bnc" id="L104" title="All 2 branches missed.">    for (Fence newChild : newChildren) {</span>
+<span class="nc bnc" id="L105" title="All 2 branches missed.">      if (newChild instanceof PackageFence) {</span>
+<span class="nc" id="L106">        packages.add((PackageFence) newChild);</span>
+<span class="nc bnc" id="L107" title="All 2 branches missed.">      } else if (newChild instanceof ClassFence) {</span>
+<span class="nc" id="L108">        classes.add((ClassFence) newChild);</span>
+<span class="nc bnc" id="L109" title="All 2 branches missed.">      } else if (newChild instanceof ApiFence) {</span>
+<span class="nc" id="L110">        ApiFence apiChild = (ApiFence) newChild;</span>
+<span class="nc" id="L111">        mergeFrom(apiChild);</span>
+<span class="nc" id="L112">        packages.addAll(apiChild.getPackages());</span>
+<span class="nc" id="L113">        classes.addAll(apiChild.getClasses());</span>
+<span class="nc" id="L114">      } else {</span>
+<span class="nc" id="L115">        throw new IllegalArgumentException(newChild.getClass().getName());</span>
       }
-<span class="nc" id="L116">    }</span>
-<span class="nc" id="L117">  }</span>
+<span class="nc" id="L117">    }</span>
+<span class="nc" id="L118">  }</span>
 
   @Override
   String getConfigurationElementName() {
-<span class="fc" id="L121">    return &quot;package&quot;;</span>
+<span class="fc" id="L122">    return &quot;package&quot;;</span>
   }
 
   @Override
   public ApiFence promoteToApi() {
-<span class="fc" id="L126">    ApiFence api = new ApiFence();</span>
-<span class="fc" id="L127">    api.setPackage(this);</span>
-<span class="fc" id="L128">    return api;</span>
+<span class="fc" id="L127">    ApiFence api = new ApiFence();</span>
+<span class="fc" id="L128">    api.setPackage(this);</span>
+<span class="fc" id="L129">    return api;</span>
   }
 }
 </pre><div class="footer"><span class="right">Created with <a href="http://www.eclemma.org/jacoco">JaCoCo</a> 0.7.5.201505241946</span></div></body></html>

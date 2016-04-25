@@ -83,46 +83,48 @@ public final class HumanReadableText {
       }
 <span class="fc" id="L84">      minWhitespace = Math.min(minWhitespace, leadingWhitespace);</span>
     }
-<span class="pc bpc" id="L86" title="1 of 2 branches missed.">    if (minWhitespace == 0) { return ImmutableList.of(lines); }</span>
-<span class="fc bfc" id="L87" title="All 2 branches covered.">    for (int j = nLines; --j &gt;= 0;) {</span>
-<span class="fc" id="L88">      int nToTrim = minWhitespace;</span>
-<span class="fc" id="L89">      String line = lines[j];</span>
-<span class="fc" id="L90">      int trimPt = 0;</span>
-<span class="fc" id="L91">      int n = line.length();</span>
-<span class="fc bfc" id="L92" title="All 4 branches covered.">      while (trimPt &lt; n &amp;&amp; nToTrim &gt; 0) {</span>
-<span class="fc" id="L93">        int spaceWidth = spaceWidthOf(line.charAt(trimPt));</span>
-<span class="pc bpc" id="L94" title="1 of 4 branches missed.">        if (spaceWidth == 0 || spaceWidth &gt; nToTrim) {</span>
-<span class="nc" id="L95">          break;</span>
-        }
-<span class="fc" id="L97">        nToTrim -= spaceWidth;</span>
-<span class="fc" id="L98">        ++trimPt;</span>
-<span class="fc" id="L99">      }</span>
-<span class="fc" id="L100">      lines[j] = line.substring(trimPt);</span>
-<span class="fc" id="L101">    }</span>
-<span class="fc" id="L102">    ImmutableList.Builder&lt;String&gt; trimmedLines = ImmutableList.builder();</span>
-<span class="fc" id="L103">    boolean hasOne = false;</span>
-<span class="fc bfc" id="L104" title="All 2 branches covered.">    for (String line : lines) {</span>
-<span class="fc bfc" id="L105" title="All 4 branches covered.">      if (!hasOne &amp;&amp; &quot;&quot;.equals(line)) { continue; }</span>
-<span class="fc" id="L106">      trimmedLines.add(line);</span>
-<span class="fc" id="L107">      hasOne = true;</span>
+<span class="pc bpc" id="L86" title="1 of 2 branches missed.">    if (minWhitespace == 0) {</span>
+<span class="nc" id="L87">      return ImmutableList.copyOf(Arrays.asList(lines));</span>
     }
-<span class="fc" id="L109">    return trimmedLines.build();</span>
+<span class="fc bfc" id="L89" title="All 2 branches covered.">    for (int j = nLines; --j &gt;= 0;) {</span>
+<span class="fc" id="L90">      int nToTrim = minWhitespace;</span>
+<span class="fc" id="L91">      String line = lines[j];</span>
+<span class="fc" id="L92">      int trimPt = 0;</span>
+<span class="fc" id="L93">      int n = line.length();</span>
+<span class="fc bfc" id="L94" title="All 4 branches covered.">      while (trimPt &lt; n &amp;&amp; nToTrim &gt; 0) {</span>
+<span class="fc" id="L95">        int spaceWidth = spaceWidthOf(line.charAt(trimPt));</span>
+<span class="pc bpc" id="L96" title="1 of 4 branches missed.">        if (spaceWidth == 0 || spaceWidth &gt; nToTrim) {</span>
+<span class="nc" id="L97">          break;</span>
+        }
+<span class="fc" id="L99">        nToTrim -= spaceWidth;</span>
+<span class="fc" id="L100">        ++trimPt;</span>
+<span class="fc" id="L101">      }</span>
+<span class="fc" id="L102">      lines[j] = line.substring(trimPt);</span>
+<span class="fc" id="L103">    }</span>
+<span class="fc" id="L104">    ImmutableList.Builder&lt;String&gt; trimmedLines = ImmutableList.builder();</span>
+<span class="fc" id="L105">    boolean hasOne = false;</span>
+<span class="fc bfc" id="L106" title="All 2 branches covered.">    for (String line : lines) {</span>
+<span class="fc bfc" id="L107" title="All 4 branches covered.">      if (!hasOne &amp;&amp; &quot;&quot;.equals(line)) { continue; }</span>
+<span class="fc" id="L108">      trimmedLines.add(line);</span>
+<span class="fc" id="L109">      hasOne = true;</span>
+    }
+<span class="fc" id="L111">    return trimmedLines.build();</span>
   }
 
 
   private static int spaceWidthOf(char ch) {
-<span class="fc bfc" id="L114" title="All 2 branches covered.">    if (ch == ' ') { return 1; }</span>
-<span class="fc bfc" id="L115" title="All 2 branches covered.">    if (ch == '\t') { return 8; }</span>
-<span class="fc" id="L116">    return 0;</span>
+<span class="fc bfc" id="L116" title="All 2 branches covered.">    if (ch == ' ') { return 1; }</span>
+<span class="fc bfc" id="L117" title="All 2 branches covered.">    if (ch == '\t') { return 8; }</span>
+<span class="fc" id="L118">    return 0;</span>
   }
 
   /**
    * The concatenation of this and that with a paragraph separator in between.
    */
   public HumanReadableText concat(HumanReadableText that) {
-<span class="nc bnc" id="L123" title="All 2 branches missed.">    if (that.isEmpty()) { return this; }</span>
-<span class="nc bnc" id="L124" title="All 2 branches missed.">    if (this.isEmpty()) { return that; }</span>
-<span class="nc" id="L125">    return new HumanReadableText(this.text + PARAGRAPH_SEPARATOR + that.text);</span>
+<span class="nc bnc" id="L125" title="All 2 branches missed.">    if (that.isEmpty()) { return this; }</span>
+<span class="nc bnc" id="L126" title="All 2 branches missed.">    if (this.isEmpty()) { return that; }</span>
+<span class="nc" id="L127">    return new HumanReadableText(this.text + PARAGRAPH_SEPARATOR + that.text);</span>
   }
 
   /**
@@ -138,15 +140,15 @@ public final class HumanReadableText {
    */
   public HumanReadableText concatDedupe(HumanReadableText that) {
     // Handle split edge cases first since split never produces the empty array.
-<span class="nc bnc" id="L141" title="All 4 branches missed.">    if (that.isEmpty() || this.equals(that)) { return this; }</span>
-<span class="nc bnc" id="L142" title="All 2 branches missed.">    if (this.isEmpty()) { return that; }</span>
+<span class="nc bnc" id="L143" title="All 4 branches missed.">    if (that.isEmpty() || this.equals(that)) { return this; }</span>
+<span class="nc bnc" id="L144" title="All 2 branches missed.">    if (this.isEmpty()) { return that; }</span>
 
-<span class="nc" id="L144">    Set&lt;String&gt; paragraphs = Sets.newLinkedHashSet();</span>
-<span class="nc" id="L145">    paragraphs.addAll(Arrays.asList(this.text.split(PARAGRAPH_SEPARATOR)));</span>
-<span class="nc" id="L146">    paragraphs.addAll(Arrays.asList(that.text.split(PARAGRAPH_SEPARATOR)));</span>
+<span class="nc" id="L146">    Set&lt;String&gt; paragraphs = Sets.newLinkedHashSet();</span>
+<span class="nc" id="L147">    paragraphs.addAll(Arrays.asList(this.text.split(PARAGRAPH_SEPARATOR)));</span>
+<span class="nc" id="L148">    paragraphs.addAll(Arrays.asList(that.text.split(PARAGRAPH_SEPARATOR)));</span>
 
-<span class="nc" id="L148">    return new HumanReadableText(</span>
-<span class="nc" id="L149">        Joiner.on(PARAGRAPH_SEPARATOR).join(paragraphs));</span>
+<span class="nc" id="L150">    return new HumanReadableText(</span>
+<span class="nc" id="L151">        Joiner.on(PARAGRAPH_SEPARATOR).join(paragraphs));</span>
   }
 
 }
