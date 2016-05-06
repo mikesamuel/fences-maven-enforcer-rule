@@ -98,7 +98,7 @@ for ph in $(find . -name pom.xml.placeholder); do
 done
 find . -name pom.xml \
     | xargs perl -i.placeholder \
-            -pe "s/99999999999999-SNAPSHOT/$NEW_DEV_VERSION/"
+            -pe "s/$VERSION_PLACEHOLDER/$NEW_DEV_VERSION/"
 perl -i -pe "s|<project-under-test.version>.*?</project-under-test.version>|<project-under-test.version>$NEW_DEV_VERSION</project-under-test.version>|" \
      "$RELEASE_CLONE/src/it/resources/pom.xml"
 find . -name pom.xml.placeholder | xargs rm
@@ -110,7 +110,7 @@ git push origin master
 # Now Release
 echo '1. Go to oss.sonatype.org'
 echo '2. Look under staging repositories for one named'
-echo '   comgooglecodeowasp-java-html-sanitizer-...'
+echo '   comgooglesecurity-fences-maven-enforcer-rule-...'
 echo '3. Close it.'
 echo '4. Refresh until it is marked "Closed".'
 echo '5. Check that its OK.'
