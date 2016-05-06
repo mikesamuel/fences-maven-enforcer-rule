@@ -1,5 +1,7 @@
 package com.google.security.fences.policy;
 
+import com.google.common.collect.ImmutableList;
+
 import junit.framework.TestCase;
 
 @SuppressWarnings("javadoc")
@@ -33,5 +35,26 @@ public final class ApiElementTest extends TestCase {
     assertEquals("com/example/Foo$Bar#f()", comExampleFooBarF.toInternalName());
     assertEquals("com/example/Foo$Bar#<init>()",
                  comExampleFooBarCtor.toInternalName());
+  }
+
+  public static final void testSplitClassName() {
+    assertEquals(
+        ImmutableList.of("Foo"),
+        ApiElement.splitClassName("Foo"));
+    assertEquals(
+        ImmutableList.of("Foo", "Bar"),
+        ApiElement.splitClassName("Foo$Bar"));
+    assertEquals(
+        ImmutableList.of("Foo", "Bar$"),
+        ApiElement.splitClassName("Foo$Bar$"));
+    assertEquals(
+        ImmutableList.of("$Foo", "Bar"),
+        ApiElement.splitClassName("$Foo$Bar"));
+    assertEquals(
+        ImmutableList.of("Foo", "$Bar"),
+        ApiElement.splitClassName("Foo$$Bar"));
+    assertEquals(
+        ImmutableList.of("Foo", "$", "Bar"),
+        ApiElement.splitClassName("Foo$$$Bar"));
   }
 }

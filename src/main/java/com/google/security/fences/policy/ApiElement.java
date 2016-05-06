@@ -1,10 +1,13 @@
 package com.google.security.fences.policy;
 
+import java.util.List;
+
 import javax.annotation.Nullable;
 
 import com.google.common.base.Objects;
 import com.google.common.base.Optional;
 import com.google.common.base.Preconditions;
+import com.google.common.collect.Lists;
 
 /**
  * An element of a Java API that can be identified by a dotted name.
@@ -77,16 +80,40 @@ public class ApiElement implements Comparable<ApiElement> {
    * @return An API element such that name equals {@link #toInternalName}.
    */
   public static ApiElement fromInternalClassName(String name) {
-    ApiElement apiElement = ApiElement.DEFAULT_PACKAGE;
-    String[] nameParts = name.split("/");
-    for (int i = 0, n = nameParts.length; i < n - 1; ++i) {
-      apiElement = apiElement.child(nameParts[i], ApiElementType.PACKAGE);
+    try {
+      ApiElement apiElement = ApiElement.DEFAULT_PACKAGE;
+      String[] nameParts = name.split("/");
+      for (int i = 0, n = nameParts.length; i < n - 1; ++i) {
+        apiElement = apiElement.child(nameParts[i], ApiElementType.PACKAGE);
+      }
+      String className = nameParts[nameParts.length - 1];
+      for (String classNamePart : splitClassName(className)) {
+        apiElement = apiElement.child(classNamePart, ApiElementType.CLASS);
+      }
+      return apiElement;
+    } catch (RuntimeException ex) {
+      // Make sure the trace includes the whole input.
+      throw new IllegalArgumentException(
+          "Bad internal class name `" + name + "`", ex);
     }
-    String className = nameParts[nameParts.length - 1];
-    for (String classNamePart : className.split("[$]")) {
-      apiElement = apiElement.child(classNamePart, ApiElementType.CLASS);
+  }
+
+  static Iterable<String> splitClassName(String className) {
+    int n = className.length();
+    if (n == 0) {
+      throw new IllegalArgumentException();
     }
-    return apiElement;
+    List<String> parts = Lists.newArrayList();
+    int start = 0;
+    for (int i = start + 1; i < n - 1; ++i) {
+      if (className.charAt(i) == '$') {
+        assert i != start;
+        parts.add(className.substring(start, i));
+        start = ++i;
+      }
+    }
+    parts.add(className.substring(start));
+    return parts;
   }
 
   /**
