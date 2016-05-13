@@ -8,7 +8,8 @@ set -e
 
 
 # Make sure the build is ok via
-mvn -f aggregate clean verify site javadoc:jar
+./run_all_tests.sh
+mvn javadoc:jar source:jar
 
 echo
 echo Browse to
@@ -86,6 +87,7 @@ mvn clean source:jar javadoc:jar verify deploy:deploy -DperformRelease=true
 
 # Workaround a problem with markdown translation
 # ( https:// stackoverflow.com/questions/36708241 )
+mvn site
 find "$RELEASE_CLONE/target/site" -name \*.html \
     | xargs perl -i -pe 's/(href="[^"#?]*)\.md(#[^"]*)?(")/$1.html$2$3/g'
 
