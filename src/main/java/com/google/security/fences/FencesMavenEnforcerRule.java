@@ -105,6 +105,7 @@ public final class FencesMavenEnforcerRule implements EnforcerRule {
     fences.add(api);
   }
 
+  @Override
   public void execute(EnforcerRuleHelper helper) throws EnforcerRuleException {
     final Log log = helper.getLog();
 
@@ -303,14 +304,17 @@ public final class FencesMavenEnforcerRule implements EnforcerRule {
     }
   }
 
+  @Override
   public String getCacheId() {
     return null;
   }
 
+  @Override
   public boolean isCacheable() {
     return false;
   }
 
+  @Override
   public boolean isResultValid(EnforcerRule arg0) {
     return false;
   }

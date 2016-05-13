@@ -131,11 +131,13 @@ final class PolicyViolationReporter {
     ReportTree root = new ReportTree("");
     root.children.addAll(group(
         new Function<Violation, String>() {
+          @Override
           public String apply(Violation v) {
             return v.artifact.getId();
           }
         },
         new Function<ImmutableList<Violation>, ImmutableList<ReportTree>>() {
+          @Override
           @SuppressWarnings("synthetic-access")
           public ImmutableList<ReportTree> apply(
               ImmutableList<Violation> vs) {
@@ -150,11 +152,13 @@ final class PolicyViolationReporter {
       ImmutableList<Violation> violations) {
     return group(
         new Function<Violation, String>() {
+          @Override
           public String apply(Violation v) {
             return v.useSiteSource;
           }
         },
         new Function<ImmutableList<Violation>, ImmutableList<ReportTree>>() {
+          @Override
           @SuppressWarnings("synthetic-access")
           public ImmutableList<ReportTree> apply(ImmutableList<Violation> vs) {
             return groupByUseSiteLine(vs);
@@ -167,11 +171,13 @@ final class PolicyViolationReporter {
       ImmutableList<Violation> violations) {
     return group(
         new Function<Violation, String>() {
+          @Override
           public String apply(Violation v) {
             return v.useSiteLineNumber < 0 ? "" : "L" + v.useSiteLineNumber;
           }
         },
         new Function<ImmutableList<Violation>, ImmutableList<ReportTree>>() {
+          @Override
           @SuppressWarnings("synthetic-access")
           public ImmutableList<ReportTree> apply(ImmutableList<Violation> vs) {
             return formatViolations(vs);

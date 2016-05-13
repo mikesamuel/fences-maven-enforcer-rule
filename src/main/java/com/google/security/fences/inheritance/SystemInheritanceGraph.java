@@ -47,6 +47,7 @@ public class SystemInheritanceGraph {
   public static final Function<String, ClassNode> LAZY_LOADER
   = new Function<String, ClassNode>() {
     @Nonnull
+    @Override
     public ClassNode apply(@Nonnull String name) {
       if (name == null) {
         throw new NullPointerException();
@@ -316,6 +317,7 @@ public class SystemInheritanceGraph {
       if (!Iterables.all(
               jars,
               new Predicate<String>() {
+                @Override
                 public boolean apply(@Nonnull String arg) {
                   if (arg == null) { throw new NullPointerException(); }
                   return arg.endsWith(".jar") && new File(arg).isFile();
@@ -335,6 +337,7 @@ public class SystemInheritanceGraph {
 
     final InheritanceGraph.Builder graphBuilder = InheritanceGraph.builder(
         new Function<String, ClassNode>() {
+          @Override
           public ClassNode apply(String name) {
             return null;
           }

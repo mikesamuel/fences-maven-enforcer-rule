@@ -244,15 +244,18 @@ final class IdentityValueSource implements ValueSource {
   private IdentityValueSource() {
   }
 
+  @Override
   public void clearFeedback() {
     // Nothing to do.
   }
 
+  @Override
   @SuppressWarnings("rawtypes")
   public List getFeedback() {
     return ImmutableList.of();
   }
 
+  @Override
   public Object getValue(String key) {
     return key;
   }

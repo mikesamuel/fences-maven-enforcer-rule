@@ -130,6 +130,7 @@ public final class ClassNode implements Comparable<ClassNode> {
     return true;
   }
 
+  @Override
   public int compareTo(ClassNode x) {
     return name.compareTo(x.name);
   }

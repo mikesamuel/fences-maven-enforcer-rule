@@ -192,6 +192,7 @@ final class ConfigurationImport {
     Xpp3Dom dom = cr.readRelativePath(
         path,
         new ClassRoot.IOConsumer<InputStream, Xpp3Dom>() {
+          @Override
           public Xpp3Dom consume(
               ClassRoot root, String relPath, InputStream is)
           throws IOException {

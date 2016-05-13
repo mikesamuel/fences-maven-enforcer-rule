@@ -41,11 +41,13 @@ abstract class AbstractClassesVisitor {
       startClassRoot(root);
       root.readEachPathMatching(
           new Predicate<String>() {
+            @Override
             public boolean apply(String relativePath) {
               return relativePath.endsWith(".class");
             }
           },
           new ClassRoot.IOConsumer<InputStream, Boolean>() {
+            @Override
             public Boolean consume(
                 ClassRoot cr, String relPath, InputStream is)
             throws IOException {

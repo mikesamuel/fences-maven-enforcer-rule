@@ -49,6 +49,7 @@ final class Violation implements Comparable<Violation> {
     this.rationale = rationale;
   }
 
+  @Override
   public int compareTo(Violation that) {
     @SuppressWarnings("unchecked")
     int delta = this.artifact.compareTo(that.artifact);

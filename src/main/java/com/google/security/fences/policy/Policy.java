@@ -41,9 +41,11 @@ public final class Policy {
     FOLD_POLICIES_TOGETHER
   = new Function<NamespacePolicy,
                Function<AccessControlDecision, NamespacePolicy>>() {
+    @Override
     public Function<AccessControlDecision, NamespacePolicy> apply(
         final NamespacePolicy policies) {
       return new Function<AccessControlDecision, NamespacePolicy>() {
+        @Override
         public NamespacePolicy apply(AccessControlDecision onePolicy) {
           policies.restrictAccess(onePolicy);
           return policies;
@@ -149,6 +151,7 @@ public final class Policy {
     /** Supplies new instances for Trie nodes. */
     public static final Supplier<NamespacePolicy> EMPTY_SUPPLIER =
         new Supplier<NamespacePolicy>() {
+      @Override
       public NamespacePolicy get() {
         return new NamespacePolicy();
       }
@@ -237,6 +240,7 @@ public final class Policy {
   public static Policy fromFence(Fence fence) {
     final Policy policy = new Policy();
     FenceVisitor buildFencesVisitor = new FenceVisitor() {
+      @Override
       public void visit(Fence f, ApiElement apiElement) {
         Frenemies frenemies = f.getFrenemies();
         addToPolicy(

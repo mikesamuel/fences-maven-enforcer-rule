@@ -9,14 +9,17 @@ import com.google.common.base.Preconditions;
 public abstract class LazyString implements CharSequence {
   private String s;
 
+  @Override
   public int length() {
     return toString().length();
   }
 
+  @Override
   public char charAt(int index) {
     return toString().charAt(index);
   }
 
+  @Override
   public CharSequence subSequence(int start, int end) {
     return toString().substring(start, end);
   }

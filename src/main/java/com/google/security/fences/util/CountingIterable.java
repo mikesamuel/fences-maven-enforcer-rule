@@ -17,6 +17,7 @@ public final class CountingIterable implements Iterable<Integer> {
     this.rightExclusive = rightExclusive;
   }
 
+  @Override
   public Iterator<Integer> iterator() {
     return new CountingIterator(leftInclusive, rightExclusive);
   }

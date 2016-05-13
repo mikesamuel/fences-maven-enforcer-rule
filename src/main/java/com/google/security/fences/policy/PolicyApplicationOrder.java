@@ -54,6 +54,7 @@ public final class PolicyApplicationOrder implements Iterable<ApiElement> {
     this.log = log;
   }
 
+  @Override
   public Iterator<ApiElement> iterator() {
     return new ApiElementIterator();
   }
@@ -196,11 +197,13 @@ public final class PolicyApplicationOrder implements Iterable<ApiElement> {
       useOnly.add(new QueueItem(el));
     }
 
+    @Override
     public boolean hasNext() {
       update();
       return pending != null;
     }
 
+    @Override
     public ApiElement next() {
       update();
       consumed = true;
@@ -239,6 +242,7 @@ public final class PolicyApplicationOrder implements Iterable<ApiElement> {
       }
     }
 
+    @Override
     public void remove() {
       throw new UnsupportedOperationException();
     }
@@ -436,6 +440,7 @@ public final class PolicyApplicationOrder implements Iterable<ApiElement> {
         }
       }
 
+      @Override
       public int compareTo(SubList ls) {
         return Integer.compare(this.priority, ls.priority);
       }

@@ -22,10 +22,12 @@ public final class CountingIterator implements Iterator<Integer> {
     return "[" + i + ".." + rightExclusive + ")";
   }
 
+  @Override
   public synchronized boolean hasNext() {
     return i < rightExclusive;
   }
 
+  @Override
   public synchronized Integer next() {
     if (i >= rightExclusive) {
       throw new IndexOutOfBoundsException(i + " >= " + rightExclusive);
@@ -33,6 +35,7 @@ public final class CountingIterator implements Iterator<Integer> {
     return i++;
   }
 
+  @Override
   public void remove() {
     throw new UnsupportedOperationException();
   }
