@@ -292,4 +292,22 @@ public class FencesMavenEnforcerRuleIT extends TestCase {
             "Use the safe builder APIs.")
       .run();
   }
+
+  public static final void testUnusedImports() throws Exception {
+    new TestBuilder("test-unused-imports")
+        .with(Result.FAIL)
+        .inLog(
+            "BUILD FAILURE",
+
+            "[ERROR] test:partially-safe-client:jar:1.0-SNAPSHOT"
+            + " : PermissionsRequestedButNotGranted.java",
+
+            "com.example.api.Unsafe.<init>() cannot be accessed from"
+            + " com.example.client.PermissionsRequestedButNotGranted",
+            "com.example.api.Unsafe.pushRedButton() cannot be accessed from"
+            + " com.example.client.PermissionsRequestedButNotGranted",
+
+            "2 access policy violations")
+        .run();
+  }
 }

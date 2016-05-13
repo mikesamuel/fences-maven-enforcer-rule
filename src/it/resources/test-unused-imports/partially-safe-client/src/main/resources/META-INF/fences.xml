@@ -1,0 +1,6 @@
+<configuration>
+  <class>
+    <name>com.example.api.Unsafe</name>
+    <trusts>com.example.client.PermissionsRequestedButNotGranted</trusts>
+  </class>
+</configuration>
