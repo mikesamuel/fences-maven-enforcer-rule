@@ -5,7 +5,6 @@ import java.util.List;
 import java.util.Map;
 
 import org.apache.maven.artifact.Artifact;
-import org.apache.maven.enforcer.rule.api.EnforcerRuleException;
 import org.apache.maven.plugin.logging.Log;
 import org.objectweb.asm.ClassReader;
 import org.objectweb.asm.ClassVisitor;
@@ -27,6 +26,7 @@ import com.google.security.fences.policy.ApiElementType;
 import com.google.security.fences.policy.Policy;
 import com.google.security.fences.policy.PolicyApplicationOrder;
 import com.google.security.fences.util.LazyString;
+import com.google.security.fences.util.MisconfigurationException;
 import com.google.security.fences.util.Utils;
 
 /**
@@ -64,7 +64,7 @@ final class Checker extends AbstractClassesVisitor {
   throws IOException {
     try {
       return new ClassChecker(root.art, reader);
-    } catch (EnforcerRuleException ex) {
+    } catch (MisconfigurationException ex) {
       throw new IOException("Failed to check " + root, ex);
     }
   }
@@ -77,7 +77,7 @@ final class Checker extends AbstractClassesVisitor {
     private Optional<String> sourceFilePath = Optional.absent();
 
     ClassChecker(Artifact art, ClassReader reader)
-    throws EnforcerRuleException {
+    throws MisconfigurationException {
       super(Opcodes.ASM5);
       this.art = art;
       this.reader = reader;
@@ -253,7 +253,7 @@ final class Checker extends AbstractClassesVisitor {
           if (dLvl == levelFromPolicy && !acd.rationale.isEmpty()) {
             try {
               rationaleBuilder.addBody(acd.rationale);
-            } catch (EnforcerRuleException ex) {
+            } catch (MisconfigurationException ex) {
               // Should not happen since this came from a rationale.
               throw new AssertionError(null, ex);
             }
@@ -264,7 +264,7 @@ final class Checker extends AbstractClassesVisitor {
 
       try {
         rationaleBuilder.addAddendum(policy.getAddenda(to));
-      } catch (EnforcerRuleException ex) {
+      } catch (MisconfigurationException ex) {
         // Should not happen since this came from a rationale.
         throw new AssertionError(null, ex);
       }

@@ -11,7 +11,6 @@ import org.apache.maven.artifact.repository.ArtifactRepository;
 import org.apache.maven.artifact.resolver.ArtifactNotFoundException;
 import org.apache.maven.artifact.resolver.ArtifactResolutionException;
 import org.apache.maven.artifact.resolver.ArtifactResolver;
-import org.apache.maven.enforcer.rule.api.EnforcerRuleException;
 import org.apache.maven.model.Build;
 import org.apache.maven.plugin.logging.Log;
 import org.apache.maven.project.MavenProject;
@@ -23,6 +22,7 @@ import com.google.common.base.Preconditions;
 import com.google.common.collect.ImmutableList;
 import com.google.common.collect.Sets;
 import com.google.security.fences.util.LazyString;
+import com.google.security.fences.util.MisconfigurationException;
 import com.google.security.fences.util.Utils;
 
 /**
@@ -81,7 +81,7 @@ final class ArtifactFinder {
    */
   void findClassRoots(MavenProject project)
   throws ArtifactNotFoundException, ArtifactResolutionException,
-         DependencyTreeBuilderException, EnforcerRuleException {
+         DependencyTreeBuilderException, MisconfigurationException {
     markAvailableAsProject(project);
     String id = project.getId();
     if (!seen.add(id)) {
@@ -154,7 +154,7 @@ final class ArtifactFinder {
 
   private void addAllDescendants(DependencyNode node)
   throws ArtifactNotFoundException, ArtifactResolutionException,
-         EnforcerRuleException {
+         MisconfigurationException {
     List<DependencyNode> childNodes = node.getChildren();
     if (childNodes != null) {
       for (DependencyNode depNode : childNodes) {
@@ -205,10 +205,10 @@ final class ArtifactFinder {
   }
 
   private void addZipClassRoot(final Artifact art)
-  throws EnforcerRuleException {
+  throws MisconfigurationException {
     final File artFile = art.getFile();
     if (artFile == null) {
-      throw new EnforcerRuleException(
+      throw new MisconfigurationException(
           "Cannot check artifact " + Utils.artToString(art)
           + " since it has not been packaged.");
     }

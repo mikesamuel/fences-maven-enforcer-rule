@@ -23,7 +23,6 @@ import org.objectweb.asm.Opcodes;
 
 import junit.framework.TestCase;
 
-import org.apache.maven.enforcer.rule.api.EnforcerRuleException;
 import org.codehaus.plexus.component.configurator.BasicComponentConfigurator;
 import org.codehaus.plexus.component.configurator.ComponentConfigurationException;
 import org.codehaus.plexus.component.configurator.ComponentConfigurator;
@@ -37,6 +36,7 @@ import org.codehaus.plexus.util.xml.pull.XmlPullParserException;
 import com.google.common.base.Optional;
 import com.google.security.fences.inheritance.InheritanceGraph;
 import com.google.security.fences.policy.ApiElement;
+import com.google.security.fences.util.MisconfigurationException;
 
 @SuppressWarnings("javadoc")
 public final class EffectiveConfigurationTest extends TestCase {
@@ -135,7 +135,7 @@ public final class EffectiveConfigurationTest extends TestCase {
   }
 
   private static void test(TestDocumentPair p)
-      throws ComponentConfigurationException, EnforcerRuleException,
+      throws ComponentConfigurationException, MisconfigurationException,
              ParserConfigurationException, TransformerException {
     ApiFence f = new ApiFence();
     ComponentConfigurator configurator = new BasicComponentConfigurator();

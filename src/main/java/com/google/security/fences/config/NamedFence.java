@@ -2,11 +2,11 @@ package com.google.security.fences.config;
 
 import java.util.Locale;
 
-import org.apache.maven.enforcer.rule.api.EnforcerRuleException;
 import org.w3c.dom.Document;
 import org.w3c.dom.Element;
 
 import com.google.common.base.Preconditions;
+import com.google.security.fences.util.MisconfigurationException;
 
 abstract class NamedFence extends Fence {
   private String name;
@@ -23,10 +23,10 @@ abstract class NamedFence extends Fence {
   }
 
   @Override
-  public void check() throws EnforcerRuleException {
+  public void check() throws MisconfigurationException {
     super.check();
     if (name == null) {
-      throw new EnforcerRuleException(
+      throw new MisconfigurationException(
           getClass().getSimpleName().replaceFirst("Fence$", "")
           .toLowerCase(Locale.ENGLISH)
           + " is missing a name");

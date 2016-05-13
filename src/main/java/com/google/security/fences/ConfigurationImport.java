@@ -7,7 +7,6 @@ import java.util.Iterator;
 import java.util.Map;
 
 import org.apache.maven.artifact.Artifact;
-import org.apache.maven.enforcer.rule.api.EnforcerRuleException;
 import org.apache.maven.plugin.logging.Log;
 import org.codehaus.plexus.classworlds.realm.ClassRealm;
 import org.codehaus.plexus.component.configurator.ComponentConfigurationException;
@@ -22,6 +21,7 @@ import com.google.common.base.Objects;
 import com.google.common.base.Optional;
 import com.google.common.base.Preconditions;
 import com.google.common.collect.Maps;
+import com.google.security.fences.util.MisconfigurationException;
 import com.google.security.fences.util.Utils;
 
 
@@ -33,7 +33,7 @@ final class ConfigurationImport {
 
   final PartialArtifactKey key;
 
-  ConfigurationImport(String s) throws EnforcerRuleException {
+  ConfigurationImport(String s) throws MisconfigurationException {
     this.key = new PartialArtifactKey(s.trim());
   }
 
@@ -44,7 +44,7 @@ final class ConfigurationImport {
   void configure(
       Object configurable, ComponentConfigurator configurator,
       ClassRoots classRoots, Log log)
-  throws EnforcerRuleException {
+  throws MisconfigurationException {
     Optional<ClassRoot> cr = classRoots.lookup(key);
     if (cr.isPresent()) {
       PlexusConfiguration configuration;
@@ -52,7 +52,7 @@ final class ConfigurationImport {
         configuration = loadConfiguration(
             log, cr.get(), FENCES_CONFIGURATION_XML_RELATIVE_PATH);
       } catch (IOException ex) {
-        throw new EnforcerRuleException(
+        throw new MisconfigurationException(
             "Failed to load " + FENCES_CONFIGURATION_XML_RELATIVE_PATH
             + " from " + key, ex);
       }
@@ -75,7 +75,7 @@ final class ConfigurationImport {
       try {
         configurator.configureComponent(configurable, configuration, realm);
       } catch (ComponentConfigurationException ex) {
-        throw new EnforcerRuleException(
+        throw new MisconfigurationException(
             "Failed to process configuration "
             + FENCES_CONFIGURATION_XML_RELATIVE_PATH + " from " + key,
             ex);
@@ -92,8 +92,7 @@ final class ConfigurationImport {
     final Optional<String> version;
 
     PartialArtifactKey(String artifact)
-    // TODO: more appropriate exception type
-    throws EnforcerRuleException {
+    throws MisconfigurationException {
       String[] parts = artifact.split(":");
       switch (parts.length) {
         case 3:
@@ -107,7 +106,7 @@ final class ConfigurationImport {
           version = Optional.absent();
           break;
         default:
-          throw new EnforcerRuleException("Bad artifact key: " + artifact);
+          throw new MisconfigurationException("Bad artifact key: " + artifact);
       }
     }
 
@@ -181,11 +180,11 @@ final class ConfigurationImport {
       Log log,
       ClassRoot cr,
       String path)
-  throws EnforcerRuleException, IOException {
+  throws MisconfigurationException, IOException {
     log.debug("Loading " + path + " from " + Utils.artToString(cr.art));
     File classRootFile = cr.classRoot;
     if (classRootFile == null) {
-      throw new EnforcerRuleException(
+      throw new MisconfigurationException(
           "Cannot import configuration from unresolved artifact "
           + Utils.artToString(cr.art));
     }

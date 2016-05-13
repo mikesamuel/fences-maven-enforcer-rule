@@ -5,7 +5,6 @@ import java.util.Map;
 
 import javax.annotation.Nullable;
 
-import org.apache.maven.enforcer.rule.api.EnforcerRuleException;
 import org.w3c.dom.Document;
 import org.w3c.dom.Element;
 
@@ -16,6 +15,7 @@ import com.google.common.collect.Maps;
 import com.google.security.fences.inheritance.InheritanceGraph;
 import com.google.security.fences.namespace.Namespace;
 import com.google.security.fences.policy.ApiElement;
+import com.google.security.fences.util.MisconfigurationException;
 
 /**
  * A bean object that can be populated from a POM file {@code <configuration>}
@@ -51,7 +51,7 @@ public abstract class Fence {
    * A setter called by reflection during rule configuration.  Actually adds
    * instead of blowing away prior value.
    */
-  public void setTrusts(String s) throws EnforcerRuleException {
+  public void setTrusts(String s) throws MisconfigurationException {
     trusts.add(parsePrinciple(s));
   }
 
@@ -59,7 +59,7 @@ public abstract class Fence {
    * A setter called by reflection during rule configuration.  Actually adds
    * instead of blowing away prior value.
    */
-  public void setDistrusts(String s) throws EnforcerRuleException {
+  public void setDistrusts(String s) throws MisconfigurationException {
     distrusts.add(parsePrinciple(s));
   }
 
@@ -72,7 +72,8 @@ public abstract class Fence {
    *
    * @param s Human-readable text that may contain maven property expressions.
    */
-  public void setRationale(@Nullable String s) throws EnforcerRuleException {
+  public void setRationale(@Nullable String s)
+  throws MisconfigurationException {
     if (s != null) {
       rationale.addBody(s);
     }
@@ -88,14 +89,14 @@ public abstract class Fence {
    *
    * @param s Human-readable text that may contain maven property expressions.
    */
-  public void setAddendum(@Nullable String s) throws EnforcerRuleException {
+  public void setAddendum(@Nullable String s) throws MisconfigurationException {
     if (s != null) {
       rationale.addAddendum(s);
     }
   }
 
   /** By default, just checks children. */
-  public void check() throws EnforcerRuleException {
+  public void check() throws MisconfigurationException {
     for (Fence childFence : getChildFences()) {
       childFence.check();
     }
@@ -142,8 +143,7 @@ public abstract class Fence {
    * @return the split node so that parents may modify their child lists.
    */
   public abstract Fence splitDottedNames(ApiElement parent, InheritanceGraph g)
-  // TODO: better exception type
-  throws EnforcerRuleException;
+  throws MisconfigurationException;
 
   /**
    * Does minimal wrapping to produce a top-level API fence.
@@ -240,10 +240,10 @@ public abstract class Fence {
   }
 
   private static Namespace parsePrinciple(String s)
-  throws EnforcerRuleException {
+  throws MisconfigurationException {
     String trimmed = s.trim();
     if (!"*".equals(trimmed) && trimmed.contains("*")) {
-      throw new EnforcerRuleException(
+      throw new MisconfigurationException(
           "Globs not allowed in namespace names: " + trimmed);
     }
     return Namespace.fromDottedString(trimmed);

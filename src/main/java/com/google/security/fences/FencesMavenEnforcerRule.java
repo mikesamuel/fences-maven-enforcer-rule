@@ -30,6 +30,7 @@ import com.google.security.fences.inheritance.InheritanceGraph;
 import com.google.security.fences.policy.ApiElement;
 import com.google.security.fences.policy.Policy;
 import com.google.security.fences.util.LazyString;
+import com.google.security.fences.util.MisconfigurationException;
 import com.google.security.fences.util.Utils;
 
 import java.io.IOException;
@@ -57,7 +58,7 @@ public final class FencesMavenEnforcerRule implements EnforcerRule {
   private final Set<ConfigurationImport.PartialArtifactKey> alreadyImported =
       Sets.newLinkedHashSet();
 
-  private void addFence(Fence f) throws EnforcerRuleException {
+  private void addFence(Fence f) throws MisconfigurationException {
     f.check();
     fences.add(f);
   }
@@ -66,7 +67,7 @@ public final class FencesMavenEnforcerRule implements EnforcerRule {
    * A setter called by reflection during configuration.  Actually adds
    * instead of blowing away prior value.
    */
-  public void setApi(ApiFence x) throws EnforcerRuleException {
+  public void setApi(ApiFence x) throws MisconfigurationException {
     addFence(x);
   }
 
@@ -74,7 +75,7 @@ public final class FencesMavenEnforcerRule implements EnforcerRule {
    * A setter called by reflection during configuration.  Actually adds
    * instead of blowing away prior value.
    */
-  public void setPackage(PackageFence x) throws EnforcerRuleException {
+  public void setPackage(PackageFence x) throws MisconfigurationException {
     addFence(x);
   }
 
@@ -82,7 +83,7 @@ public final class FencesMavenEnforcerRule implements EnforcerRule {
    * A setter called by reflection during configuration.  Actually adds
    * instead of blowing away prior value.
    */
-  public void setClass(ClassFence x) throws EnforcerRuleException {
+  public void setClass(ClassFence x) throws MisconfigurationException {
     addFence(x);
   }
 
@@ -90,7 +91,7 @@ public final class FencesMavenEnforcerRule implements EnforcerRule {
    * A setter called by reflection during configuration.  Actually adds
    * instead of blowing away prior value.
    */
-  public void setImport(String x) throws EnforcerRuleException {
+  public void setImport(String x) throws MisconfigurationException {
     imports.add(new ConfigurationImport(x));
   }
 
@@ -99,7 +100,7 @@ public final class FencesMavenEnforcerRule implements EnforcerRule {
    * an {@code <api>} with an {@code <addendum>} instead of blowing away prior
    * value.
    */
-  public void setAddendum(String x) throws EnforcerRuleException {
+  public void setAddendum(String x) throws MisconfigurationException {
     Fence api = new ApiFence();
     api.setAddendum(x);
     fences.add(api);
@@ -162,6 +163,8 @@ public final class FencesMavenEnforcerRule implements EnforcerRule {
       throw new EnforcerRuleException("Failed to find artifacts", ex);
     } catch (ArtifactNotFoundException ex) {
       throw new EnforcerRuleException("Failed to find artifacts", ex);
+    } catch (MisconfigurationException ex) {
+      throw new EnforcerRuleException("Failed to find artifacts", ex);
     }
 
     ImmutableList<ClassRoot> classRoots = finder.getClassRoots();
@@ -176,6 +179,7 @@ public final class FencesMavenEnforcerRule implements EnforcerRule {
           ex);
     }
 
+    try {
     int nAssignedImportOrder = 0;
     int importOrder = 0;
     // Do the imports.
@@ -187,16 +191,23 @@ public final class FencesMavenEnforcerRule implements EnforcerRule {
       ConfigurationImport imp = imports.removeFirst();
       if (alreadyImported.add(imp.key)) {
         log.debug("Importing " + imp.key);
-        imp.configure(
-            this, configurator,
-            new ConfigurationImport.ClassRoots(classRoots.iterator()),
-            log);
+        try {
+          imp.configure(
+              this, configurator,
+              new ConfigurationImport.ClassRoots(classRoots.iterator()),
+              log);
+        } catch (MisconfigurationException ex) {
+          throw new EnforcerRuleException("Failed to import " + imp.key, ex);
+        }
       } else {
         log.info("Not importing " + imp.key + " a second time");
       }
     }
     rerootAndAssignImportOrder(
         inheritanceGraph, nAssignedImportOrder, importOrder);
+    } catch (MisconfigurationException ex) {
+      throw new EnforcerRuleException(ex.getMessage(), ex);
+    }
 
     ImmutableList<Fence> allFences = ImmutableList.copyOf(fences);
 
@@ -251,7 +262,7 @@ public final class FencesMavenEnforcerRule implements EnforcerRule {
 
   private int rerootAndAssignImportOrder(
       InheritanceGraph inheritanceGraph, int start, int importOrder)
-  throws EnforcerRuleException {
+  throws MisconfigurationException {
     int end = fences.size();
     for (int i = start; i < end; ++i) {
       Fence f = fences.get(i);

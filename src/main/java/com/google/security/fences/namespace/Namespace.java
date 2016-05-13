@@ -1,10 +1,9 @@
 package com.google.security.fences.namespace;
 
-import org.apache.maven.enforcer.rule.api.EnforcerRuleException;
-
 import com.google.common.base.Objects;
 import com.google.common.base.Optional;
 import com.google.common.base.Preconditions;
+import com.google.security.fences.util.MisconfigurationException;
 
 /**
  * A principle or group of principles that can be granted or denied access to
@@ -90,8 +89,7 @@ public final class Namespace {
    * @param dottedString a package name or fully-qualified class name.
    */
   public static Namespace fromDottedString(String dottedString)
-  // TODO: more appropriate exception type here.
-  throws EnforcerRuleException {
+  throws MisconfigurationException {
     if ("*".equals(dottedString)) {
       // Maven configuration object decoding doesn't deal well with the empty
       // string because there is no text node.
@@ -104,21 +102,19 @@ public final class Namespace {
    * See <a href="https://docs.oracle.com/javase/specs/jvms/se7/html/jvms-4.html#jvms-4.2">JVMS 4.2</a>
    */
   public static Namespace fromInternalClassName(String icn)
-  // TODO: more appropriate exception type here.
-  throws EnforcerRuleException {
+  throws MisconfigurationException {
     return fromSeparatedString("internal class name", icn, "/");
   }
 
   static Namespace fromSeparatedString(
       String description,
       String string, String separatorPattern)
-  // TODO: more appropriate exception type here.
-  throws EnforcerRuleException {
+  throws MisconfigurationException {
     Namespace ns = DEFAULT_PACKAGE;
     if (string.length() != 0) {
       for (String part : string.split(separatorPattern)) {
         if (part.length() == 0) {
-          throw new EnforcerRuleException(
+          throw new MisconfigurationException(
               "Invalid " + description + ": " + string);
         }
         ns = ns.child(part);

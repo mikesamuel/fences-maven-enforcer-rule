@@ -3,14 +3,13 @@ package com.google.security.fences.config;
 import java.util.Arrays;
 import java.util.List;
 
-import org.apache.maven.enforcer.rule.api.EnforcerRuleException;
-
 import com.google.common.base.Preconditions;
 import com.google.common.collect.ImmutableList;
 import com.google.common.collect.Lists;
 import com.google.security.fences.inheritance.InheritanceGraph;
 import com.google.security.fences.policy.ApiElement;
 import com.google.security.fences.policy.ApiElementType;
+import com.google.security.fences.util.MisconfigurationException;
 
 /** A Fence for a package. */
 public final class PackageFence extends NamedFence {
@@ -53,7 +52,7 @@ public final class PackageFence extends NamedFence {
 
   @Override
   public Fence splitDottedNames(ApiElement parentEl, InheritanceGraph g)
-  throws EnforcerRuleException {
+  throws MisconfigurationException {
     List<String> nameParts;
     String name = getName();
     if (name.isEmpty()) {

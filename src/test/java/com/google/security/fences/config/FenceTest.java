@@ -8,7 +8,6 @@ import javax.xml.transform.TransformerFactory;
 import javax.xml.transform.dom.DOMSource;
 import javax.xml.transform.stream.StreamResult;
 
-import org.apache.maven.enforcer.rule.api.EnforcerRuleException;
 import org.objectweb.asm.Opcodes;
 
 import com.google.common.base.Joiner;
@@ -16,6 +15,7 @@ import com.google.common.base.Optional;
 import com.google.common.collect.ImmutableList;
 import com.google.security.fences.inheritance.InheritanceGraph;
 import com.google.security.fences.policy.ApiElement;
+import com.google.security.fences.util.MisconfigurationException;
 
 import junit.framework.TestCase;
 
@@ -29,7 +29,7 @@ public final class FenceTest extends TestCase {
     boolean threw = false;
     try {
       f.setTrusts("*Test");
-    } catch (EnforcerRuleException ex) {
+    } catch (MisconfigurationException ex) {
       threw = true;
 
       String message = ex.getMessage();
@@ -45,7 +45,7 @@ public final class FenceTest extends TestCase {
     boolean threw = false;
     try {
       f.setDistrusts("*Test");
-    } catch (EnforcerRuleException ex) {
+    } catch (MisconfigurationException ex) {
       threw = true;
 
       String message = ex.getMessage();

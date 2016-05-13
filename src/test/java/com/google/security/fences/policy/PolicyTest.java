@@ -1,7 +1,5 @@
 package com.google.security.fences.policy;
 
-import org.apache.maven.enforcer.rule.api.EnforcerRuleException;
-
 import com.google.common.collect.ImmutableList;
 import com.google.common.collect.ImmutableMap;
 import com.google.security.fences.config.ClassFence;
@@ -9,6 +7,7 @@ import com.google.security.fences.config.FieldFence;
 import com.google.security.fences.config.PackageFence;
 import com.google.security.fences.namespace.Namespace;
 import com.google.security.fences.policy.Policy.NamespacePolicy;
+import com.google.security.fences.util.MisconfigurationException;
 
 import junit.framework.TestCase;
 
@@ -60,7 +59,7 @@ public final class PolicyTest extends TestCase {
     }
   }
 
-  public void testForNamespace() throws EnforcerRuleException {
+  public void testForNamespace() throws MisconfigurationException {
     NamespacePolicy defaultNamespacePolicy = NamespacePolicy.fromAccessLevelMap(
         ImmutableMap.of(
             // By default, access is disallowed

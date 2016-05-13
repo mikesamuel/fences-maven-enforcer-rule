@@ -2,8 +2,6 @@ package com.google.security.fences.config;
 
 import java.util.List;
 
-import org.apache.maven.enforcer.rule.api.EnforcerRuleException;
-
 import com.google.common.base.Optional;
 import com.google.common.base.Preconditions;
 import com.google.common.collect.ImmutableList;
@@ -11,6 +9,7 @@ import com.google.common.collect.Lists;
 import com.google.security.fences.inheritance.InheritanceGraph;
 import com.google.security.fences.policy.ApiElement;
 import com.google.security.fences.policy.ApiElementType;
+import com.google.security.fences.util.MisconfigurationException;
 
 /** A fence for a class. */
 public final class ClassFence extends NamedFence {
@@ -95,14 +94,14 @@ public final class ClassFence extends NamedFence {
 
   @Override
   public Fence splitDottedNames(ApiElement parentEl, InheritanceGraph g)
-  throws EnforcerRuleException {
+  throws MisconfigurationException {
     String partiallyQualifiedName = Preconditions.checkNotNull(getName());
     ClassNameDisambiguator dis = new ClassNameDisambiguator(
         g, partiallyQualifiedName);
 
     Optional<ApiElement> unambiguous = dis.resolve(parentEl);
     if (!unambiguous.isPresent()) {
-      throw new EnforcerRuleException(
+      throw new MisconfigurationException(
           "Cannot find a class on the class path corresponding to `"
           + partiallyQualifiedName
           + "` in `" + parentEl.toInternalName());

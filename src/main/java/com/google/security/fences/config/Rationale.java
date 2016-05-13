@@ -4,8 +4,8 @@ import java.util.List;
 
 import com.google.common.base.Objects;
 import com.google.common.collect.ImmutableList;
+import com.google.security.fences.util.MisconfigurationException;
 
-import org.apache.maven.enforcer.rule.api.EnforcerRuleException;
 import org.codehaus.plexus.interpolation.InterpolationException;
 import org.codehaus.plexus.interpolation.RegexBasedInterpolator;
 import org.codehaus.plexus.interpolation.ValueSource;
@@ -108,7 +108,7 @@ public final class Rationale {
      * </pre>
      */
     public Builder addBody(String xmlTextNodeContent)
-    throws EnforcerRuleException {
+    throws MisconfigurationException {
       return addBody(HumanReadableText.fromXmlTextNode(xmlTextNodeContent));
     }
 
@@ -116,11 +116,11 @@ public final class Rationale {
      * Adds text to the body.
      * This concatenates the new body after the previous body.
      *
-     * @throws EnforcerRuleException if the concatenated body contains a
+     * @throws MisconfigurationException if the concatenated body contains a
      *     malformed Plexus interpolator expression.
      */
     public Builder addBody(HumanReadableText newBody)
-    throws EnforcerRuleException {
+    throws MisconfigurationException {
       body = body.concat(checkInterpolatable(newBody));
       return this;
     }
@@ -131,7 +131,7 @@ public final class Rationale {
     public Builder addBodyFrom(Rationale r) {
       try {
         return addBody(r.body);
-      } catch (EnforcerRuleException ex) {
+      } catch (MisconfigurationException ex) {
         throw new AssertionError(null, ex);
       }
     }
@@ -161,7 +161,7 @@ public final class Rationale {
      * </pre>
      */
     public Builder addAddendum(String xmlTextNodeContent)
-    throws EnforcerRuleException {
+    throws MisconfigurationException {
       return addAddendum(HumanReadableText.fromXmlTextNode(xmlTextNodeContent));
     }
 
@@ -169,11 +169,11 @@ public final class Rationale {
      * Adds text to the addendum.
      * This concatenates the new addendum after the previous addendum.
      *
-     * @throws EnforcerRuleException if the concatenated body contains a
+     * @throws MisconfigurationException if the concatenated body contains a
      *     malformed Plexus interpolator expression.
      */
     public Builder addAddendum(HumanReadableText newAddendum)
-    throws EnforcerRuleException {
+    throws MisconfigurationException {
       addendum = addendum.concat(checkInterpolatable(newAddendum));
       return this;
     }
@@ -184,7 +184,7 @@ public final class Rationale {
     public Builder addAddendumFrom(Rationale r) {
       try {
         return addAddendum(r.addendum);
-      } catch (EnforcerRuleException ex) {
+      } catch (MisconfigurationException ex) {
         throw new AssertionError(null, ex);
       }
     }
@@ -200,14 +200,14 @@ public final class Rationale {
     }
 
     private static HumanReadableText checkInterpolatable(HumanReadableText t)
-    throws EnforcerRuleException {
+    throws MisconfigurationException {
       // Try to pre-validate it as a valid plexus expression?
       RegexBasedInterpolator interpolator = new RegexBasedInterpolator();
       interpolator.addValueSource(IdentityValueSource.INSTANCE);
       try {
         interpolator.interpolate(t.text);
       } catch (InterpolationException ex) {
-        throw new EnforcerRuleException(
+        throw new MisconfigurationException(
             "Malformed property expression in: " + t.text, ex);
       }
       return t;
