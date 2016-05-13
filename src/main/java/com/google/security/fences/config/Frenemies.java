@@ -31,6 +31,13 @@ public final class Frenemies {
     return new Builder();
   }
 
+  /**
+   * True if this is content-less.
+   */
+  public boolean isEmpty() {
+    return rationale.isEmpty() && friends.isEmpty() && enemies.isEmpty();
+  }
+
   static final class Builder {
     private Builder() {}
 

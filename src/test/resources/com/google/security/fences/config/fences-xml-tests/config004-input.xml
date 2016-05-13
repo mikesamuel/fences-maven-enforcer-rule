@@ -1,0 +1,7 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<configuration>
+  <class>
+    <name>com/example/Foo</name>
+    <trusts>com/example/bar/Bar</trusts>
+  </class>
+</configuration>

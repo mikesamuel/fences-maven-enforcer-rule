@@ -1,0 +1,13 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<configuration>
+  <package>
+    <name>com</name>
+    <package>
+      <name>example</name>
+      <class>
+        <name>Foo</name>
+        <trusts>com.example.bar.Bar</trusts>
+      </class>
+    </package>
+  </package>
+</configuration>
