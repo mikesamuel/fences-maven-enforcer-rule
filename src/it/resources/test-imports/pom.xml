@@ -45,7 +45,7 @@
                 <fences
                  implementation="com.google.security.fences.FencesMavenEnforcerRule">
                   <import>test:unsafe-api</import>
-                  <import>test:partially-safe-client:1.0-SNAPSHOT</import>
+                  <import>${project.groupId}:partially-safe-client:${project.version}</import>
                 </fences>
               </rules>
             </configuration>
