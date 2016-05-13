@@ -149,6 +149,7 @@ public class ApiElement implements Comparable<ApiElement> {
     return hashCode;
   }
 
+  @Override
   public int compareTo(ApiElement that) {
     int delta = (this.parent.isPresent() ? 1 : 0)
         - (that.parent.isPresent() ? 1 : 0);
