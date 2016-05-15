@@ -93,12 +93,12 @@
       </dependency>
       <dependency>
         <groupId>org.apache.maven</groupId>
-        <artifactId>maven-project</artifactId>
+        <artifactId>maven-model</artifactId>
         <version>${maven.version}</version>
       </dependency>
       <dependency>
         <groupId>org.apache.maven</groupId>
-        <artifactId>maven-core</artifactId>
+        <artifactId>maven-project</artifactId>
         <version>${maven.version}</version>
       </dependency>
       <dependency>
@@ -110,6 +110,16 @@
         <groupId>org.apache.maven</groupId>
         <artifactId>maven-plugin-api</artifactId>
         <version>${maven.version}</version>
+      </dependency>
+      <dependency>
+        <groupId>org.apache.maven.shared</groupId>
+        <artifactId>maven-dependency-tree</artifactId>
+        <version>2.2</version>
+      </dependency>
+      <dependency>
+        <groupId>org.codehaus.plexus</groupId>
+        <artifactId>plexus-utils</artifactId>
+        <version>1.5.1</version>
       </dependency>
       <dependency>
         <groupId>org.codehaus.plexus</groupId>
@@ -132,6 +142,13 @@
         <groupId>com.google.guava</groupId>
         <artifactId>guava</artifactId>
         <version>19.0</version>
+      </dependency>
+      <dependency>
+        <!-- TODO: we shouldn't need this but dependency:analyze insists -->
+        <groupId>com.google.collections</groupId>
+        <artifactId>google-collections</artifactId>
+        <version>1.0</version>
+        <scope>compile</scope>
       </dependency>
       <!-- For classfile introspection to find the link points
            that we need to check for policy compliance -->
@@ -156,11 +173,6 @@
         <artifactId>jsr305</artifactId>
         <version>3.0.1</version>
         <scope>provided</scope>
-      </dependency>
-      <dependency>
-        <groupId>org.apache.maven.shared</groupId>
-        <artifactId>maven-dependency-tree</artifactId>
-        <version>2.2</version>
       </dependency>
 
       <dependency>
