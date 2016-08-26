@@ -56,19 +56,19 @@ public class FencesMavenEnforcerRuleIT extends TestCase {
 
     @CheckReturnValue
     TestBuilder extraCliOptions(String... argv) {
-      extraCliOptions.addAll(ImmutableList.of(argv));
+      extraCliOptions.addAll(ImmutableList.copyOf(argv));
       return this;
     }
 
     @CheckReturnValue
     TestBuilder inLog(String... strings) {
-      textInLog.addAll(ImmutableList.of(strings));
+      textInLog.addAll(ImmutableList.copyOf(strings));
       return this;
     }
 
     @CheckReturnValue
     TestBuilder notInLog(String... strings) {
-      textNotInLog.addAll(ImmutableList.of(strings));
+      textNotInLog.addAll(ImmutableList.copyOf(strings));
       return this;
     }
 

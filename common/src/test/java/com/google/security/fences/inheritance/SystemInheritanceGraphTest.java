@@ -29,7 +29,7 @@ public final class SystemInheritanceGraphTest extends TestCase {
     assertEquals(name + " supertype", superType, cn.superType);
     assertEquals(
         name + " interfaces",
-        ImmutableList.of(interfaces),
+        ImmutableList.copyOf(interfaces),
         cn.interfaces);
   }
 

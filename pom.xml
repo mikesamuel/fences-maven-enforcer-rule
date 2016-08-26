@@ -125,6 +125,12 @@
         <groupId>org.codehaus.plexus</groupId>
         <artifactId>plexus-container-default</artifactId>
         <version>1.6</version>
+        <exclusions>
+          <exclusion>
+            <groupId>com.google.collections</groupId>
+            <artifactId>google-collections</artifactId>
+          </exclusion>
+        </exclusions>
       </dependency>
       <dependency>
         <groupId>org.codehaus.plexus</groupId>
@@ -366,14 +372,26 @@
           <groupId>org.apache.maven.plugins</groupId>
           <artifactId>maven-enforcer-plugin</artifactId>
           <version>1.3.1</version>
+          <dependencies>
+            <dependency>
+              <groupId>org.codehaus.mojo</groupId>
+              <artifactId>extra-enforcer-rules</artifactId>
+              <version>1.0-beta-4</version>
+            </dependency>
+          </dependencies>
           <executions>
             <execution>
               <id>enforce</id>
               <configuration>
                 <rules>
                   <DependencyConvergence />
+                  <banDuplicateClasses>
+                    <findAllDuplicates>true</findAllDuplicates>
+                    <ignoreClasses>
+                    </ignoreClasses>
+                  </banDuplicateClasses>
                 </rules>
-                <fail>false</fail>  <!-- TODO: fix me -->
+                <fail>true</fail>
               </configuration>
               <goals>
                 <goal>enforce</goal>
