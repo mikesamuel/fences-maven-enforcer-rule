@@ -87,12 +87,12 @@ mvn clean source:jar javadoc:jar verify deploy:deploy -DperformRelease=true
 
 # Workaround a problem with markdown translation
 # ( https:// stackoverflow.com/questions/36708241 )
-mvn site
+mvn -f rule site
 find "$RELEASE_CLONE/target/site" -name \*.html \
     | xargs perl -i -pe 's/(href="[^"#?]*)\.md(#[^"]*)?(")/$1.html$2$3/g'
 
 # Publish the site to gh-pages
-mvn com.github.github:site-maven-plugin:site
+mvn -f rule com.github.github:site-maven-plugin:site
 
 # Bump the development version.
 for ph in $(find . -name pom.xml.placeholder); do
