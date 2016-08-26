@@ -166,7 +166,7 @@ public final class ClassRoot {
     throw new AssertionError(kind);
   }
 
-  enum ClassRootKind {
+  public enum ClassRootKind {
     ZIPFILE,
     BUILD_OUTPUT_DIRECTORY,
     ;
