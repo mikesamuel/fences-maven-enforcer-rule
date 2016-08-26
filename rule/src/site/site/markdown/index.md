@@ -1,6 +1,6 @@
 # Fences
 
-Fecnes is a [maven-enforcer] rule that augments Java's access control
+Fences is a [maven-enforcer] rule that augments Java's access control
 by checking that a Maven Project and all its dependencies conform to a
 policy that specifies which classes/packages can link to which others.
 
