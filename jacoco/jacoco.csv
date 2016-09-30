@@ -1,93 +1,10 @@
 GROUP,PACKAGE,CLASS,INSTRUCTION_MISSED,INSTRUCTION_COVERED,BRANCH_MISSED,BRANCH_COVERED,LINE_MISSED,LINE_COVERED,COMPLEXITY_MISSED,COMPLEXITY_COVERED,METHOD_MISSED,METHOD_COVERED
-Fences Enforcer Rule,com.google.security.fences.policy,Policy.AccessControlDecision,73,38,4,4,7,10,7,2,3,2
-Fences Enforcer Rule,com.google.security.fences.policy,Policy.NamespacePolicy,49,91,6,4,13,23,8,7,4,6
-Fences Enforcer Rule,com.google.security.fences.policy,Policy.1.new Function() {...},0,16,0,0,0,3,0,2,0,2
-Fences Enforcer Rule,com.google.security.fences.policy,PolicyApplicationOrder.QueueItem,22,61,6,8,2,11,6,6,1,4
-Fences Enforcer Rule,com.google.security.fences.policy,PolicyApplicationOrder,42,56,6,6,8,14,6,5,1,3
-Fences Enforcer Rule,com.google.security.fences.policy,ApiElement.Factory,8,19,0,0,2,4,2,4,2,4
-Fences Enforcer Rule,com.google.security.fences.policy,PolicyApplicationOrder.new LazyString() {...},19,0,0,0,2,0,2,0,2,0
-Fences Enforcer Rule,com.google.security.fences.policy,PolicyApplicationOrder.ApiElementIterator.new PolicyApplicationOrder.ApiElementIterator.SubList() {...},0,13,0,0,0,3,0,2,0,2
-Fences Enforcer Rule,com.google.security.fences.policy,PolicyApplicationOrder.new Object() {...},5,35,0,0,0,1,0,1,0,1
-Fences Enforcer Rule,com.google.security.fences.policy,PolicyApplicationOrder.ApiElementIterator.new PolicyApplicationOrder.ApiElementIterator.SubList() {...},0,13,0,0,0,3,0,2,0,2
-Fences Enforcer Rule,com.google.security.fences.policy,PolicyApplicationOrder.ApiElementIterator.new PolicyApplicationOrder.ApiElementIterator.SubList() {...},5,8,0,0,2,1,1,1,1,1
-Fences Enforcer Rule,com.google.security.fences.policy,PolicyApplicationOrder.ApiElementIterator.new PolicyApplicationOrder.ApiElementIterator.SubList() {...},0,14,0,0,0,3,0,2,0,2
-Fences Enforcer Rule,com.google.security.fences.policy,PolicyApplicationOrder.ApiElementIterator.new PolicyApplicationOrder.ApiElementIterator.SubList() {...},0,13,0,0,0,3,0,2,0,2
-Fences Enforcer Rule,com.google.security.fences.policy,PolicyApplicationOrder.ApiElementIterator.new PolicyApplicationOrder.ApiElementIterator.SubList() {...},0,14,0,0,0,3,0,2,0,2
-Fences Enforcer Rule,com.google.security.fences.policy,PolicyApplicationOrder.ApiElementIterator.new PolicyApplicationOrder.ApiElementIterator.SubList() {...},0,14,0,0,0,3,0,2,0,2
-Fences Enforcer Rule,com.google.security.fences.policy,PolicyApplicationOrder.ApiElementIterator,35,528,16,73,9,126,17,38,1,8
-Fences Enforcer Rule,com.google.security.fences.policy,Policy.new FenceVisitor() {...},27,57,3,3,5,11,3,4,1,3
-Fences Enforcer Rule,com.google.security.fences.policy,AccessLevel,35,29,4,0,5,3,5,2,3,2
-Fences Enforcer Rule,com.google.security.fences.policy,Policy.new Function() {...},0,9,0,0,0,2,0,2,0,2
-Fences Enforcer Rule,com.google.security.fences.policy,Policy,33,67,4,4,8,17,4,6,2,4
-Fences Enforcer Rule,com.google.security.fences.policy,Policy.NamespacePolicy.new Supplier() {...},0,7,0,0,0,2,0,2,0,2
-Fences Enforcer Rule,com.google.security.fences.policy,ApiElementType,5,63,0,0,0,6,1,3,1,3
-Fences Enforcer Rule,com.google.security.fences.policy,ApiElement.new Object() {...},5,35,0,0,0,1,0,1,0,1
-Fences Enforcer Rule,com.google.security.fences.policy,ApiElement,132,436,36,66,23,94,33,37,3,12
-Fences Enforcer Rule,com.google.security.fences.policy,PolicyApplicationOrder.ApiElementIterator.SubList,0,53,0,4,0,13,0,7,0,5
-Fences Enforcer Rule,com.google.security.fences.config,Rationale.Builder,96,25,2,2,22,7,10,4,8,4
-Fences Enforcer Rule,com.google.security.fences.config,ApiFence,142,43,12,0,35,15,14,5,8,5
-Fences Enforcer Rule,com.google.security.fences.config,HumanReadableText,96,178,16,28,17,45,15,18,5,6
-Fences Enforcer Rule,com.google.security.fences.config,Fence,217,210,24,18,49,49,20,16,7,8
-Fences Enforcer Rule,com.google.security.fences.config,MethodFence,18,0,0,0,6,0,4,0,4,0
-Fences Enforcer Rule,com.google.security.fences.config,NamedLeafFence,82,3,8,0,24,1,7,1,3,1
-Fences Enforcer Rule,com.google.security.fences.config,PackageFence,206,72,22,2,50,22,13,8,2,7
-Fences Enforcer Rule,com.google.security.fences.config,ClassFence,111,205,13,12,22,58,12,12,3,8
-Fences Enforcer Rule,com.google.security.fences.config,ClassFence.new Object() {...},5,35,0,0,0,1,0,1,0,1
-Fences Enforcer Rule,com.google.security.fences.config,Rationale,84,16,16,0,12,5,13,2,5,2
-Fences Enforcer Rule,com.google.security.fences.config,IdentityValueSource,13,0,0,0,6,0,5,0,5,0
-Fences Enforcer Rule,com.google.security.fences.config,ConstructorFence,28,0,2,0,9,0,8,0,7,0
-Fences Enforcer Rule,com.google.security.fences.config,Frenemies,0,17,0,0,0,6,0,2,0,2
-Fences Enforcer Rule,com.google.security.fences.config,Frenemies.Builder,0,48,0,0,0,12,0,5,0,5
-Fences Enforcer Rule,com.google.security.fences.config,NamedFence,53,34,2,0,10,10,4,4,3,4
-Fences Enforcer Rule,com.google.security.fences.config,FieldFence,6,12,0,0,3,3,2,2,2,2
-Fences Enforcer Rule,com.google.security.fences.config,ClassNameDisambiguator,33,240,14,52,6,66,11,26,0,4
-Fences Enforcer Rule,com.google.security.fences,RelevantSystemProperties,17,0,4,0,3,0,5,0,3,0
-Fences Enforcer Rule,com.google.security.fences,ArtifactFinder,295,0,38,0,72,0,25,0,6,0
-Fences Enforcer Rule,com.google.security.fences,AbstractClassesVisitor,34,0,2,0,9,0,5,0,4,0
-Fences Enforcer Rule,com.google.security.fences,ClassRoot.ClassRootKind,38,0,0,0,3,0,4,0,4,0
-Fences Enforcer Rule,com.google.security.fences,ArtifactFinder.new LazyString() {...},28,0,0,0,2,0,2,0,2,0
-Fences Enforcer Rule,com.google.security.fences,FencesMavenEnforcerRule,510,0,24,0,130,0,25,0,13,0
-Fences Enforcer Rule,com.google.security.fences,Violation,111,0,12,0,25,0,10,0,4,0
-Fences Enforcer Rule,com.google.security.fences,Checker.PolicyResult,19,0,0,0,6,0,2,0,2,0
-Fences Enforcer Rule,com.google.security.fences,ClassRoot,365,0,31,0,68,0,22,0,5,0
-Fences Enforcer Rule,com.google.security.fences,PolicyViolationReporter,406,0,36,0,81,0,26,0,8,0
-Fences Enforcer Rule,com.google.security.fences,PolicyViolationReporter.new Function() {...},11,0,0,0,2,0,2,0,2,0
-Fences Enforcer Rule,com.google.security.fences,Checker.MethodChecker,166,0,9,0,41,0,12,0,7,0
-Fences Enforcer Rule,com.google.security.fences,ConfigurationImport.PartialArtifactKey,157,0,13,0,29,0,13,0,6,0
-Fences Enforcer Rule,com.google.security.fences,AbstractClassesVisitor.new ClassRoot.IOConsumer() {...},25,0,0,0,5,0,2,0,2,0
-Fences Enforcer Rule,com.google.security.fences,AbstractClassesVisitor.new Predicate() {...},10,0,0,0,2,0,2,0,2,0
-Fences Enforcer Rule,com.google.security.fences,ClassRoot.new Object() {...},19,0,0,0,1,0,1,0,1,0
-Fences Enforcer Rule,com.google.security.fences,FencesMavenEnforcerRule.new LazyString() {...},17,0,0,0,2,0,2,0,2,0
-Fences Enforcer Rule,com.google.security.fences,Checker.MethodChecker.new LazyString() {...},32,0,0,0,3,0,2,0,2,0
-Fences Enforcer Rule,com.google.security.fences,ConfigurationImport,147,0,8,0,31,0,8,0,4,0
-Fences Enforcer Rule,com.google.security.fences,PolicyViolationReporter.new Function() {...},9,0,0,0,2,0,2,0,2,0
-Fences Enforcer Rule,com.google.security.fences,PolicyViolationReporter.new Function() {...},11,0,0,0,2,0,2,0,2,0
-Fences Enforcer Rule,com.google.security.fences,PolicyViolationReporter.new Function() {...},21,0,2,0,2,0,3,0,2,0
-Fences Enforcer Rule,com.google.security.fences,Checker.ClassChecker,59,0,0,0,13,0,4,0,4,0
-Fences Enforcer Rule,com.google.security.fences,PolicyViolationReporter.new Function() {...},11,0,0,0,2,0,2,0,2,0
-Fences Enforcer Rule,com.google.security.fences,PolicyViolationReporter.new Function() {...},10,0,0,0,2,0,2,0,2,0
-Fences Enforcer Rule,com.google.security.fences,Checker,160,0,14,0,40,0,12,0,5,0
-Fences Enforcer Rule,com.google.security.fences,InheritanceGraphExtractor,23,0,0,0,6,0,3,0,3,0
-Fences Enforcer Rule,com.google.security.fences,ConfigurationImport.ClassRoots,73,0,8,0,21,0,6,0,2,0
-Fences Enforcer Rule,com.google.security.fences,PolicyViolationReporter.ReportTree,157,0,16,0,39,0,12,0,4,0
-Fences Enforcer Rule,com.google.security.fences,Checker.new Object() {...},19,0,0,0,1,0,1,0,1,0
-Fences Enforcer Rule,com.google.security.fences,ConfigurationImport.new ClassRoot.IOConsumer() {...},37,0,0,0,5,0,2,0,2,0
-Fences Enforcer Rule,com.google.security.fences.inheritance,SystemInheritanceGraph.LazyLoader,54,396,8,26,8,78,8,13,0,4
-Fences Enforcer Rule,com.google.security.fences.inheritance,SystemInheritanceGraph.new Function() {...},4,9,1,1,1,3,1,2,0,2
-Fences Enforcer Rule,com.google.security.fences.inheritance,SystemInheritanceGraph.new Predicate() {...},23,0,6,0,3,0,5,0,2,0
-Fences Enforcer Rule,com.google.security.fences.inheritance,SystemInheritanceGraph.new Function() {...},5,0,0,0,2,0,2,0,2,0
-Fences Enforcer Rule,com.google.security.fences.inheritance,InheritanceGraph,15,43,0,4,3,9,3,5,3,3
-Fences Enforcer Rule,com.google.security.fences.inheritance,ClassNodeFromClassFileVisitor,15,99,8,4,2,30,7,6,1,6
-Fences Enforcer Rule,com.google.security.fences.inheritance,ClassNode,28,141,6,22,7,30,9,14,4,5
-Fences Enforcer Rule,com.google.security.fences.inheritance,MethodDetails,42,42,2,0,3,11,4,2,3,2
-Fences Enforcer Rule,com.google.security.fences.inheritance,InheritanceGraph.Builder,0,67,0,2,0,14,0,5,0,4
-Fences Enforcer Rule,com.google.security.fences.inheritance,SystemInheritanceGraph,479,61,52,4,99,12,29,6,3,4
-Fences Enforcer Rule,com.google.security.fences.inheritance,InheritanceGraph.Builder.DeclarationBuilder,0,116,1,3,0,33,1,8,0,7
-Fences Enforcer Rule,com.google.security.fences.inheritance,FieldDetails,27,29,2,0,3,8,4,2,3,2
-Fences Enforcer Rule,com.google.security.fences.util,LazyString,30,0,2,0,7,0,6,0,5,0
-Fences Enforcer Rule,com.google.security.fences.util,CountingIterable,41,0,2,0,7,0,4,0,3,0
-Fences Enforcer Rule,com.google.security.fences.util,CountingIterator,76,0,6,0,11,0,8,0,5,0
-Fences Enforcer Rule,com.google.security.fences.util,Utils,21,0,0,0,4,0,2,0,2,0
-Fences Enforcer Rule,com.google.security.fences.namespace,NamespaceTrie,29,98,4,10,7,28,6,8,3,4
-Fences Enforcer Rule,com.google.security.fences.namespace,Namespace,30,175,9,19,2,40,10,17,1,12
-Fences Enforcer Rule,com.google.security.fences.namespace,NamespaceTrie.Entry,110,36,8,0,20,10,9,4,5,4
+Fences Rule,com.google.security.fences,RecordingLog.new Object() {...},33,0,0,0,1,0,1,0,1,0
+Fences Rule,com.google.security.fences,FencesMavenEnforcerRule.new LazyString() {...},17,0,0,0,2,0,2,0,2,0
+Fences Rule,com.google.security.fences,FencesMavenEnforcerRule,650,0,36,0,168,0,32,0,14,0
+Fences Rule,com.google.security.fences,FencesMavenEnforcerRule.new Object() {...},12,0,0,0,1,0,1,0,1,0
+Fences Rule,com.google.security.fences,FencesMavenEnforcerRule.ArtifactFindingsHash,144,0,6,0,39,0,9,0,6,0
+Fences Rule,com.google.security.fences,RecordingLog,207,0,0,0,47,0,19,0,19,0
+Fences Rule,com.google.security.fences,FencesMavenEnforcerRule.HashedResult,59,0,2,0,18,0,7,0,6,0
+Fences Rule,com.google.security.fences,RecordingLog.Level,58,0,0,0,5,0,4,0,4,0
+Fences Rule,com.google.security.fences,RecordingLog.Entry,182,0,15,0,47,0,16,0,7,0

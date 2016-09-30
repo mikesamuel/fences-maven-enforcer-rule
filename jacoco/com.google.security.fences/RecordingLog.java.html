@@ -1,0 +1,225 @@
+<?xml version="1.0" encoding="UTF-8"?><!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd"><html xmlns="http://www.w3.org/1999/xhtml" lang="en"><head><meta http-equiv="Content-Type" content="text/html;charset=UTF-8"/><link rel="stylesheet" href="../.resources/report.css" type="text/css"/><link rel="shortcut icon" href="../.resources/report.gif" type="image/gif"/><title>RecordingLog.java</title><link rel="stylesheet" href="../.resources/prettify.css" type="text/css"/><script type="text/javascript" src="../.resources/prettify.js"></script></head><body onload="window['PR_TAB_WIDTH']=4;prettyPrint()"><div class="breadcrumb" id="breadcrumb"><span class="info"><a href="../.sessions.html" class="el_session">Sessions</a></span><a href="../index.html" class="el_report">Fences Rule</a> &gt; <a href="index.source.html" class="el_package">com.google.security.fences</a> &gt; <span class="el_source">RecordingLog.java</span></div><h1>RecordingLog.java</h1><pre class="source lang-java linenums">package com.google.security.fences;
+
+import java.io.ByteArrayOutputStream;
+import java.io.Externalizable;
+import java.io.IOException;
+import java.io.ObjectInput;
+import java.io.ObjectOutput;
+import java.io.ObjectOutputStream;
+import java.util.List;
+
+import javax.annotation.Nullable;
+
+import org.apache.maven.plugin.logging.Log;
+
+import com.google.common.base.Preconditions;
+import com.google.common.collect.ImmutableList;
+import com.google.common.collect.Lists;
+
+/**
+ * Records
+ */
+final class RecordingLog implements Log {
+  final Log backingLog;
+<span class="nc" id="L24">  final List&lt;Entry&gt; entries = Lists.newArrayList();</span>
+
+<span class="nc" id="L26">  RecordingLog(Log backingLog) {</span>
+<span class="nc" id="L27">    this.backingLog = backingLog;</span>
+<span class="nc" id="L28">  }</span>
+
+  void reset() {
+<span class="nc" id="L31">    entries.clear();</span>
+<span class="nc" id="L32">  }</span>
+
+  ImmutableList&lt;Entry&gt; getEntriesSinceLastReset() {
+<span class="nc" id="L35">    return ImmutableList.copyOf(entries);</span>
+  }
+
+  @Override
+  public void debug(CharSequence s) {
+<span class="nc" id="L40">    backingLog.debug(s);</span>
+<span class="nc" id="L41">    entries.add(new Entry(Level.DEBUG, s));</span>
+<span class="nc" id="L42">  }</span>
+
+  @Override
+  public void debug(Throwable th) {
+<span class="nc" id="L46">    backingLog.debug(th);</span>
+<span class="nc" id="L47">    entries.add(new Entry(Level.DEBUG, th));</span>
+<span class="nc" id="L48">  }</span>
+
+  @Override
+  public void debug(CharSequence s, Throwable th) {
+<span class="nc" id="L52">    backingLog.debug(s, th);</span>
+<span class="nc" id="L53">    entries.add(new Entry(Level.DEBUG, s, th));</span>
+<span class="nc" id="L54">  }</span>
+
+  @Override
+  public void error(CharSequence s) {
+<span class="nc" id="L58">    backingLog.error(s);</span>
+<span class="nc" id="L59">    entries.add(new Entry(Level.ERROR, s));</span>
+<span class="nc" id="L60">  }</span>
+
+  @Override
+  public void error(Throwable th) {
+<span class="nc" id="L64">    backingLog.error(th);</span>
+<span class="nc" id="L65">    entries.add(new Entry(Level.ERROR, th));</span>
+<span class="nc" id="L66">  }</span>
+
+  @Override
+  public void error(CharSequence s, Throwable th) {
+<span class="nc" id="L70">    backingLog.error(s, th);</span>
+<span class="nc" id="L71">    entries.add(new Entry(Level.ERROR, s, th));</span>
+<span class="nc" id="L72">  }</span>
+
+  @Override
+  public void info(CharSequence s) {
+<span class="nc" id="L76">    backingLog.info(s);</span>
+<span class="nc" id="L77">    entries.add(new Entry(Level.INFO, s));</span>
+<span class="nc" id="L78">  }</span>
+
+  @Override
+  public void info(Throwable th) {
+<span class="nc" id="L82">    backingLog.info(th);</span>
+<span class="nc" id="L83">    entries.add(new Entry(Level.INFO, th));</span>
+<span class="nc" id="L84">  }</span>
+
+  @Override
+  public void info(CharSequence s, Throwable th) {
+<span class="nc" id="L88">    backingLog.info(s, th);</span>
+<span class="nc" id="L89">    entries.add(new Entry(Level.INFO, s, th));</span>
+<span class="nc" id="L90">  }</span>
+
+  @Override
+  public boolean isDebugEnabled() {
+<span class="nc" id="L94">    return backingLog.isDebugEnabled();</span>
+  }
+
+  @Override
+  public boolean isErrorEnabled() {
+<span class="nc" id="L99">    return true;</span>
+  }
+
+  @Override
+  public boolean isInfoEnabled() {
+<span class="nc" id="L104">    return backingLog.isInfoEnabled();</span>
+  }
+
+  @Override
+  public boolean isWarnEnabled() {
+<span class="nc" id="L109">    return backingLog.isWarnEnabled();</span>
+  }
+
+  @Override
+  public void warn(CharSequence s) {
+<span class="nc" id="L114">    backingLog.warn(s);</span>
+<span class="nc" id="L115">    entries.add(new Entry(Level.WARN, s));</span>
+<span class="nc" id="L116">  }</span>
+
+  @Override
+  public void warn(Throwable th) {
+<span class="nc" id="L120">    backingLog.warn(th);</span>
+<span class="nc" id="L121">    entries.add(new Entry(Level.WARN, th));</span>
+<span class="nc" id="L122">  }</span>
+
+  @Override
+  public void warn(CharSequence s, Throwable th) {
+<span class="nc" id="L126">    backingLog.warn(s, th);</span>
+<span class="nc" id="L127">    entries.add(new Entry(Level.WARN, s, th));</span>
+<span class="nc" id="L128">  }</span>
+
+
+<span class="nc" id="L131">  enum Level {</span>
+<span class="nc" id="L132">    DEBUG,</span>
+<span class="nc" id="L133">    INFO,</span>
+<span class="nc" id="L134">    WARN,</span>
+<span class="nc" id="L135">    ERROR,</span>
+    ;
+  }
+
+
+  static final class Entry implements Externalizable {
+    private Level level;
+    private CharSequence s;
+    private Throwable th;
+
+<span class="nc" id="L145">    public Entry() {}</span>
+
+    Entry(Level level, @Nullable CharSequence s) {
+<span class="nc" id="L148">      this(level, s, null);</span>
+<span class="nc" id="L149">    }</span>
+
+    Entry(Level level, @Nullable Throwable th) {
+<span class="nc" id="L152">      this(level, null, th);</span>
+<span class="nc" id="L153">    }</span>
+
+<span class="nc" id="L155">    Entry(Level level, @Nullable CharSequence s, @Nullable Throwable th) {</span>
+<span class="nc" id="L156">      this.level = Preconditions.checkNotNull(level);</span>
+<span class="nc" id="L157">      this.s = s;</span>
+<span class="nc" id="L158">      this.th = th;</span>
+<span class="nc" id="L159">    }</span>
+
+    @Override
+    public void writeExternal(ObjectOutput out) throws IOException {
+<span class="nc bnc" id="L163" title="All 2 branches missed.">      String str = s != null ? s.toString() : null;</span>
+<span class="nc" id="L164">      byte[] throwableBytes = null;</span>
+<span class="nc bnc" id="L165" title="All 2 branches missed.">      if (th != null) {</span>
+        // Throwables are not reliably serializable.
+<span class="nc" id="L167">        ByteArrayOutputStream bytes = new ByteArrayOutputStream();</span>
+        try {
+<span class="nc" id="L169">          ObjectOutputStream objBytes = new ObjectOutputStream(bytes);</span>
+          try {
+<span class="nc" id="L171">            objBytes.writeObject(th);</span>
+<span class="nc" id="L172">            objBytes.flush();</span>
+<span class="nc" id="L173">            throwableBytes = bytes.toByteArray();</span>
+          } finally {
+<span class="nc" id="L175">            objBytes.close();</span>
+<span class="nc" id="L176">          }</span>
+<span class="nc" id="L177">        } catch (@SuppressWarnings(&quot;unused&quot;) IOException ex) {</span>
+<span class="nc bnc" id="L178" title="All 2 branches missed.">          if (str == null) {</span>
+<span class="nc" id="L179">            str = th.getMessage();</span>
+          } else {
+<span class="nc" id="L181">            str += &quot; ; &quot; + th.getMessage();</span>
+          }
+        } finally {
+<span class="nc" id="L184">          bytes.close();</span>
+<span class="nc" id="L185">        }</span>
+      }
+
+<span class="nc" id="L188">      out.writeObject(level);</span>
+<span class="nc" id="L189">      out.writeObject(str);</span>
+<span class="nc bnc" id="L190" title="All 2 branches missed.">      if (throwableBytes != null) {</span>
+<span class="nc" id="L191">        out.write(throwableBytes);</span>
+      } else {
+<span class="nc" id="L193">        out.writeObject((Throwable) null);</span>
+      }
+<span class="nc" id="L195">    }</span>
+
+    @Override
+    public void readExternal(ObjectInput in)
+    throws IOException, ClassNotFoundException {
+<span class="nc" id="L200">      this.level = (Level) in.readObject();</span>
+<span class="nc" id="L201">      this.s = (CharSequence) in.readObject();</span>
+<span class="nc" id="L202">      this.th = (Throwable) in.readObject();</span>
+<span class="nc" id="L203">    }</span>
+
+    void apply(Log log) {
+<span class="nc bnc" id="L206" title="All 2 branches missed.">      Preconditions.checkState(level != null);</span>
+<span class="nc bnc" id="L207" title="All 5 branches missed.">      switch (level) {</span>
+        case DEBUG:
+<span class="nc" id="L209">          log.debug(s, th);</span>
+<span class="nc" id="L210">          return;</span>
+        case ERROR:
+<span class="nc" id="L212">          log.error(s, th);</span>
+<span class="nc" id="L213">          return;</span>
+        case INFO:
+<span class="nc" id="L215">          log.info(s, th);</span>
+<span class="nc" id="L216">          return;</span>
+        case WARN:
+<span class="nc" id="L218">          log.warn(s, th);</span>
+<span class="nc" id="L219">          return;</span>
+      }
+<span class="nc" id="L221">      throw new AssertionError(level);</span>
+    }
+  }
+}
+</pre><div class="footer"><span class="right">Created with <a href="http://www.eclemma.org/jacoco">JaCoCo</a> 0.7.5.201505241946</span></div></body></html>
