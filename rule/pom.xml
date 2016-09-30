@@ -8,7 +8,7 @@
     <relativePath>..</relativePath>
     <groupId>com.google.security</groupId>
     <artifactId>fences</artifactId>
-    <version>1.8-beta</version>
+    <version>1.9-beta-SNAPSHOT</version>
   </parent>
 
   <name>Fences Rule</name>
