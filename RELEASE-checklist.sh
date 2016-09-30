@@ -33,24 +33,18 @@ git clone git@github.com:mikesamuel/fences-maven-enforcer-rule.git \
 cd "$RELEASE_CLONE"
 
 # Pick a release version
-export OLD_VERSION="$(perl -e '
-  use strict;
-  use XML::LibXML;
-  my $dom = XML::LibXML->new->parse_file($ARGV[0]);
-  my $xml = XML::LibXML::XPathContext->new($dom);
-  $xml->registerNs(qq[mvn], qq[http://maven.apache.org/POM/4.0.0]);
-  for my $node ($xml->findnodes(qq[/mvn:project/mvn:version/text()])) {
-    print $node->toString;
-  }' \
-  "$RELEASE_CLONE/pom.xml")"
+export OLD_VERSION="$(mvn -B help:evaluate \
+                      -Dexpression=project.version | grep -v '\[INFO\]')"
 export NEW_VERSION="$(echo -n "$OLD_VERSION" | perl -pe 's/-SNAPSHOT$//')"
 export NEW_DEV_VERSION="$(perl -e '
   $_ = $ARGV[0]; s/(\d+)(\D*)$/($1 + 1) . $2/e; print' \
   "$OLD_VERSION")"
 
-echo "OLD_VERSION=$OLD_VERSION"
-echo "NEW_VERSION=$NEW_VERSION"
-echo "NEW_DEV_VERSION=$NEW_DEV_VERSION"
+echo "
+OLD_VERSION=$OLD_VERSION
+NEW_VERSION=$NEW_VERSION
+NEW_DEV_VERSION=$NEW_DEV_VERSION
+"
 
 # Update the version
 # mvn release:update-versions puts -SNAPSHOT on the end no matter what
@@ -59,19 +53,13 @@ export VERSION_PLACEHOLDER=99999999999999-SNAPSHOT
 mvn \
     release:update-versions \
     -DautoVersionSubmodules=true \
-    -DdevelopmentVersion="$VERSION_PLACEHOLDER"
-find . -name pom.xml \
-    | xargs perl -i.placeholder -pe "s/$VERSION_PLACEHOLDER/$NEW_VERSION/g"
+    -DdevelopmentVersion="$VERSION_PLACEHOLDER" \
+&& find . -name pom.xml \
+    | xargs perl -i.placeholder -pe "s/$VERSION_PLACEHOLDER/$NEW_VERSION/g" \
+&& perl -i -pe "s|<project-under-test.version>.*?</project-under-test.version>|<project-under-test.version>$NEW_VERSION</project-under-test.version>|" \
+     "$RELEASE_CLONE/rule/src/it/resources/pom.xml" \
+&& git diff
 
-perl -i -pe "s|<project-under-test.version>.*?</project-under-test.version>|<project-under-test.version>$NEW_VERSION</project-under-test.version>|" \
-     "$RELEASE_CLONE/src/it/resources/pom.xml"
-
-# Make sure the change log is up-to-date.
-perl -i.bak \
-     -pe 'if (m/^  [*] / && !$added) { $_ = qq(  * Release $ENV{"NEW_VERSION"}\n$_); $added = 1; }' \
-     change_log.md
-
-"$EDITOR" change_log.md
 
 # A dry run.
 mvn clean install -DskipTests=true
@@ -87,12 +75,32 @@ mvn clean source:jar javadoc:jar verify deploy:deploy -DperformRelease=true
 
 # Workaround a problem with markdown translation
 # ( https:// stackoverflow.com/questions/36708241 )
-mvn -f rule site
-find "$RELEASE_CLONE/target/site" -name \*.html \
+mvn -f rule verify javadoc:javadoc site
+find "$RELEASE_CLONE/rule/target/site" -name \*.html \
     | xargs perl -i -pe 's/(href="[^"#?]*)\.md(#[^"]*)?(")/$1.html$2$3/g'
 
-# Publish the site to gh-pages
-mvn -f rule com.github.github:site-maven-plugin:site
+# Publish the site
+cd ~/work
+export SITE_CLONE="$PWD/fencesrule-site"
+
+rm -rf "$SITE_CLONE" \
+&& cd "$(dirname "$SITE_CLONE")" \
+&& git clone -b gh-pages git@github.com:mikesamuel/fences-maven-enforcer-rule.git \
+       "$(basename "$SITE_CLONE")" \
+&& cd "$SITE_CLONE"
+
+# Empty all source files.  Later we will git rm any that were not copied
+# from site.
+find . -type f -not -path ./.git/\* -exec rm '{}' \; -exec touch '{}' \;
+
+cp -r "$RELEASE_CLONE"/rule/target/site/* "$SITE_CLONE"/
+
+find . -type f -not -path ./.git/\* -exec git add '{}' \;
+find . -size 0 -not -path ./.git/\* -exec git rm -f '{}' \;
+
+git commit -m "publish site for $NEW_VERSION"
+git push origin gh-pages
+
 
 # Bump the development version.
 for ph in $(find . -name pom.xml.placeholder); do
@@ -102,10 +110,12 @@ find . -name pom.xml \
     | xargs perl -i.placeholder \
             -pe "s/$VERSION_PLACEHOLDER/$NEW_DEV_VERSION/"
 perl -i -pe "s|<project-under-test.version>.*?</project-under-test.version>|<project-under-test.version>$NEW_DEV_VERSION</project-under-test.version>|" \
-     "$RELEASE_CLONE/src/it/resources/pom.xml"
+     "$RELEASE_CLONE/rule/src/it/resources/pom.xml"
 find . -name pom.xml.placeholder | xargs rm
 
 git commit -am "Bumped dev version"
+
+git diff
 
 git push origin master
 
