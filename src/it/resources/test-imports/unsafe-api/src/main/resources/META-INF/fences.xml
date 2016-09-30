@@ -1,7 +1,0 @@
-<configuration>
-  <class>
-    <name>com.example.api.Unsafe</name>
-    <distrusts>*</distrusts>
-    <rationale>Lorem ipsum dangerous.</rationale>
-  </class>
-</configuration>
