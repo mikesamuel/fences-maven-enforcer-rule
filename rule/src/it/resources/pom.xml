@@ -9,7 +9,7 @@
 
   <properties>
     <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
-    <project-under-test.version>1.8-beta-SNAPSHOT</project-under-test.version>
+    <project-under-test.version>1.8-beta</project-under-test.version>
     <maven-enforcer-plugin.version>1.4.1</maven-enforcer-plugin.version>
   </properties>
 
