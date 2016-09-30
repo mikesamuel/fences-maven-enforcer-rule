@@ -103,6 +103,7 @@ git push origin gh-pages
 
 
 # Bump the development version.
+cd "$RELEASE_CLONE"
 for ph in $(find . -name pom.xml.placeholder); do
     cp "$ph" "$(dirname "$ph")"/"$(basename "$ph" .placeholder)"
 done
@@ -113,9 +114,9 @@ perl -i -pe "s|<project-under-test.version>.*?</project-under-test.version>|<pro
      "$RELEASE_CLONE/rule/src/it/resources/pom.xml"
 find . -name pom.xml.placeholder | xargs rm
 
-git commit -am "Bumped dev version"
-
 git diff
+
+git commit -am "Bumped dev version"
 
 git push origin master
 
