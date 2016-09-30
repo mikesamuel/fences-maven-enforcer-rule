@@ -5,7 +5,7 @@
   <groupId>com.google.security</groupId>
   <artifactId>fences</artifactId>
   <packaging>pom</packaging>
-  <version>1.9-beta</version>
+  <version>1.10-beta-SNAPSHOT</version>
 
   <name>Fences</name>
   <description>
