@@ -290,7 +290,7 @@ public final class FencesMavenEnforcerRule implements EnforcerRule {
     }
 
     File artifactFindingsFile = new File(buildDirectory, ".fences-cache.ser");
-    // TODO: store in the file, a hash of the effective policy so we can do
+    // TODO: store in the file a hash of the effective policy so we can do
     // a master check that the policy hasn't changed.
     ArtifactFindingsHash afHash = ArtifactFindingsHash.readFrom(
         Files.asByteSource(artifactFindingsFile));

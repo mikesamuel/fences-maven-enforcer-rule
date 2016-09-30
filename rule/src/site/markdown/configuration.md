@@ -222,3 +222,4 @@ The following system properties affect the fences rule.  ([code](https://github.
 | `fences.experimental` | Irrelevant | If present, then errors are converted to warnings.
 | `fences.config.show`  | Irrelevant | If present, then the log will include a dump of the effective policy. |
 | `enforcer.skip`       | true|false | If `true`, then all the enforcer rules, including the fences rule, are skipped. |
+| `fences.superVervose` | true|false | If `true`, then enable some spammy logging.

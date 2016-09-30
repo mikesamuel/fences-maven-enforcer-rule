@@ -42,6 +42,9 @@ public final class Checker extends AbstractClassesVisitor {
   private final List<Violation> violations =
       Lists.newArrayList();
 
+  static final boolean superVerboseLogging =
+      "true".equals(System.getProperty("fences.superVerbose"));
+
   /**
    * @param inheritanceGraph used to resolve super-types so that policies that
    *     apply to super-types can be applied to sub-types.
@@ -184,13 +187,15 @@ public final class Checker extends AbstractClassesVisitor {
       }
       PolicyResult r = descriptorMemoTable.get(descriptor);
       if (r == null) {
-        log.debug(new LazyString() {
-          @Override
-          protected String makeString() {
-            return ". . . Checking whether " + el + " allowed from " + ns
-                + " in " + Utils.artToString(art);
-          }
-        });
+        if (superVerboseLogging) {
+          log.debug(new LazyString() {
+            @Override
+            protected String makeString() {
+              return ". . . Checking whether " + el + " allowed from " + ns
+                  + " in " + Utils.artToString(art);
+            }
+          });
+        }
         r = Checker.this.applyAccessPolicy(ns, el, descriptor);
         descriptorMemoTable.put(descriptor, r);
       }
