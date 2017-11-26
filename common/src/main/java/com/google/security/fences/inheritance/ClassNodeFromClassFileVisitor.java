@@ -33,7 +33,7 @@ public final class ClassNodeFromClassFileVisitor extends ClassVisitor {
    * @param graphBuilder receives declarations for classes visited.
    */
   public ClassNodeFromClassFileVisitor(InheritanceGraph.Builder graphBuilder) {
-    super(Opcodes.ASM5);
+    super(Opcodes.ASM6);
     this.graphBuilder = graphBuilder;
   }
 

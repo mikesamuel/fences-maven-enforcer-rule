@@ -89,7 +89,7 @@ public final class Checker extends AbstractClassesVisitor {
 
     ClassChecker(Artifact art, ClassReader reader)
     throws MisconfigurationException {
-      super(Opcodes.ASM5);
+      super(Opcodes.ASM6);
       this.art = art;
       this.reader = reader;
       this.className = reader.getClassName();
@@ -129,7 +129,7 @@ public final class Checker extends AbstractClassesVisitor {
     MethodChecker(
         Artifact art, ClassReader reader, Optional<String> sourceFilePath,
         Namespace ns, String methodName) {
-      super(Opcodes.ASM5);
+      super(Opcodes.ASM6);
       this.art = art;
       this.sourceFilePath = sourceFilePath;
       this.className = reader.getClassName();
