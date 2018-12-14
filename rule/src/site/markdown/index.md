@@ -12,7 +12,7 @@ to a large project.
 ## A tale of development gone wry.
 
 Sally the security specialist is responsible for seeing that
-a particular security property for the project she's working.
+a particular security property for the project is working.
 She wants to do her job without requiring every other developer to
 keep her goals in mind -- development won't scale any other way.
 
@@ -65,12 +65,12 @@ explanation:
 > Ping sally@ for more details.
 
 He's not quite sure how to proceed, so he fires off a quick
-email to sally, does a quick search finds a [workaround](faq.md)
+email to sally, does a quick search, finds a [workaround](faq.md)
 and continues development in experimental mode.
 
 ----
 
-Sally returns from lunch responds and writes a more finely tuned
+Sally returns from lunch, responds and writes a more finely tuned
 `<rationale>` for the specific API element Alex used.
 
 ----
@@ -105,5 +105,5 @@ The tech lead has found some other uses too:
    rewrite just now.
 
 
-
+[maven-enforcer]: https://maven.apache.org/enforcer/
 [multi-module-projects]: https://books.sonatype.com/mvnref-book/reference/pom-relationships-sect-pom-best-practice.html#pom-relationships-sect-multi-vs-inherit
